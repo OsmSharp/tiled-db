@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Anyways.Osm.TiledDb.Splitter": {
+      "commandName": "Project",
+      "commandLineArgs": "--split-pbf zoom=10 C:\\work\\anyways\\data\\tiled-db-tests\\belgium-highways.osm.pbf C:\\work\\anyways\\data\\tiled-db-tests\\10"
+    }
+  }
+}
