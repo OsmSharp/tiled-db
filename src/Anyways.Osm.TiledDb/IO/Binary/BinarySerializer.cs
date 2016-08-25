@@ -233,7 +233,7 @@ namespace Anyways.Osm.TiledDb.IO.PBF
             }
         }
 
-        private static int Write(this Stream stream, int value)
+        public static int Write(this Stream stream, int value)
         {
             stream.Write(BitConverter.GetBytes(value), 0, 4);
             return 4;
@@ -245,7 +245,13 @@ namespace Anyways.Osm.TiledDb.IO.PBF
             return 4;
         }
 
-        private static int Write(this Stream stream, long value)
+        public static int Write(this Stream stream, long value)
+        {
+            stream.Write(BitConverter.GetBytes(value), 0, 8);
+            return 8;
+        }
+
+        public static int Write(this Stream stream, ulong value)
         {
             stream.Write(BitConverter.GetBytes(value), 0, 8);
             return 8;

@@ -36,6 +36,16 @@ namespace Anyways.Osm.TiledDb.Splitter
 
                 SplitPbf.Run(inputFile, outputPath, zoom);
             }
+            if (args[0] == "--split-pbf-recursive")
+            {
+                var zoomArgs = args[1].Split('=');
+                var zoom = int.Parse(zoomArgs[1]);
+
+                var inputFile = args[2];
+                var outputPath = args[3];
+
+                SplitPbf.RunRecursive(inputFile, outputPath, zoom);
+            }
             else if (args[0] == "--split-tiles")
             {
                 var zoomArgs = args[1].Split('=');
