@@ -1,4 +1,7 @@
 ﻿using Anyways.Osm.TiledDb.IO.Binary;
+using Anyways.Osm.TiledDb.Tiles;
+using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Anyways.Osm.TiledDb.Splitter
@@ -8,19 +11,15 @@ namespace Anyways.Osm.TiledDb.Splitter
         public static void RunSplitTiles(string inputPath, string outputPath, int zoom)
         {
             var files = new DirectoryInfo(inputPath);
-            foreach(var file in files.GetFiles("*.osm.bin"))
+            foreach (var file in files.GetFiles("*.osm.bin"))
             {
-                ulong tileId;
-                if (ulong.TryParse(file.Name, out tileId))
-                {
-                    SplitTiles.RunSplitTile(file.FullName, outputPath, zoom);
-                }
+                SplitTiles.RunSplitTile(file.FullName, outputPath, zoom);
             }
         }
 
         public static void RunSplitTile(string inputFile, string outputPath, int zoom)
         {
-            var tileId = ulong.Parse((new FileInfo(inputFile)).Name);
+            var tileId = ulong.Parse((new FileInfo(inputFile)).Name.GetNameUntilFirstDot());
 
             using (var inputFileStream = File.OpenRead(inputFile))
             {
@@ -29,7 +28,23 @@ namespace Anyways.Osm.TiledDb.Splitter
                 var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
                 progress.RegisterSource(source);
 
-                Split.Run(progress, zoom, outputPath);
+                var tile = new Tile(tileId);
+                
+                if (tile.Zoom >= zoom)
+                {
+                    OsmSharp.Logging.Logger.Log("SplitTiles", OsmSharp.Logging.TraceEventType.Critical,
+                        "Cannot split a tile at zoom {0} for tiles at zoom {1}.", tile.Zoom, zoom);
+                    return;
+                }
+
+                var tileRange = tile.GetSubTiles(zoom);
+                var tilesToInclude = new HashSet<ulong>();
+                foreach(var tileToInclude in tileRange)
+                {
+                    tilesToInclude.Add(tileToInclude.Id);
+                }
+
+                Split.Run(progress, zoom, outputPath, tilesToInclude);
             }
         }
     }

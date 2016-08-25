@@ -2,6 +2,7 @@
 using Anyways.Osm.TiledDb.IO.PBF;
 using OsmSharp;
 using OsmSharp.Streams;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -9,7 +10,7 @@ namespace Anyways.Osm.TiledDb.Splitter
 {
     static class Split
     {
-        public static void Run(OsmStreamSource source, int zoom, string outputPath)
+        public static void Run(OsmStreamSource source, int zoom, string outputPath, HashSet<ulong> tilesToInclude = null)
         {
             var nodes = new IdMap();
             var ways = new IdMap();
@@ -26,7 +27,11 @@ namespace Anyways.Osm.TiledDb.Splitter
                     var tile = Tiles.Tile.CreateAroundLocation(
                         node.Latitude.Value, node.Longitude.Value, zoom).Id;
 
-                    nodes.Add(node.Id.Value, tile);
+                    if (tilesToInclude == null ||
+                        tilesToInclude.Contains(tile))
+                    {
+                        nodes.Add(node.Id.Value, tile);
+                    }
                 }
                 else if (osmGeo.Type == OsmGeoType.Way)
                 {
@@ -39,7 +44,11 @@ namespace Anyways.Osm.TiledDb.Splitter
                             count = nodes.Get(way.Nodes[i], ref tiles);
                             for (var t = 0; t < count; t++)
                             {
-                                ways.Add(way.Id.Value, tiles[t]);
+                                if (tilesToInclude == null ||
+                                    tilesToInclude.Contains(tiles[t]))
+                                {
+                                    ways.Add(way.Id.Value, tiles[t]);
+                                }
                             }
                         }
                     }
@@ -66,7 +75,11 @@ namespace Anyways.Osm.TiledDb.Splitter
                             }
                             for (var t = 0; t < count; t++)
                             {
-                                relations.Add(relation.Id.Value, tiles[t]);
+                                if (tilesToInclude == null ||
+                                    tilesToInclude.Contains(tiles[t]))
+                                {
+                                    relations.Add(relation.Id.Value, tiles[t]);
+                                }
                             }
                         }
                     }

@@ -1,4 +1,6 @@
-﻿namespace Anyways.Osm.TiledDb.Tiles
+﻿using System;
+
+namespace Anyways.Osm.TiledDb.Tiles
 {
     /// <summary>
     /// Represents a tile.
@@ -300,6 +302,28 @@
                 / System.Math.PI) / 2f * (double)n);
 
             return new Tile(x, y, zoom);
+        }
+
+        /// <summary>
+        /// Returns the subtiles of this tile at the given zoom.
+        /// </summary>
+        public TileRange GetSubTiles(int zoom)
+        {
+            if (this.Zoom > zoom) { throw new ArgumentOutOfRangeException("zoom", "Subtiles can only be calculated for higher zooms."); }
+
+            if (this.Zoom == zoom)
+            { // just return a range of one tile.
+                return new TileRange(this.X, this.Y, this.X, this.Y, this.Zoom);
+            }
+
+            var factor = 1 << (zoom - this.Zoom);
+
+            return new TileRange(
+                this.X * factor,
+                this.Y * factor,
+                this.X * factor + factor - 1,
+                this.Y * factor + factor - 1,
+                zoom);
         }
     }
 }

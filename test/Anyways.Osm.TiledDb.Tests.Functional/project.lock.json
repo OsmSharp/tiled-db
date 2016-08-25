@@ -7012,13 +7012,13 @@
     },
     "Anyways.Osm.TiledDb/1.0.0": {
       "type": "project",
-      "path": "../src/Anyways.Osm.TiledDb/project.json",
-      "msbuildProject": "../src/Anyways.Osm.TiledDb/Anyways.Osm.TiledDb.xproj"
+      "path": "../../src/Anyways.Osm.TiledDb/project.json",
+      "msbuildProject": "../../src/Anyways.Osm.TiledDb/Anyways.Osm.TiledDb.xproj"
     },
     "OsmSharp/1.0.0": {
       "type": "project",
-      "path": "../../../../../../../work/osmsharp/core/src/OsmSharp/project.json",
-      "msbuildProject": "../../../../../../../work/osmsharp/core/src/OsmSharp/OsmSharp.xproj"
+      "path": "../../../../osmsharp/core/src/OsmSharp/project.json",
+      "msbuildProject": "../../../../osmsharp/core/src/OsmSharp/OsmSharp.xproj"
     }
   },
   "projectFileDependencyGroups": {

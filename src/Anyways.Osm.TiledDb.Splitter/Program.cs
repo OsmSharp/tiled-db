@@ -11,6 +11,15 @@ namespace Anyways.Osm.TiledDb.Splitter
     {
         public static void Main(string[] args)
         {
+            /*
+             * Split pbf into tiles:
+             * --split-pbf zoom=4 C:\work\anyways\data\tiled-db-tests\belgium-highways.osm.pbf C:\work\anyways\data\tiled-db-tests\4
+             * 
+             * Split tiles into subtiles:
+             * --split-tiles zoom=5 C:\work\anyways\data\tiled-db-tests\4 C:\work\anyways\data\tiled-db-tests\5
+             * 
+             */
+
             // enable logging.
             OsmSharp.Logging.Logger.LogAction = (o, level, message, parameters) =>
             {
@@ -36,6 +45,13 @@ namespace Anyways.Osm.TiledDb.Splitter
                 var outputPath = args[3];
 
                 SplitTiles.RunSplitTiles(inputFile, outputPath, zoom);
+            }
+            else if (args[0] == "--to-osm-xml")
+            {
+                var inputFile = args[1];
+                var outputPath = args[2];
+
+                Convert.ToOsmXml(inputFile, outputPath);
             }
         }
     }
