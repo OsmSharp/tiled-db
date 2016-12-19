@@ -2,7 +2,7 @@
   "profiles": {
     "Anyways.Osm.TiledDb.Splitter": {
       "commandName": "Project",
-      "commandLineArgs": "--split-pbf-recursive zoom=14 C:\\work\\anyways\\data\\tiled-db-tests\\belgium-highways.osm.pbf C:\\work\\anyways\\data\\tiled-db-tests"
+      "commandLineArgs": "--to-osm-xml C:\\work\\anyways\\data\\tiled-db-tests\\14 C:\\work\\anyways\\data\\tiled-db-tests\\14"
     }
   }
 }
