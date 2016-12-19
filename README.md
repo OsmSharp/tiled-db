@@ -2,18 +2,12 @@
 
 Try to complete a full implementation (implementing a full single db IHistoryDb is not possible).
 
+Done:
+- Built a tile splitter, splits one file in a folder.
+
 We need:
-- A node index [nodeid, tileid]
-- A way index [wayid, tileid]
-- A relation index [relationid, tileid]
-- A changeset collection [changesetid, changeset]
-- A collection of tiles.
-
-Questions:
-
-- How are tile structured?
+- Build a TileDbBuilder that builds a TileDb from the split tiles.
 
 Directory Structure:
 
 - One directory per changeset '{changesetid}' and one based directory called 'base'
-- 
