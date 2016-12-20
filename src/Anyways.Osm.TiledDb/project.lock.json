@@ -189,6 +189,15 @@
           "lib/netstandard1.5/protobuf-net.dll": {}
         }
       },
+      "Reminiscence/1.0.5": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard1.3/Reminiscence.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard1.3/Reminiscence.dll": {}
+        }
+      },
       "runtime.native.System/4.0.0": {
         "type": "package",
         "dependencies": {
@@ -1555,6 +1564,20 @@
         "lib/netstandard1.5/protobuf-net.dll",
         "protobuf-net.2.1.0.nupkg.sha512",
         "protobuf-net.nuspec"
+      ]
+    },
+    "Reminiscence/1.0.5": {
+      "sha512": "PrjrLzIAT1fWIQLv7Bz3KDrQ3fvsqqafOPtiSpQ5K3UVMjvmO8c2T/yFpqO85SV97RH8XTc9f8V/KtTj+Sgsvw==",
+      "type": "package",
+      "path": "Reminiscence/1.0.5",
+      "files": [
+        "Reminiscence.1.0.5.nupkg.sha512",
+        "Reminiscence.nuspec",
+        "lib/net40/Reminiscence.dll",
+        "lib/net45/Reminiscence.dll",
+        "lib/netstandard1.3/Reminiscence.dll",
+        "lib/portable-net403+sl50+win+wp80+Xamarin.iOS10+MonoAndroid10+MonoTouch10/Reminiscence.dll",
+        "lib/portable-net45+win8+wpa81+wp8/Reminiscence.dll"
       ]
     },
     "runtime.native.System/4.0.0": {
@@ -4675,15 +4698,16 @@
     },
     "OsmSharp/1.0.0": {
       "type": "project",
-      "path": "../../../../../../../../work/osmsharp/core/src/OsmSharp/project.json",
-      "msbuildProject": "../../../../../../../../work/osmsharp/core/src/OsmSharp/OsmSharp.xproj"
+      "path": "../../../../osmsharp/core/src/OsmSharp/project.json",
+      "msbuildProject": "../../../../osmsharp/core/src/OsmSharp/OsmSharp.xproj"
     }
   },
   "projectFileDependencyGroups": {
     "": [
       "NETStandard.Library >= 1.6.0",
       "OsmSharp >= 1.0.0-*",
-      "OsmSharp.Core >= 2.2.9-beta"
+      "OsmSharp.Core >= 2.2.9-beta",
+      "Reminiscence >= 1.0.5"
     ],
     ".NETStandard,Version=v1.6": []
   },

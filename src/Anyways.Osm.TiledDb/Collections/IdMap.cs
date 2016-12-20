@@ -13,30 +13,30 @@ namespace Anyways.Osm.TiledDb.Collections
     /// </remarks>
     public class IdMap
     {
-        private readonly Dictionary<long, ulong> _firstMap; // holds the first vertex for a node, will be enough in 99.9% of cases.
-        private readonly Dictionary<long, LinkedListNode> _secondMap; // holds the second and beyond vertices for a node.
+        private readonly UniqueTileIdMap _firstMap; // holds the first vertex for a node, will be enough in 99.9% of cases.
+        private readonly HugeDictionary<long, LinkedListNode> _secondMap; // holds the second and beyond vertices for a node.
 
         /// <summary>
         /// Creates a new core node id map.
         /// </summary>
         public IdMap()
         {
-            _firstMap = new Dictionary<long, ulong>();
-            _secondMap = new Dictionary<long, LinkedListNode>();
+            _firstMap = new UniqueTileIdMap();
+            _secondMap = new HugeDictionary<long, LinkedListNode>();
         }
 
         /// <summary>
         /// Adds a pair.
         /// </summary>
-        public void Add(long id, ulong tile)
+        public void Add(long id, byte tileId)
         {
-            ulong existingTile;
-            if (!_firstMap.TryGetValue(id, out existingTile))
+            var existingTile = _firstMap[id];
+            if (existingTile == byte.MaxValue)
             {
-                _firstMap.Add(id, tile);
+                _firstMap[id] = tileId;
                 return;
             }
-            if (existingTile == tile)
+            if (existingTile == tileId)
             {
                 return;
             }
@@ -45,13 +45,13 @@ namespace Anyways.Osm.TiledDb.Collections
             {
                 _secondMap.Add(id, new LinkedListNode()
                 {
-                    Value = tile
+                    Value = tileId
                 });
             }
             var current = _secondMap[id];
             while(current != null)
             {
-                if (current.Value == tile)
+                if (current.Value == tileId)
                 {
                     return;
                 }
@@ -59,7 +59,7 @@ namespace Anyways.Osm.TiledDb.Collections
             }
             _secondMap[id] = new LinkedListNode()
             {
-                Value = tile,
+                Value = tileId,
                 Next = existing
             };
         }
@@ -67,11 +67,11 @@ namespace Anyways.Osm.TiledDb.Collections
         /// <summary>
         /// Fills the given array with the vertices for the given node.
         /// </summary>
-        public int Get(long id, ref ulong[] tiles)
+        public int Get(long id, ref byte[] tiles)
         {
             if (tiles == null || tiles.Length == 0) { throw new ArgumentException("Target array needs to be non-null and have a size > 0."); }
-            ulong first;
-            if (!_firstMap.TryGetValue(id, out first))
+            var first = _firstMap[id];
+            if (first == byte.MaxValue)
             {
                 return 0;
             }
@@ -93,24 +93,11 @@ namespace Anyways.Osm.TiledDb.Collections
         }
 
         /// <summary>
-        /// Tries to get the first vertex that was added for this node.
-        /// </summary>
-        public bool TryGetFirst(long id, out ulong tile)
-        {
-            return _firstMap.TryGetValue(id, out tile);
-        }
-
-        /// <summary>
         /// Calculates the maximum vertices per node in this map.
         /// </summary>
         /// <returns></returns>
         public int MaxVerticePerNode()
         {
-            if (_firstMap.Count == 0)
-            {
-                return 0;
-            }
-
             var max = 1;
             foreach (var keyValue in _secondMap)
             {
@@ -129,20 +116,9 @@ namespace Anyways.Osm.TiledDb.Collections
             return max;
         }
 
-        /// <summary>
-        /// An enumerable with all nodes in this map.
-        /// </summary>
-        public IEnumerable<long> Nodes
-        {
-            get
-            {
-                return _firstMap.Keys;
-            }
-        }
-
         private class LinkedListNode
         {
-            public ulong Value { get; set; }
+            public byte Value { get; set; }
             public LinkedListNode Next { get; set; }
         }
     }

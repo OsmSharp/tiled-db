@@ -3,6 +3,8 @@ using Anyways.Osm.TiledDb.IO.Binary;
 using Anyways.Osm.TiledDb.IO.PBF;
 using Anyways.Osm.TiledDb.Tiles;
 using OsmSharp;
+using Reminiscence.Arrays;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,7 +16,7 @@ namespace Anyways.Osm.TiledDb.Splitter
     /// </summary>
     public static class Split
     {
-        private static int DIFF = 4;
+        private static int DIFF = 3;
 
         /// <summary>
         /// Splits the data in the given source into tiles at the given zoom level recursively.
@@ -45,8 +47,8 @@ namespace Anyways.Osm.TiledDb.Splitter
                 Directory.CreateDirectory(tileOutputPath);
             }
 
-            OsmSharp.Logging.Logger.Log("Split", OsmSharp.Logging.TraceEventType.Information, "Splitting tile {0} into {1}...", tile.ToInvariantString(), nextZoom);
-            var tileFiles = Run(source, nextZoom, tileOutputPath, tilesToInclude);
+            OsmSharp.Logging.Logger.Log("Split", OsmSharp.Logging.TraceEventType.Information, "Splitting tile {2} - {0} into {1}...", tile.ToInvariantString(), nextZoom, tile.Id);
+            var tileFiles = Run(source, nextZoom, tileOutputPath, tilesToInclude.ToList());
 
             if (nextZoom == zoom)
             {
@@ -58,7 +60,9 @@ namespace Anyways.Osm.TiledDb.Splitter
                 using (var stream = File.OpenRead(tileFile.Value))
                 {
                     var binarySource = new BinaryOsmStreamSource(stream);
-                    RunRecursive(binarySource, zoom, new Tile(tileFile.Key), outputPath);
+                    var filteredBinarySource = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+                    filteredBinarySource.RegisterSource(binarySource);
+                    RunRecursive(filteredBinarySource, zoom, new Tile(tileFile.Key), outputPath);
                 }
             }
         }
@@ -66,15 +70,25 @@ namespace Anyways.Osm.TiledDb.Splitter
         /// <summary>
         /// Splits the data in the given source into tiles at the given zoom level. Includes only the tiles in the includes list if any.
         /// </summary>
-        public static Dictionary<ulong, string> Run(IEnumerable<OsmGeo> source, int zoom, string outputPath, HashSet<ulong> tilesToInclude = null)
+        public static Dictionary<ulong, string> Run(IEnumerable<OsmGeo> source, int zoom, string outputPath, List<ulong> tilesToInclude)
         {
-            var nodes = new IdMap();
+            if (tilesToInclude.Count >= 256)
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+
+            var tilesDictionary = new Dictionary<ulong, byte>();
+            for(var i = 0; i < tilesToInclude.Count; i++)
+            {
+                tilesDictionary[tilesToInclude[i]] = (byte)i;
+            }
+            
+            var nodes = new UniqueTileIdMap();
             var ways = new IdMap();
             var relations = new IdMap();
             var tileFiles = new Dictionary<ulong, string>();
 
-            var tiles = new ulong[256];
-            var count = 0;
+            var incompleteRelations = new List<Relation>();
 
             foreach (var osmGeo in source)
             {
@@ -84,10 +98,10 @@ namespace Anyways.Osm.TiledDb.Splitter
                     var tile = Tiles.Tile.CreateAroundLocation(
                         node.Latitude.Value, node.Longitude.Value, zoom).Id;
 
-                    if (tilesToInclude == null ||
-                        tilesToInclude.Contains(tile))
+                    var tileId = byte.MaxValue;
+                    if (tilesDictionary.TryGetValue(tile, out tileId))
                     {
-                        nodes.Add(node.Id.Value, tile);
+                        nodes[node.Id.Value] = tileId;
                     }
                 }
                 else if (osmGeo.Type == OsmGeoType.Way)
@@ -98,51 +112,50 @@ namespace Anyways.Osm.TiledDb.Splitter
                     {
                         for (var i = 0; i < way.Nodes.Length; i++)
                         {
-                            count = nodes.Get(way.Nodes[i], ref tiles);
-                            for (var t = 0; t < count; t++)
+                            var tileId = nodes[way.Nodes[i]];
+                            if (tileId != byte.MaxValue)
                             {
-                                if (tilesToInclude == null ||
-                                    tilesToInclude.Contains(tiles[t]))
-                                {
-                                    ways.Add(way.Id.Value, tiles[t]);
-                                }
+                                ways.Add(way.Id.Value, tileId);
                             }
                         }
                     }
                 }
                 else if (osmGeo.Type == OsmGeoType.Relation)
                 {
-                    var relation = (osmGeo as Relation);
-
-                    if (relation.Members != null)
-                    {
-                        for (var i = 0; i < relation.Members.Length; i++)
-                        {
-                            var member = relation.Members[i];
-                            switch (member.Type)
-                            {
-                                case OsmGeoType.Node:
-                                    count = nodes.Get(relation.Members[i].Id, ref tiles);
-                                    break;
-                                case OsmGeoType.Way:
-                                    count = ways.Get(relation.Members[i].Id, ref tiles);
-                                    break;
-                                case OsmGeoType.Relation:
-                                    break;
-                            }
-                            for (var t = 0; t < count; t++)
-                            {
-                                if (tilesToInclude == null ||
-                                    tilesToInclude.Contains(tiles[t]))
-                                {
-                                    relations.Add(relation.Id.Value, tiles[t]);
-                                }
-                            }
-                        }
-                    }
+                    //var relation = (osmGeo as Relation);
+                    
+                    //if (relation.Members != null)
+                    //{
+                    //    for (var i = 0; i < relation.Members.Length; i++)
+                    //    {
+                    //        var member = relation.Members[i];
+                    //        switch (member.Type)
+                    //        {
+                    //            case OsmGeoType.Node:
+                    //                count = 1;
+                    //                tiles[0] = tilesToInclude[nodes[relation.Members[i].Id]];
+                    //                break;
+                    //            case OsmGeoType.Way:
+                    //                count = ways.Get(relation.Members[i].Id, ref tiles);
+                    //                break;
+                    //            case OsmGeoType.Relation:
+                    //                break;
+                    //        }
+                    //        for (var t = 0; t < count; t++)
+                    //        {
+                    //            if (tilesToInclude == null ||
+                    //                tilesToInclude.Contains(tiles[t]))
+                    //            {
+                    //                relations.Add(relation.Id.Value, tiles[t]);
+                    //            }
+                    //        }
+                    //    }
+                    //}
                 }
             }
-
+            
+            var tileIds = new byte[256];
+            var count = 0;
             var streamCache = new LRUCache<ulong, Stream>(1024);
             streamCache.OnRemove += (s) =>
             {
@@ -159,19 +172,20 @@ namespace Anyways.Osm.TiledDb.Splitter
                 switch (osmGeo.Type)
                 {
                     case OsmGeoType.Node:
-                        count = nodes.Get(osmGeo.Id.Value, ref tiles);
+                        count = 1;
+                        tileIds[0] = nodes[osmGeo.Id.Value];
                         break;
                     case OsmGeoType.Way:
-                        count = ways.Get(osmGeo.Id.Value, ref tiles);
+                        count = ways.Get(osmGeo.Id.Value, ref tileIds);
                         break;
                     case OsmGeoType.Relation:
-                        count = relations.Get(osmGeo.Id.Value, ref tiles);
+                        count = relations.Get(osmGeo.Id.Value, ref tileIds);
                         break;
                 }
 
                 for (var i = 0; i < count; i++)
                 {
-                    var tile = tiles[i];
+                    var tile = tilesToInclude[tileIds[i]];
 
                     Stream stream;
                     if (!streamCache.TryGet(tile, out stream))

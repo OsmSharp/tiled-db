@@ -4,7 +4,8 @@
   "dependencies": {
     "NETStandard.Library": "1.6.0",
     "OsmSharp": "1.0.0-*",
-    "OsmSharp.Core": "2.2.9-beta"
+    "OsmSharp.Core": "2.2.9-beta",
+    "Reminiscence": "1.0.5"
   },
 
   "frameworks": {

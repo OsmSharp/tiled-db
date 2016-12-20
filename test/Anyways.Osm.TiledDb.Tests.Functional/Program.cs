@@ -14,15 +14,11 @@ namespace Anyways.Osm.TiledDb.Tests.Functional
             };
             
             var source = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-            source.RegisterSource(new PBFOsmStreamSource(File.OpenRead(@"C:\work\anyways\data\tiled-db-tests\belgium-highways.osm.pbf")));
+            source.RegisterSource(new PBFOsmStreamSource(File.OpenRead(@"C:\work\data\OSM\europe-latest.osm.pbf")));
 
-            //var target = new BinaryOsmStreamTarget(File.OpenWrite(@"C:\work\anyways\tiled-osm-db\belgium-highways.osm.bin"));
-            //target.RegisterSource(source);
-            //target.Pull();
+            Anyways.Osm.TiledDb.Splitter.Split.RunRecursive(source, 9, @"C:\work\anyways\data\tiled-db-tests\output\");
 
-            //Anyways.Osm.TiledDb.Splitter.Split.RunRecursive(source, 12, @"C:\work\anyways\data\tiled-db-tests\output\");
-
-            Anyways.Osm.TiledDb.Splitter.Split.CompressAll(@"C:\work\anyways\data\tiled-db-tests\output\12\");
+            //Anyways.Osm.TiledDb.Splitter.Split.CompressAll(@"C:\work\anyways\data\tiled-db-tests\output\10\");
         }
     }
 }
