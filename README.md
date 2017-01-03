@@ -52,4 +52,4 @@ TODO:
 - [x] Build a tile splitter, splits one file in a folder.
   - [x] Build a tile splitter that includes nodes, ways and relations with one stage.
   - [ ] Build a tile splitter that includes relations with as many iterations as it takes.
-- [ ] Enhance OsmSharp to be able to reset a stream to an object type.
+- [x] Enhance OsmSharp to be able to reset a stream to an object type.
