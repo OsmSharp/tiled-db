@@ -3,8 +3,7 @@
 
   "dependencies": {
     "NETStandard.Library": "1.6.0",
-    "OsmSharp": "1.0.0-*",
-    "OsmSharp.Core": "2.2.9-beta",
+    "OsmSharp": "5.0.7-rc1",
     "Reminiscence": "1.0.5"
   },
 

@@ -80,6 +80,7 @@ namespace Anyways.Osm.TiledDb.IO.Binary
                         }
                         break;
                 }
+                osmGeo = this.DoMoveNext();
             }
             return false;
         }

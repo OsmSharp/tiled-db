@@ -10,7 +10,7 @@
       "type": "platform",
       "version": "1.0.0"
     },
-    "OsmSharp": "1.0.0-*"
+    "OsmSharp": "5.0.7-rc1"
   },
 
   "frameworks": {

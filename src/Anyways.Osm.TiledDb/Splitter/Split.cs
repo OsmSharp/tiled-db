@@ -3,6 +3,7 @@ using Anyways.Osm.TiledDb.IO.Binary;
 using Anyways.Osm.TiledDb.IO.PBF;
 using Anyways.Osm.TiledDb.Tiles;
 using OsmSharp;
+using OsmSharp.Streams;
 using Reminiscence.Arrays;
 using System;
 using System.Collections.Generic;
@@ -21,7 +22,7 @@ namespace Anyways.Osm.TiledDb.Splitter
         /// <summary>
         /// Splits the data in the given source into tiles at the given zoom level recursively.
         /// </summary>
-        public static void RunRecursive(IEnumerable<OsmGeo> source, int zoom, string outputPath)
+        public static void RunRecursive(OsmStreamSource source, int zoom, string outputPath)
         {
             RunRecursive(source, zoom, new Tile(0, 0, 0), outputPath);
         }
@@ -29,7 +30,7 @@ namespace Anyways.Osm.TiledDb.Splitter
         /// <summary>
         /// Splits the data in the given source into tiles at the given zoom level recursively.
         /// </summary>
-        public static void RunRecursive(IEnumerable<OsmGeo> source, int zoom, Tile tile, string outputPath)
+        public static void RunRecursive(OsmStreamSource source, int zoom, Tile tile, string outputPath)
         {
             var tilesToInclude = new HashSet<ulong>();
             var nextZoom = tile.Zoom + DIFF;
@@ -70,7 +71,7 @@ namespace Anyways.Osm.TiledDb.Splitter
         /// <summary>
         /// Splits the data in the given source into tiles at the given zoom level. Includes only the tiles in the includes list if any.
         /// </summary>
-        public static Dictionary<ulong, string> Run(IEnumerable<OsmGeo> source, int zoom, string outputPath, List<ulong> tilesToInclude)
+        public static Dictionary<ulong, string> Run(OsmStreamSource source, int zoom, string outputPath, List<ulong> tilesToInclude)
         {
             if (tilesToInclude.Count >= 256)
             {
@@ -88,13 +89,20 @@ namespace Anyways.Osm.TiledDb.Splitter
             var relations = new IdMap();
             var tileFiles = new Dictionary<ulong, string>();
 
-            var incompleteRelations = new List<Relation>();
+            var tiles = new byte[256];
+            var count = 0;
 
+            var undeterminableRelations = new HashSet<long>(); // holds id's of relations that cannot be placed in a tile ever.
+            var determinedRelations = new HashSet<long>(); // holds id's of relations, where all members are either undeterminable or also fully determined.
+            var relationIds = new HashSet<long>(); // holds the id's of all relations.
+            
+            // first loop.
             foreach (var osmGeo in source)
             {
-                if (osmGeo.Type == OsmSharp.OsmGeoType.Node)
+                if (osmGeo.Type == OsmGeoType.Node)
                 {
                     var node = (osmGeo as Node);
+
                     var tile = Tiles.Tile.CreateAroundLocation(
                         node.Latitude.Value, node.Longitude.Value, zoom).Id;
 
@@ -122,40 +130,135 @@ namespace Anyways.Osm.TiledDb.Splitter
                 }
                 else if (osmGeo.Type == OsmGeoType.Relation)
                 {
-                    //var relation = (osmGeo as Relation);
+                    var relation = (osmGeo as Relation);
+
+                    relationIds.Add(relation.Id.Value);
                     
-                    //if (relation.Members != null)
-                    //{
-                    //    for (var i = 0; i < relation.Members.Length; i++)
-                    //    {
-                    //        var member = relation.Members[i];
-                    //        switch (member.Type)
-                    //        {
-                    //            case OsmGeoType.Node:
-                    //                count = 1;
-                    //                tiles[0] = tilesToInclude[nodes[relation.Members[i].Id]];
-                    //                break;
-                    //            case OsmGeoType.Way:
-                    //                count = ways.Get(relation.Members[i].Id, ref tiles);
-                    //                break;
-                    //            case OsmGeoType.Relation:
-                    //                break;
-                    //        }
-                    //        for (var t = 0; t < count; t++)
-                    //        {
-                    //            if (tilesToInclude == null ||
-                    //                tilesToInclude.Contains(tiles[t]))
-                    //            {
-                    //                relations.Add(relation.Id.Value, tiles[t]);
-                    //            }
-                    //        }
-                    //    }
-                    //}
+                    var hasRelationMember = false;
+                    var hasPositiveCount = false;
+                    if (relation.Members != null)
+                    {
+                        for (var i = 0; i < relation.Members.Length; i++)
+                        {
+                            var member = relation.Members[i];
+                            switch (member.Type)
+                            {
+                                case OsmGeoType.Node:
+                                    count = 1;
+                                    tiles[0] = nodes[relation.Members[i].Id];
+                                    if (tiles[0] == byte.MaxValue)
+                                    {
+                                        count = 0;
+                                    }
+                                    break;
+                                case OsmGeoType.Way:
+                                    count = ways.Get(relation.Members[i].Id, ref tiles);
+                                    break;
+                                case OsmGeoType.Relation:
+                                    hasRelationMember = true;
+                                    break;
+                            }
+                            if (count > 0)
+                            { // when one of the members was found, this relation is never undeterminable.
+                                hasPositiveCount = true;
+                            }
+                            for (var t = 0; t < count; t++)
+                            {
+                                if (tilesToInclude == null ||
+                                    tilesToInclude.Contains(tiles[t]))
+                                {
+                                    relations.Add(relation.Id.Value, tiles[t]);
+                                }
+                            }
+                        }
+                    }
+                    if (!hasRelationMember)
+                    { // we can only say something at the point when there are no relation members.
+                        if (hasPositiveCount)
+                        { // all members are nodes and ways and at least one was found, things can't get better.
+                            determinedRelations.Add(relation.Id.Value);
+                        }
+                        else
+                        { // all members are nodes and ways but none of them were found, things can't get any worse.
+                            undeterminableRelations.Add(relation.Id.Value);
+                        }
+                    }
+                }
+            }
+
+            // relation loops.
+            var unknownDetected = true;
+            while (unknownDetected)
+            {
+                source.Reset();
+                unknownDetected = false;
+                while (source.MoveNext(true, true, false))
+                {
+                    var relation = source.Current() as Relation;
+                    if (!undeterminableRelations.Contains(relation.Id.Value) &&
+                        !determinedRelations.Contains(relation.Id.Value))
+                    {
+                        if (relation.Members != null)
+                        {
+                            var hasUndeterminedMember = false;
+                            for (var i = 0; i < relation.Members.Length; i++)
+                            {
+                                count = 0;
+
+                                var member = relation.Members[i];
+                                var memberId = relation.Members[i].Id;
+                                switch (member.Type)
+                                {
+                                    case OsmGeoType.Relation:
+                                        if (undeterminableRelations.Contains(memberId))
+                                        { // relation is undetermined, nothing we can do.
+
+                                        }
+                                        else if (determinedRelations.Contains(memberId))
+                                        { // relation is determined, check where it is.
+                                            count = relations.Get(relation.Members[i].Id, ref tiles);
+                                        }
+                                        else if (!relationIds.Contains(memberId))
+                                        { // relation is not in the source, nothing we can do.
+
+                                        }
+                                        else
+                                        { // member is not determined yet, we need another loop.
+                                            unknownDetected = true;
+                                            hasUndeterminedMember = true;
+                                        }
+                                        break;
+                                }
+                                for (var t = 0; t < count; t++)
+                                {
+                                    if (tilesToInclude == null ||
+                                        tilesToInclude.Contains(tiles[t]))
+                                    {
+                                        relations.Add(relation.Id.Value, tiles[t]);
+                                    }
+                                }
+                            }
+                            var hasPosition = relations.Get(relation.Id.Value, ref tiles) > 0;
+                            if (!hasUndeterminedMember)
+                            { // with no undetermined members, a descision has to be made.
+                                if (hasPosition)
+                                { // there are no undetermined members but there are positions so relation is determined.
+                                    determinedRelations.Add(relation.Id.Value);
+                                }
+                                else
+                                { // there are no undetermined members but there are no positions so relation is undetermined.
+                                    undeterminableRelations.Add(relation.Id.Value);
+                                }
+                            }
+                        }
+                    }
                 }
             }
             
+            
+            // iterate once more and split into tiles.
             var tileIds = new byte[256];
-            var count = 0;
+            count = 0;
             var streamCache = new LRUCache<ulong, Stream>(1024);
             streamCache.OnRemove += (s) =>
             {
