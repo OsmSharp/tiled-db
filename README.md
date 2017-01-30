@@ -53,3 +53,7 @@ TODO:
   - [x] Build a tile splitter that includes nodes, ways and relations with one stage.
   - [ ] Build a tile splitter that includes relations with as many iterations as it takes.
 - [x] Enhance OsmSharp to be able to reset a stream to an object type.
+  - [ ] Enhance the OsmSharp binary format to be able to reset a stream to an object type.
+- [ ] Build an indexer that takes a folder of tiles and builds:
+  - [ ] An index of nodes -> tile, ways -> tile and relations -> tile.
+- [ ] Build an OSM db implementation based on the index and the tiled folder.
