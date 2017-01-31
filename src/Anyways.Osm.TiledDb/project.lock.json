@@ -156,7 +156,7 @@
           "System.Xml.XDocument": "4.0.11"
         }
       },
-      "OsmSharp.Core/2.2.9-beta": {
+      "OsmSharp/5.0.7-rc1": {
         "type": "package",
         "dependencies": {
           "Microsoft.NETCore.Portable.Compatibility": "1.0.1",
@@ -1272,21 +1272,6 @@
         "runtime": {
           "lib/netstandard1.3/System.Xml.XmlSerializer.dll": {}
         }
-      },
-      "OsmSharp/1.0.0": {
-        "type": "project",
-        "framework": ".NETStandard,Version=v1.3",
-        "dependencies": {
-          "NETStandard.Library": "1.6.0",
-          "System.Xml.XmlSerializer": "4.0.11",
-          "protobuf-net": "2.1.0"
-        },
-        "compile": {
-          "netstandard1.3/OsmSharp.dll": {}
-        },
-        "runtime": {
-          "netstandard1.3/OsmSharp.dll": {}
-        }
       }
     }
   },
@@ -1539,13 +1524,13 @@
         "dotnet_library_license.txt"
       ]
     },
-    "OsmSharp.Core/2.2.9-beta": {
-      "sha512": "pKAoG3W2+M4obCAObP3sV4Zljzh2YrvdMlbM9QexNeFSmRmEcPodhhzsVD4OdGKm4w3Na9eUcQQtP4NowYSoJQ==",
+    "OsmSharp/5.0.7-rc1": {
+      "sha512": "Np6mMZIS/UjeCppc3cXW8fpLVFaii000nnuflA5lncTcJvzxMHitvdTZ5iA8PKcOV/h0HAwjYE6FMkHIWZ4mdA==",
       "type": "package",
-      "path": "OsmSharp.Core/2.2.9-beta",
+      "path": "OsmSharp/5.0.7-rc1",
       "files": [
-        "OsmSharp.Core.2.2.9-beta.nupkg.sha512",
-        "OsmSharp.Core.nuspec",
+        "OsmSharp.5.0.7-rc1.nupkg.sha512",
+        "OsmSharp.nuspec",
         "lib/net40/OsmSharp.dll",
         "lib/net45/OsmSharp.dll",
         "lib/netstandard1.3/OsmSharp.dll",
@@ -4695,18 +4680,12 @@
         "ref/xamarinwatchos10/_._",
         "runtimes/aot/lib/netcore50/System.Xml.XmlSerializer.dll"
       ]
-    },
-    "OsmSharp/1.0.0": {
-      "type": "project",
-      "path": "../../../../osmsharp/core/src/OsmSharp/project.json",
-      "msbuildProject": "../../../../osmsharp/core/src/OsmSharp/OsmSharp.xproj"
     }
   },
   "projectFileDependencyGroups": {
     "": [
       "NETStandard.Library >= 1.6.0",
-      "OsmSharp >= 1.0.0-*",
-      "OsmSharp.Core >= 2.2.9-beta",
+      "OsmSharp >= 5.0.7-rc1",
       "Reminiscence >= 1.0.5"
     ],
     ".NETStandard,Version=v1.6": []

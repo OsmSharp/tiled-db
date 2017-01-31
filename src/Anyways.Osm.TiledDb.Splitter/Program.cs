@@ -1,5 +1,6 @@
 ﻿using Anyways.Osm.TiledDb.Collections;
 using Anyways.Osm.TiledDb.IO.PBF;
+using Anyways.Osm.TiledDb.Tiles;
 using OsmSharp;
 using OsmSharp.Streams;
 using System.IO;
@@ -38,6 +39,30 @@ namespace Anyways.Osm.TiledDb.Splitter
                 {
                     var osmSourceStream = new OsmSharp.Streams.PBFOsmStreamSource(inputFileStream);
                     Split.RunRecursive(osmSourceStream, 14, outputPath);
+                }
+            }
+            else if(args[0] == "--test-one-to-one-map")
+            {
+                var inputFile = args[1];
+                var oneToOneMap = new Anyways.Osm.TiledDb.Collections.OneToOneIdMap();
+                using (var inputFileStream = File.OpenRead(inputFile))
+                {
+                    var osmSourceStream = new OsmSharp.Streams.PBFOsmStreamSource(inputFileStream);
+                    var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+                    progress.RegisterSource(osmSourceStream);
+                    foreach(var osmGeo in progress)
+                    {
+                        if (osmGeo.Type == OsmGeoType.Node)
+                        {
+                            var node = osmGeo as Node;
+                            oneToOneMap.Add(node.Id.Value, Tile.CreateAroundLocation(
+                                node.Latitude.Value, node.Longitude.Value, 14).Id);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
                 }
             }
             //if (args[0] == "--split-pbf-recursive")
