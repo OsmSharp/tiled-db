@@ -41,8 +41,10 @@ Basically only differences are stored compared to the version the current versio
 
 ### Status:
 
-- A splitter: Splits an OSM-file into tiles as described above.
-- [TODO] An indexer that builds the indexed based on the tiles.
+- [DONE] A splitter: Splits an OSM-file into tiles as described above.
+- [DONE] An indexer that builds the indexed based on the tiles.
+- [TODO] A basic db implementation (see editing-api for reqs).
+- [TODO] Implement a way to apply changesets coming from OSM.
 
 ##### Details:
 
@@ -53,6 +55,7 @@ Basically only differences are stored compared to the version the current versio
   - [ ] Enhance the OsmSharp binary format to be able to reset a stream to an object type.
 - [ ] Build an indexer that takes a folder of tiles and builds:
   - [x] An index of nodes -> tile, ways -> tile and relations -> tile.
-  - [ ] Build the actual indexer indexing tile per tile.
-  - [ ] Build a merger to merge the indexes together.
+  - [X] Build the actual indexer indexing tile per tile.
+  - [X] Build a merger to merge the indexes together.
 - [ ] Build an OSM db implementation based on the index and the tiled folder.
+- [ ] Build a way to apply changesets and generate diff indexes and tiles.
