@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>Anyways.Osm.TiledDb</id>
+    <version>$version$</version>
+    <authors>Anyways</authors>
+    <owners>Anyways</owners>
+	  <projectUrl>http://www.anyways.eu/</projectUrl>
+	  <iconUrl>http://www.anyways.eu/img/logo.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Anyways.Analytics</description>
+    <tags></tags>
+  </metadata>
+    <files>
+      <file src="src\Anyways.Osm.TiledDb\bin\Release\net45\Anyways.Osm.TiledDb.dll" target="lib\net45\Anyways.Osm.TiledDb.dll" />
+      <file src="src\Anyways.Osm.TiledDb\bin\Release\netstandard1.3\Anyways.Osm.TiledDb.dll" target="lib\netstandard1.3\Anyways.Osm.TiledDb.dll" />
+	</files>
+</package>

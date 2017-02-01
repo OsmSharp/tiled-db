@@ -4,11 +4,21 @@
   "dependencies": {
     "NETStandard.Library": "1.6.0",
     "OsmSharp": "5.0.7-rc1",
-    "Reminiscence": "1.0.5"
+    "OsmSharp.IO.Binary": "0.0.5-alpha",
+    "Reminiscence": "1.0.5",
+    "System.Threading.Tasks.Parallel": "4.3.0"
   },
 
   "frameworks": {
     "netstandard1.6": {
+      "buildOptions": {
+        "define": [ "NETSTANDARD13", "NETFX_CORE", "DOTNET_CORE" ],
+        "compile": {
+          "includeFiles": [
+            "../../SharedAssemblyVersion.cs"
+          ]
+        }
+      },
       "imports": "dnxcore50"
     }
   }

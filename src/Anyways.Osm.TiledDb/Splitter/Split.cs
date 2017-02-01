@@ -1,4 +1,5 @@
 ﻿using Anyways.Osm.TiledDb.Collections;
+using Anyways.Osm.TiledDb.Indexing;
 using Anyways.Osm.TiledDb.IO.Binary;
 using Anyways.Osm.TiledDb.IO.PBF;
 using Anyways.Osm.TiledDb.Tiles;
@@ -84,7 +85,7 @@ namespace Anyways.Osm.TiledDb.Splitter
                 tilesDictionary[tilesToInclude[i]] = (byte)i;
             }
             
-            var nodes = new UniqueTileIdMap();
+            var nodes = new OneToOneIdMap();
             var ways = new IdMap();
             var relations = new IdMap();
             var tileFiles = new Dictionary<ulong, string>();
@@ -106,10 +107,9 @@ namespace Anyways.Osm.TiledDb.Splitter
                     var tile = Tiles.Tile.CreateAroundLocation(
                         node.Latitude.Value, node.Longitude.Value, zoom).Id;
 
-                    var tileId = byte.MaxValue;
-                    if (tilesDictionary.TryGetValue(tile, out tileId))
+                    if (tilesDictionary.ContainsKey(tile))
                     {
-                        nodes[node.Id.Value] = tileId;
+                        nodes.Add(node.Id.Value, tile);
                     }
                 }
                 else if (osmGeo.Type == OsmGeoType.Way)
@@ -120,10 +120,14 @@ namespace Anyways.Osm.TiledDb.Splitter
                     {
                         for (var i = 0; i < way.Nodes.Length; i++)
                         {
-                            var tileId = nodes[way.Nodes[i]];
-                            if (tileId != byte.MaxValue)
+                            var tile = nodes.Get(way.Nodes[i]);
+                            if (tile != ulong.MaxValue)
                             {
-                                ways.Add(way.Id.Value, tileId);
+                                byte tileId;
+                                if (tilesDictionary.TryGetValue(tile, out tileId))
+                                {
+                                    ways.Add(way.Id.Value, tileId);
+                                }
                             }
                         }
                     }
@@ -133,7 +137,7 @@ namespace Anyways.Osm.TiledDb.Splitter
                     var relation = (osmGeo as Relation);
 
                     relationIds.Add(relation.Id.Value);
-                    
+
                     var hasRelationMember = false;
                     var hasPositiveCount = false;
                     if (relation.Members != null)
@@ -145,10 +149,15 @@ namespace Anyways.Osm.TiledDb.Splitter
                             {
                                 case OsmGeoType.Node:
                                     count = 1;
-                                    tiles[0] = nodes[relation.Members[i].Id];
-                                    if (tiles[0] == byte.MaxValue)
+                                    var tile = nodes.Get(relation.Members[i].Id);
+                                    byte tileId;
+                                    if (!tilesDictionary.TryGetValue(tile, out tileId))
                                     {
                                         count = 0;
+                                    }
+                                    else
+                                    {
+                                        tiles[0] = tileId;
                                     }
                                     break;
                                 case OsmGeoType.Way:
@@ -164,11 +173,11 @@ namespace Anyways.Osm.TiledDb.Splitter
                             }
                             for (var t = 0; t < count; t++)
                             {
-                                if (tilesToInclude == null ||
-                                    tilesToInclude.Contains(tiles[t]))
-                                {
+                                //if (tilesToInclude == null ||
+                                //    tilesToInclude.Contains(tiles[t]))
+                                //{
                                     relations.Add(relation.Id.Value, tiles[t]);
-                                }
+                                //}
                             }
                         }
                     }
@@ -186,74 +195,74 @@ namespace Anyways.Osm.TiledDb.Splitter
                 }
             }
 
-            // relation loops.
-            var unknownDetected = true;
-            while (unknownDetected)
-            {
-                source.Reset();
-                unknownDetected = false;
-                while (source.MoveNext(true, true, false))
-                {
-                    var relation = source.Current() as Relation;
-                    if (!undeterminableRelations.Contains(relation.Id.Value) &&
-                        !determinedRelations.Contains(relation.Id.Value))
-                    {
-                        if (relation.Members != null)
-                        {
-                            var hasUndeterminedMember = false;
-                            for (var i = 0; i < relation.Members.Length; i++)
-                            {
-                                count = 0;
+            //// relation loops.
+            //var unknownDetected = true;
+            //while (unknownDetected)
+            //{
+            //    source.Reset();
+            //    unknownDetected = false;
+            //    while (source.MoveNext(true, true, false))
+            //    {
+            //        var relation = source.Current() as Relation;
+            //        if (!undeterminableRelations.Contains(relation.Id.Value) &&
+            //            !determinedRelations.Contains(relation.Id.Value))
+            //        {
+            //            if (relation.Members != null)
+            //            {
+            //                var hasUndeterminedMember = false;
+            //                for (var i = 0; i < relation.Members.Length; i++)
+            //                {
+            //                    count = 0;
 
-                                var member = relation.Members[i];
-                                var memberId = relation.Members[i].Id;
-                                switch (member.Type)
-                                {
-                                    case OsmGeoType.Relation:
-                                        if (undeterminableRelations.Contains(memberId))
-                                        { // relation is undetermined, nothing we can do.
+            //                    var member = relation.Members[i];
+            //                    var memberId = relation.Members[i].Id;
+            //                    switch (member.Type)
+            //                    {
+            //                        case OsmGeoType.Relation:
+            //                            if (undeterminableRelations.Contains(memberId))
+            //                            { // relation is undetermined, nothing we can do.
 
-                                        }
-                                        else if (determinedRelations.Contains(memberId))
-                                        { // relation is determined, check where it is.
-                                            count = relations.Get(relation.Members[i].Id, ref tiles);
-                                        }
-                                        else if (!relationIds.Contains(memberId))
-                                        { // relation is not in the source, nothing we can do.
+            //                            }
+            //                            else if (determinedRelations.Contains(memberId))
+            //                            { // relation is determined, check where it is.
+            //                                count = relations.Get(relation.Members[i].Id, ref tiles);
+            //                            }
+            //                            else if (!relationIds.Contains(memberId))
+            //                            { // relation is not in the source, nothing we can do.
 
-                                        }
-                                        else
-                                        { // member is not determined yet, we need another loop.
-                                            unknownDetected = true;
-                                            hasUndeterminedMember = true;
-                                        }
-                                        break;
-                                }
-                                for (var t = 0; t < count; t++)
-                                {
-                                    if (tilesToInclude == null ||
-                                        tilesToInclude.Contains(tiles[t]))
-                                    {
-                                        relations.Add(relation.Id.Value, tiles[t]);
-                                    }
-                                }
-                            }
-                            var hasPosition = relations.Get(relation.Id.Value, ref tiles) > 0;
-                            if (!hasUndeterminedMember)
-                            { // with no undetermined members, a descision has to be made.
-                                if (hasPosition)
-                                { // there are no undetermined members but there are positions so relation is determined.
-                                    determinedRelations.Add(relation.Id.Value);
-                                }
-                                else
-                                { // there are no undetermined members but there are no positions so relation is undetermined.
-                                    undeterminableRelations.Add(relation.Id.Value);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            //                            }
+            //                            else
+            //                            { // member is not determined yet, we need another loop.
+            //                                unknownDetected = true;
+            //                                hasUndeterminedMember = true;
+            //                            }
+            //                            break;
+            //                    }
+            //                    for (var t = 0; t < count; t++)
+            //                    {
+            //                        if (tilesToInclude == null ||
+            //                            tilesToInclude.Contains(tiles[t]))
+            //                        {
+            //                            relations.Add(relation.Id.Value, tiles[t]);
+            //                        }
+            //                    }
+            //                }
+            //                var hasPosition = relations.Get(relation.Id.Value, ref tiles) > 0;
+            //                if (!hasUndeterminedMember)
+            //                { // with no undetermined members, a descision has to be made.
+            //                    if (hasPosition)
+            //                    { // there are no undetermined members but there are positions so relation is determined.
+            //                        determinedRelations.Add(relation.Id.Value);
+            //                    }
+            //                    else
+            //                    { // there are no undetermined members but there are no positions so relation is undetermined.
+            //                        undeterminableRelations.Add(relation.Id.Value);
+            //                    }
+            //                }
+            //            }
+            //        }
+            //    }
+            //}
             
             
             // iterate once more and split into tiles.
@@ -276,7 +285,16 @@ namespace Anyways.Osm.TiledDb.Splitter
                 {
                     case OsmGeoType.Node:
                         count = 1;
-                        tileIds[0] = nodes[osmGeo.Id.Value];
+                        var tile = nodes.Get(osmGeo.Id.Value);
+                        byte tileId;
+                        if (!tilesDictionary.TryGetValue(tile, out tileId))
+                        {
+                            count = 0;
+                        }
+                        else
+                        {
+                            tileIds[0] = tileId;
+                        }
                         break;
                     case OsmGeoType.Way:
                         count = ways.Get(osmGeo.Id.Value, ref tileIds);

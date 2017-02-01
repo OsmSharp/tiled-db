@@ -1,29 +1,21 @@
 tiled-osm-db
 ============
 
-Build a tile-osm-db where instances depend on eachother.
+Build a tile-osm-db where instances depend on eachother. The idea is to share as much data as possible between instances by splitting the world into tiles.
 
-- 0000: Base instance at time X.
-  - 0000-0001: changeset 0001 on top of 0000.
-  - 0000-0002: changeset 0002 on top of 0000.
-  - 0000-0003: changeset 0003 on top of 0000.
-- 0001: Base instance at time X+1.
-  - 0001-0001: changeset 0001 on top of 0001.
-  - 0001-0002: changeset 0002 on top of 0001.
-  - 0001-0003: changeset 0003 on top of 0001.
-  
-The goal of this database is to make version 0000 share most of it's on-disk data with 0000-XXXX. Same for the differences between 0000 and 0001.
+There are two types of _concepts_ that represent states of the OSM data:
+1. An instance: This is a snapshot of OSM data that can contain multiple changesets.
+  - Complete: A complete instance contains tiles for the entire world.
+  - Diff: A diff instance contains only tiles that have been modified compare to it's _parent_. A _parent_ can be an state of the OSM data either represented by an _instance_ or a _changeset instance_.
+2. A changeset instance : This is one changeset on top of an instance.
 
-A database version is basically represented by a base version, '0000' for example, and a series of changesets on top of that version. The database can always be reconstructed using these two pieces of data.
+The entire structure is saved to disk as follows:
 
-### Directory structure
-
-- 0000: The timestamp of the base database.
- - 0000-{guid1}: A custom version based on edits on top of '0000'.
- - 0000-{guid2}: A custom version based on edits on top of '0000'.
-- 1111: The timestamp of the database that has changed with changes from OSM since 0000.
- - 1111-{guid1}: A custom version based on edits on top of '1111'.
- - 1111-{guid2}: A custom version based on edits on top of '1111'.
+- {changesetid}: Complete instance, containing the state of OSM up until _changesetid_.
+	- {changesetid + 1} : a changeset after time X, contains only the modified data relative to the complete instance.
+	- {changesetid + 2} : a changeset after time X, contains only the modified data relative to the complete instance.
+	- {changesetid + 3} : a changeset after time X, contains only the modified data relative to the complete instance.
+		- {instanceid} : A diff instance based on {changesetid + 3}.
 
 In each directory there are tiles. Each tile contains:
 
@@ -47,13 +39,20 @@ Basically only differences are stored compared to the version the current versio
 - Only the additions to the index are stored.
 - (optional) Only the new objects are stored in the seperate indexes.
 
-TODO:
+### Status:
+
+- A splitter: Splits an OSM-file into tiles as described above.
+- [TODO] An indexer that builds the indexed based on the tiles.
+
+##### Details:
 
 - [x] Build a tile splitter, splits one file in a folder.
   - [x] Build a tile splitter that includes nodes, ways and relations with one stage.
-  - [ ] Build a tile splitter that includes relations with as many iterations as it takes.
+  - [X] Build a tile splitter that includes relations with as many iterations as it takes.
 - [x] Enhance OsmSharp to be able to reset a stream to an object type.
   - [ ] Enhance the OsmSharp binary format to be able to reset a stream to an object type.
 - [ ] Build an indexer that takes a folder of tiles and builds:
-  - [ ] An index of nodes -> tile, ways -> tile and relations -> tile.
+  - [x] An index of nodes -> tile, ways -> tile and relations -> tile.
+  - [ ] Build the actual indexer indexing tile per tile.
+  - [ ] Build a merger to merge the indexes together.
 - [ ] Build an OSM db implementation based on the index and the tiled folder.
