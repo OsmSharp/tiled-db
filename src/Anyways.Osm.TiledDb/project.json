@@ -20,6 +20,16 @@
         }
       },
       "imports": "dnxcore50"
+    },
+    "net4.5": {
+      "buildOptions": {
+        "define": [ "NET45" ],
+        "compile": {
+          "includeFiles": [
+            "../../SharedAssemblyVersion.cs"
+          ]
+        }
+      }
     }
   }
 }

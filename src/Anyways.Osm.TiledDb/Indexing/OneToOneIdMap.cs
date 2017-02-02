@@ -199,6 +199,11 @@ namespace Anyways.Osm.TiledDb.Indexing
         
         private long TryGetIndex(long id)
         {
+            if (_nextIndex == 0)
+            {
+                return long.MaxValue;
+            }
+
             long bottom = 0;
             long top = _nextIndex - 1;
             long bottomId = _ids[bottom];

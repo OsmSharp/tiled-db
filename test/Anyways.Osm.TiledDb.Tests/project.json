@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0-*",
+
+  "dependencies": {
+    "Anyways.Osm.TiledDb": "1.0.0-*",
+    "NETStandard.Library": "1.6.0",
+    "NUnit": "3.6.0",
+    "dotnet-test-nunit": "3.4.0-beta-2"
+  },
+
+  "testRunner": "nunit",
+
+  "frameworks": {
+    "net4.5.1": {
+      "frameworkAssemblies": {
+      }
+    }
+  }
+}

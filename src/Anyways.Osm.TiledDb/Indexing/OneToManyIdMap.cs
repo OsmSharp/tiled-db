@@ -67,6 +67,24 @@ namespace Anyways.Osm.TiledDb.Indexing
             _nextIndex += 2;
             _nextPointer += 1 + tileIds.Length;
         }
+        
+        /// <summary>
+        /// Gets the tile ids for the given id.
+        /// </summary>
+        public int TryGet(long id, ref ulong[] data)
+        {
+            var pointer = this.TryGetPointer(id);
+            if (pointer == long.MaxValue)
+            {
+                return 0;
+            }
+            var size = (int)_tileIds[pointer];
+            for (var i = 0; i < size; i++)
+            {
+                data[i] = _tileIds[pointer + 1 + i];
+            }
+            return size;
+        }
 
         private ulong[] GetTileIds(long pointer)
         {
@@ -77,6 +95,69 @@ namespace Anyways.Osm.TiledDb.Indexing
                 tileIds[i] = _tileIds[pointer + 1 + i];
             }
             return tileIds;
+        }
+
+        private long TryGetPointer(long id)
+        {
+            var index = this.TryGetIndex(id);
+            if (index == long.MaxValue)
+            {
+                return long.MaxValue;
+            }
+            return _ids[index + 1];
+        }
+
+        private long TryGetIndex(long id)
+        {
+            if (_nextIndex == 0)
+            {
+                return long.MaxValue;
+            }
+
+            long bottom = 0;
+            long top = (_nextIndex / 2) - 1;
+            long bottomId = _ids[bottom * 2];
+            if (id == bottomId)
+            {
+                return bottom * 2;
+            }
+            long topId = _ids[top * 2];
+            if (id == topId)
+            {
+                while (top - 1 > 0 &&
+                    _ids[(top - 1) * 2] == id)
+                {
+                    top--;
+                }
+                return top * 2;
+            }
+
+            while (top - bottom > 1)
+            {
+                var middle = (((top - bottom) / 2) + bottom);
+                var middleId = _ids[middle * 2];
+                if (middleId == id)
+                {
+                    while (middle - 1 > 0 &&
+                        _ids[(middle - 1) * 2] == id)
+                    {
+                        middle--;
+                    }
+                    return middle * 2;
+                }
+                if (middleId > id)
+                {
+                    topId = middleId;
+                    top = middle;
+                }
+                else
+                {
+                    bottomId = middleId;
+                    bottom = middle;
+                }
+            }
+
+            return long.MaxValue;
         }
 
         /// <summary>
