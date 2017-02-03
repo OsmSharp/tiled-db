@@ -88,30 +88,44 @@ namespace Anyways.Osm.TiledDb.Indexing
             // STEP2: merge all indexes together.
             // STEP2.1: merge all node indexes together.
             var indexFiles = new List<string>(Directory.EnumerateFiles(basePath, "*.node.idx"));
+            var maxMergeCount = 256;
             while (indexFiles.Count > 1)
             {
                 OsmSharp.Logging.Logger.Log("Indexer.Build", OsmSharp.Logging.TraceEventType.Information,
                     "Merging index, {0} files left...", indexFiles.Count);
 
-                OneToOneIdMap map1 = null;
-                OneToOneIdMap map2 = null;
-                using (var stream1 = File.OpenRead(indexFiles[0]))
-                using (var stream2 = File.OpenRead(indexFiles[1]))
+                var mergeCount = Math.Min(maxMergeCount, indexFiles.Count);
+                var maps = new OneToOneIdMap[mergeCount];
+                for (var m = 0; m < mergeCount; m++)
                 {
-                    map1 = OneToOneIdMap.Deserialize(stream1);
-                    map2 = OneToOneIdMap.Deserialize(stream2);
+                    using (var stream = File.OpenRead(indexFiles[m]))
+                    {
+                        maps[m] = OneToOneIdMap.Deserialize(stream);
+                    }
                 }
 
-                var map = OneToOneIdMap.Merge(map1, map2);
+                //while (maps.Count > 1)
+                //{
+                //    var mergedMap = OneToOneIdMap.Merge(maps[0], maps[1]);
+                //    maps.RemoveAt(0);
+                //    maps.RemoveAt(0);
+                //    maps.Add(mergedMap);
+                //}
+
+                var map = OneToOneIdMap.Merge(maps);
                 var mapFileName = Path.Combine(basePath, Guid.NewGuid().ToString() + ".node.idx");
                 using (var stream = File.Open(mapFileName, FileMode.Create))
                 {
                     map.Serialize(stream);
                 }
-                File.Delete(indexFiles[0]);
-                File.Delete(indexFiles[1]);
-                indexFiles.RemoveAt(0);
-                indexFiles.RemoveAt(0);
+                for (var m = 0; m < mergeCount; m++)
+                {
+                    File.Delete(indexFiles[m]);
+                }
+                for (var m = 0; m < mergeCount; m++)
+                {
+                    indexFiles.RemoveAt(0);
+                }
                 indexFiles.Add(mapFileName);
             }
             var indexFile = Path.Combine(basePath, "nodes.idx");
@@ -124,25 +138,38 @@ namespace Anyways.Osm.TiledDb.Indexing
                 OsmSharp.Logging.Logger.Log("Indexer.Build", OsmSharp.Logging.TraceEventType.Information,
                     "Merging index, {0} files left...", indexFiles.Count);
 
-                OneToManyIdMap map1 = null;
-                OneToManyIdMap map2 = null;
-                using (var stream1 = File.OpenRead(indexFiles[0]))
-                using (var stream2 = File.OpenRead(indexFiles[1]))
+                var maps = new List<OneToManyIdMap>();
+                var mergeCount = Math.Min(maxMergeCount, indexFiles.Count);
+                for (var m = 0; m < mergeCount; m++)
                 {
-                    map1 = OneToManyIdMap.Deserialize(stream1);
-                    map2 = OneToManyIdMap.Deserialize(stream2);
+                    using (var stream = File.OpenRead(indexFiles[m]))
+                    {
+                        maps.Add(OneToManyIdMap.Deserialize(stream));
+                    }
                 }
 
-                var map = OneToManyIdMap.Merge(map1, map2);
+                while (maps.Count > 1)
+                {
+                    var mergedMap = OneToManyIdMap.Merge(maps[0], maps[1]);
+                    maps.RemoveAt(0);
+                    maps.RemoveAt(0);
+                    maps.Add(mergedMap);
+                }
+
+                var map = maps[0];
                 var mapFileName = Path.Combine(basePath, Guid.NewGuid().ToString() + ".way.idx");
                 using (var stream = File.Open(mapFileName, FileMode.Create))
                 {
                     map.Serialize(stream);
                 }
-                File.Delete(indexFiles[0]);
-                File.Delete(indexFiles[1]);
-                indexFiles.RemoveAt(0);
-                indexFiles.RemoveAt(0);
+                for (var m = 0; m < mergeCount; m++)
+                {
+                    File.Delete(indexFiles[m]);
+                }
+                for (var m = 0; m < mergeCount; m++)
+                {
+                    indexFiles.RemoveAt(0);
+                }
                 indexFiles.Add(mapFileName);
             }
             indexFile = Path.Combine(basePath, "ways.idx");
@@ -155,25 +182,38 @@ namespace Anyways.Osm.TiledDb.Indexing
                 OsmSharp.Logging.Logger.Log("Indexer.Build", OsmSharp.Logging.TraceEventType.Information,
                     "Merging index, {0} files left...", indexFiles.Count);
 
-                OneToManyIdMap map1 = null;
-                OneToManyIdMap map2 = null;
-                using (var stream1 = File.OpenRead(indexFiles[0]))
-                using (var stream2 = File.OpenRead(indexFiles[1]))
+                var maps = new List<OneToManyIdMap>();
+                var mergeCount = Math.Min(maxMergeCount, indexFiles.Count);
+                for (var m = 0; m < mergeCount; m++)
                 {
-                    map1 = OneToManyIdMap.Deserialize(stream1);
-                    map2 = OneToManyIdMap.Deserialize(stream2);
+                    using (var stream = File.OpenRead(indexFiles[m]))
+                    {
+                        maps.Add(OneToManyIdMap.Deserialize(stream));
+                    }
                 }
 
-                var map = OneToManyIdMap.Merge(map1, map2);
+                while (maps.Count > 1)
+                {
+                    var mergedMap = OneToManyIdMap.Merge(maps[0], maps[1]);
+                    maps.RemoveAt(0);
+                    maps.RemoveAt(0);
+                    maps.Add(mergedMap);
+                }
+
+                var map = maps[0];
                 var mapFileName = Path.Combine(basePath, Guid.NewGuid().ToString() + ".relation.idx");
                 using (var stream = File.Open(mapFileName, FileMode.Create))
                 {
                     map.Serialize(stream);
                 }
-                File.Delete(indexFiles[0]);
-                File.Delete(indexFiles[1]);
-                indexFiles.RemoveAt(0);
-                indexFiles.RemoveAt(0);
+                for (var m = 0; m < mergeCount; m++)
+                {
+                    File.Delete(indexFiles[m]);
+                }
+                for (var m = 0; m < mergeCount; m++)
+                {
+                    indexFiles.RemoveAt(0);
+                }
                 indexFiles.Add(mapFileName);
             }
             indexFile = Path.Combine(basePath, "relations.idx");

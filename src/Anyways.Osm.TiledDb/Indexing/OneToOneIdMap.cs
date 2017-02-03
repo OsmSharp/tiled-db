@@ -156,6 +156,48 @@ namespace Anyways.Osm.TiledDb.Indexing
 
             return map;
         }
+        
+        /// <summary>
+        /// Merges the two maps together into one.
+        /// </summary>
+        public static OneToOneIdMap Merge(params OneToOneIdMap[] maps)
+        {
+            var enumerators = new OneToOneEnumerator[maps.Length];
+            var enumeratorHasNext = new bool[maps.Length];
+            for(var i = 0; i < enumerators.Length; i++)
+            {
+                enumerators[i] = new OneToOneEnumerator(maps[i]);
+                enumeratorHasNext[i] = enumerators[i].MoveNext();
+            }
+
+            var map = new OneToOneIdMap();
+            
+            while (true)
+            {
+                // find the lowest index.
+                var min = long.MaxValue;
+                var minIndex = int.MaxValue;
+                for(var i = 0; i < enumerators.Length; i++)
+                {
+                    if (enumeratorHasNext[i] && min > enumerators[i].Current)
+                    {
+                        minIndex = i;
+                        min = enumerators[i].Current;
+                    }
+                }
+                if (minIndex == int.MaxValue)
+                {
+                    break;
+                }
+
+                // add to the map.
+                map.Add(min, enumerators[minIndex].TileId);
+
+                // advance enumerator.
+                enumeratorHasNext[minIndex] = enumerators[minIndex].MoveNext();
+            }
+            return map;
+        }
 
         /// <summary>
         /// Serializes this map to the given stream.

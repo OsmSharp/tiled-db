@@ -18,7 +18,7 @@ namespace Anyways.Osm.TiledDb.Splitter
     /// </summary>
     public static class Split
     {
-        private static int DIFF = 3;
+        private static int DIFF = 7;
 
         /// <summary>
         /// Splits the data in the given source into tiles at the given zoom level recursively.
@@ -49,11 +49,11 @@ namespace Anyways.Osm.TiledDb.Splitter
                 Directory.CreateDirectory(tileOutputPath);
             }
 
-            var existingTiles = Directory.EnumerateFiles(tileOutputPath, "*.osm.bin");
-            foreach(var existingTile in existingTiles)
-            {
-                File.Delete(existingTile);
-            }
+            //var existingTiles = Directory.EnumerateFiles(tileOutputPath, "*.osm.bin");
+            //foreach(var existingTile in existingTiles)
+            //{
+            //    File.Delete(existingTile);
+            //}
 
             OsmSharp.Logging.Logger.Log("Split", OsmSharp.Logging.TraceEventType.Information, "Splitting tile {2} - {0} into {1}...", tile.ToInvariantString(), nextZoom, tile.Id);
             var tileFiles = Run(source, nextZoom, tileOutputPath, tilesToInclude);
@@ -258,73 +258,72 @@ namespace Anyways.Osm.TiledDb.Splitter
             //}
 
 
-            //// iterate once more and split into tiles.
-            //var outputTileIds = new ulong[1024];
-            //count = 0;
-            //var streamCache = new LRUCache<ulong, Stream>(1024);
-            //streamCache.OnRemove += (s) =>
-            //{
-            //    s.Flush();
-            //    s.Dispose();
-            //};
-            //var output = new DirectoryInfo(outputPath);
-            //if (!output.Exists)
-            //{
-            //    output.Create();
-            //}
-            //foreach (var osmGeo in source)
-            //{
-            //    switch (osmGeo.Type)
-            //    {
-            //        case OsmGeoType.Node:
-            //            count = 1;
-            //            outputTileIds[0] = nodes.Get(osmGeo.Id.Value);
-            //            if (outputTileIds[0] == ulong.MaxValue)
-            //            {
-            //                count = 0;
-            //            }
-            //            break;
-            //        case OsmGeoType.Way:
-            //            count = ways.Get(osmGeo.Id.Value, ref tileIds);
-            //            break;
-            //        case OsmGeoType.Relation:
-            //            count = relations.Get(osmGeo.Id.Value, ref tileIds);
-            //            break;
-            //    }
+            // iterate once more and split into tiles.
+            var outputTileIds = new ulong[16384];
+            count = 0;
+            var streamCache = new LRUCache<ulong, Stream>(16384);
+            streamCache.OnRemove += (s) =>
+            {
+                s.Flush();
+                s.Dispose();
+            };
+            var output = new DirectoryInfo(outputPath);
+            if (!output.Exists)
+            {
+                output.Create();
+            }
+            foreach (var osmGeo in source)
+            {
+                switch (osmGeo.Type)
+                {
+                    case OsmGeoType.Node:
+                        count = 1;
+                        outputTileIds[0] = nodes.Get(osmGeo.Id.Value);
+                        if (outputTileIds[0] == ulong.MaxValue)
+                        {
+                            count = 0;
+                        }
+                        break;
+                    case OsmGeoType.Way:
+                        count = ways.TryGet(osmGeo.Id.Value, ref outputTileIds);
+                        break;
+                    case OsmGeoType.Relation:
+                        //count = relations.Get(osmGeo.Id.Value, ref tileIds);
+                        break;
+                }
 
-            //    for (var i = 0; i < count; i++)
-            //    {
-            //        var tile = tilesToInclude[tileIds[i]];
+                for (var i = 0; i < count; i++)
+                {
+                    var tile = outputTileIds[i];
+                    Stream stream;
+                    if (!streamCache.TryGet(tile, out stream))
+                    {
+                        var path = Path.Combine(output.FullName, tile.ToString() + ".osm.bin");
+                        tileFiles[tile] = path;
+                        stream = File.Open(path, FileMode.Append);
+                        streamCache.Add(tile, stream);
+                    }
 
-            //        Stream stream;
-            //        if (!streamCache.TryGet(tile, out stream))
-            //        {
-            //            var path = Path.Combine(output.FullName, tile.ToString() + ".osm.bin");
-            //            tileFiles[tile] = path;
-            //            stream = File.Open(path, FileMode.Append);
-            //            streamCache.Add(tile, stream);
-            //        }
+                    switch (osmGeo.Type)
+                    {
+                        case OsmGeoType.Node:
+                            stream.Append(osmGeo as Node);
+                            break;
+                        case OsmGeoType.Way:
+                            stream.Append(osmGeo as Way);
+                            break;
+                        case OsmGeoType.Relation:
+                            stream.Append(osmGeo as Relation);
+                            break;
+                    }
+                }
+            }
 
-            //        switch (osmGeo.Type)
-            //        {
-            //            case OsmGeoType.Node:
-            //                stream.Append(osmGeo as Node);
-            //                break;
-            //            case OsmGeoType.Way:
-            //                stream.Append(osmGeo as Way);
-            //                break;
-            //            case OsmGeoType.Relation:
-            //                stream.Append(osmGeo as Relation);
-            //                break;
-            //        }
-            //    }
-            //}
-
-            //foreach (var writerAndStream in streamCache)
-            //{
-            //    writerAndStream.Value.Flush();
-            //    writerAndStream.Value.Dispose();
-            //}
+            foreach (var writerAndStream in streamCache)
+            {
+                writerAndStream.Value.Flush();
+                writerAndStream.Value.Dispose();
+            }
 
             return tileFiles;
         }

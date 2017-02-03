@@ -3,6 +3,7 @@ using Anyways.Osm.TiledDb.IO.PBF;
 using Anyways.Osm.TiledDb.Tiles;
 using OsmSharp;
 using OsmSharp.Streams;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,6 +29,7 @@ namespace Anyways.Osm.TiledDb.Splitter
                 System.Console.WriteLine(string.Format("[{0}] {1} - {2}", o, level, message));
             };
 
+            var before = DateTime.Now.Ticks;
             if (args[0] == "--split-pbf")
             {
                 var zoomArgs = args[1].Split('=');
@@ -77,6 +79,11 @@ namespace Anyways.Osm.TiledDb.Splitter
 
             //    Convert.ToOsmXml(inputFile, outputPath);
             //}
+            var after = DateTime.Now.Ticks;
+
+            OsmSharp.Logging.Logger.Log("Program", OsmSharp.Logging.TraceEventType.Information,
+                "Finished processing in {0}.", (new TimeSpan(after - before)));
+            Console.ReadLine();
         }
     }
 }
