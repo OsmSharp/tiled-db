@@ -1,23 +1,24 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26228.4
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{60FC48ED-4023-46E4-8578-72F740125B03}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{01283DFC-FCBE-4540-9F67-C0703711357F}"
 	ProjectSection(SolutionItems) = preProject
+		global.json = global.json
 		README.md = README.md
 		SharedAssemblyVersion.cs = SharedAssemblyVersion.cs
 	EndProjectSection
 EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Anyways.Osm.TiledDb", "src\Anyways.Osm.TiledDb\Anyways.Osm.TiledDb.xproj", "{D439C0A4-38DE-40A7-9203-0E7090495733}"
+EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Anyways.Osm.TiledDb.Splitter", "src\Anyways.Osm.TiledDb.Splitter\Anyways.Osm.TiledDb.Splitter.xproj", "{9F2C3E7C-6D92-4190-8B52-B813AFA8AF41}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{94D20FD1-4F37-4ADD-AEC3-734841BEDA7B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Anyways.Osm.TiledDb", "src\Anyways.Osm.TiledDb\Anyways.Osm.TiledDb.csproj", "{D439C0A4-38DE-40A7-9203-0E7090495733}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Anyways.Osm.TiledDb.Splitter", "src\Anyways.Osm.TiledDb.Splitter\Anyways.Osm.TiledDb.Splitter.csproj", "{9F2C3E7C-6D92-4190-8B52-B813AFA8AF41}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Anyways.Osm.TiledDb.Tests", "test\Anyways.Osm.TiledDb.Tests\Anyways.Osm.TiledDb.Tests.csproj", "{BF14A491-95BC-4257-A8D4-A3272AF0D95C}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Anyways.Osm.TiledDb.Tests", "test\Anyways.Osm.TiledDb.Tests\Anyways.Osm.TiledDb.Tests.xproj", "{BF14A491-95BC-4257-A8D4-A3272AF0D95C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -2,7 +2,7 @@
   "profiles": {
     "Anyways.Osm.TiledDb.Splitter": {
       "commandName": "Project",
-      "commandLineArgs": "--index C:\\work\\anyways\\data\\tiled-db-tests\\output\\14"
+      "commandLineArgs": "--split-pbf zoom=4 C:\\work\\data\\OSM\\belgium-latest.osm.pbf C:\\work\\anyways\\data\\tiled-db-tests\\output"
     }
   }
 }

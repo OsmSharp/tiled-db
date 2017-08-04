@@ -43,7 +43,7 @@ namespace Anyways.Osm.TiledDb.Splitter
                     var osmSourceStream = new OsmSharp.Streams.PBFOsmStreamSource(inputFileStream);
                     var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
                     progress.RegisterSource(osmSourceStream);
-                    Split.RunRecursive(progress, 14, outputPath);
+                    Split.RunRecursive(progress, 11, outputPath);
                 }
             }
             else if(args[0] == "--index")
