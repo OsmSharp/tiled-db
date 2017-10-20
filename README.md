@@ -1,6 +1,8 @@
 tiled-osm-db
 ============
 
+**we need to update this readme, goal should now be to do this for BE only to start with**
+
 Build a tile-osm-db where instances depend on eachother. The idea is to share as much data as possible between instances by splitting the world into tiles.
 
 There are two types of _concepts_ that represent states of the OSM data:
