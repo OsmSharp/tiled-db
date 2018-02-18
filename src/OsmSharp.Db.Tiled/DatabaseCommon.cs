@@ -46,6 +46,34 @@ namespace OsmSharp.Db.Tiled
         }
 
         /// <summary>
+        /// Saves the given index to disk.
+        /// </summary>
+        public static void SaveIndex(string path, Tile tile, OsmGeoType type, Index index)
+        {
+            var extension = ".nodes.idx";
+            if (type == OsmGeoType.Node)
+            {
+                extension = ".ways.idx";
+            }
+            else if (type == OsmGeoType.Relation)
+            {
+                extension = ".relations.idx";
+            }
+
+            var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
+                tile.X.ToInvariantString(), tile.Y.ToInvariantString() + extension);
+            var locationPath = FileSystemFacade.FileSystem.DirectoryForFile(location);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(locationPath))
+            {
+                FileSystemFacade.FileSystem.CreateDirectory(locationPath);
+            }
+            using (var stream = FileSystemFacade.FileSystem.Open(location, FileMode.Create))
+            {
+                index.Serialize(stream);
+            }
+        }
+
+        /// <summary>
         /// Builds a path to the given tile.
         /// </summary>
         public static string BuildPathToTile(string path, OsmGeoType type, Tile tile)
@@ -87,6 +115,12 @@ namespace OsmSharp.Db.Tiled
         public static void AppendToTile(string path, Tile tile, OsmGeo osmGeo)
         {
             var location = DatabaseCommon.BuildPathToTile(path, osmGeo.Type, tile);
+
+            var locationPath = FileSystemFacade.FileSystem.DirectoryForFile(location);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(locationPath))
+            {
+                FileSystemFacade.FileSystem.CreateDirectory(locationPath);
+            }
 
             Stream stream;
             if (!FileSystemFacade.FileSystem.Exists(location))

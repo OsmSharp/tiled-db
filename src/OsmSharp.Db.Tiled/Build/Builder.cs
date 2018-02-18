@@ -30,25 +30,25 @@ namespace OsmSharp.Db.Tiled.Build
             {
                 var newTiles = new List<Tile>();
 
-                System.Threading.Tasks.Parallel.ForEach(tiles, (subTile) =>
+                // System.Threading.Tasks.Parallel.ForEach(tiles, (subTile) =>
+                // {
+                //     var subTiles = Build(path, maxZoom, subTile);
+
+                //     lock (newTiles)
+                //     {
+                //         newTiles.AddRange(subTiles);
+                //     }
+                // });
+
+                foreach (var subTile in tiles)
                 {
-                    var subTiles = Build(path, maxZoom, subTile);
+                   var subTiles = Build(path, maxZoom, subTile);
 
-                    lock (newTiles)
-                    {
-                        newTiles.AddRange(subTiles);
-                    }
-                });
-
-                //foreach (var subTile in tiles)
-                //{
-                //    var subTiles = Build(path, maxZoom, subTile);
-
-                //    lock (newTiles)
-                //    {
-                //        newTiles.AddRange(subTiles);
-                //    }
-                //}
+                   lock (newTiles)
+                   {
+                       newTiles.AddRange(subTiles);
+                   }
+                }
 
                 if (newTiles.Count == 0)
                 {

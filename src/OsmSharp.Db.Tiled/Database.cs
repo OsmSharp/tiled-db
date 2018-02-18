@@ -25,12 +25,13 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Creates a new data based on the given folder.
         /// </summary>
-        public Database(string folder, uint zoom = 14)
+        public Database(string folder, IIdGenerator idGenerator, uint zoom = 14)
         {
             // TODO: verify that zoomoffset leads to zoom zero from the given zoom level here.
             // in other words, zoom level has to be exactly dividable by ZoomOffset.
             _path = folder;
             _zoom = zoom;
+            _idGenerator = idGenerator;
 
             _nodeIndexesCache = new Dictionary<uint, Dictionary<ulong, Index>>();
             _wayIndexesCache = new Dictionary<uint, Dictionary<ulong, Index>>();
@@ -42,28 +43,25 @@ namespace OsmSharp.Db.Tiled
         public void CreateNode(Node node)
         {
             var tile = DatabaseCommon.FindTileByLocation(_zoom, node.Latitude.Value, node.Longitude.Value);
-            var index = this.LoadIndex(OsmGeoType.Node, tile);
-            if (index == null)
+            //var index = this.LoadIndex(OsmGeoType.Node, tile);
+            
+            var nodeId = _idGenerator.GenerateNew(OsmGeoType.Node);
+            node.Id = nodeId;
+
+            // write node.
+            DatabaseCommon.AppendToTile(_path, tile, node);
+
+            // recursively update indexes.
+            var mask = tile.BuildMask2();
+            while (tile.Zoom != 0)
             {
-                index = new Index();
-                var nodeId = _idGenerator.GenerateNew(OsmGeoType.Node);
-                node.Id = nodeId;
+                tile = tile.ParentTileAt(tile.Zoom - ZoomOffset);
 
-                // write node.
-                DatabaseCommon.AppendToTile(_path, tile, node);
-
-                // recursively update indexes.
-                var mask = tile.BuildMask2();
-                while (tile.Zoom != 0)
+                var index = this.LoadIndex(OsmGeoType.Node, tile, true);
+                index.Add(nodeId, mask);
+                if (tile.Zoom > 0)
                 {
-                    tile = tile.ParentTileAt(tile.Zoom - ZoomOffset);
-
-                    this.LoadIndex(OsmGeoType.Node, tile);
-                    index.Add(nodeId, mask);
-                    if (tile.Zoom > 0)
-                    {
-                        mask = tile.BuildMask2();
-                    }
+                    mask = tile.BuildMask2();
                 }
             }
         }
@@ -91,9 +89,9 @@ namespace OsmSharp.Db.Tiled
                         return null;
                     }
                     using (stream)
-                    using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
+                    // using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
                     {
-                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(uncompressed);
+                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(stream);
                         while (source.MoveNext(false, true, true))
                         {
                             var current = source.Current();
@@ -326,7 +324,7 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Loads the index for the given type and tile.
         /// </summary>
-        private Index LoadIndex(OsmGeoType type, Tile tile)
+        private Index LoadIndex(OsmGeoType type, Tile tile, bool create = false)
         {
             if (type == OsmGeoType.Node)
             {
@@ -343,6 +341,10 @@ namespace OsmSharp.Db.Tiled
                 }
 
                 index = DatabaseCommon.LoadIndex(_path, tile, type);
+                if (create && index == null)
+                {
+                    index = new Index();
+                }
                 cached[tile.LocalId] = index;
                 return index;
             }
@@ -361,6 +363,10 @@ namespace OsmSharp.Db.Tiled
                 }
 
                 index = DatabaseCommon.LoadIndex(_path, tile, type);
+                if (create && index == null)
+                {
+                    index = new Index();
+                }
                 cached[tile.LocalId] = index;
                 return index;
             }

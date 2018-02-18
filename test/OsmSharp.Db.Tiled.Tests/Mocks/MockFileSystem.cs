@@ -20,7 +20,7 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
         {
             var relativePath = path.Substring(_root.Name.Length,
                 path.Length - _root.Name.Length);
-            return relativePath.Split('\\');
+            return relativePath.Split('\\', '/');
         }
 
         private Dir FindDir(string directory)

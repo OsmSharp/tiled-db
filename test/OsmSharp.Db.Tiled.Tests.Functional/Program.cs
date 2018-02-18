@@ -2,6 +2,7 @@
 using System.IO;
 using Serilog;
 using System.Collections.Generic;
+using OsmSharp.Db.Tiled.Ids;
 
 namespace OsmSharp.Db.Tiled.Tests.Functional
 {
@@ -11,9 +12,9 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
         {
             args = new string[]
             {
-                @"C:\work\data\OSM\belgium-latest.osm.pbf",
-                @"C:\work\itinero\tiled-osm-db\db",
-                @"C:\work\itinero\tiled-osm-db\complete"
+                @"/media/xivk/5TB Backup Ben/data/osm/belgium-latest.osm.pbf",
+                @"/home/xivk/work/anyways/data/tiled-osm-db/db",
+                @"/home/xivk/work/anyways/data/tiled-osm-db/complete"
             };
 
             uint zoom = 14;
@@ -41,7 +42,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             Console.WriteLine("Splitting took {0}s", span);
 
             // reading some data.
-            var db = new Database(args[1]);
+            var db = new Database(args[1], new MemoryIdGenerator());
             
             // write some complete tiles.
             if (!Directory.Exists(args[2]))
