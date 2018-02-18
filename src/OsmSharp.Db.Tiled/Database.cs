@@ -64,6 +64,8 @@ namespace OsmSharp.Db.Tiled
                     mask = tile.BuildMask2();
                 }
             }
+
+            this.Flush();
         }
         
         /// <summary>
@@ -370,6 +372,48 @@ namespace OsmSharp.Db.Tiled
                 cached[tile.LocalId] = index;
                 return index;
             }
+        }
+
+        /// <summary>
+        /// Fluses all in-memory data to disk.
+        /// </summary>
+        public void Flush()
+        {
+            foreach (var zoomCache in _nodeIndexesCache)
+            {
+                foreach (var tileCache in zoomCache.Value)
+                {
+                    if (tileCache.Value.IsDirty)
+                    {
+                        var tile = Tile.FromLocalId(zoomCache.Key, tileCache.Key);
+                        DatabaseCommon.SaveIndex(_path, tile, OsmGeoType.Node, tileCache.Value);
+                    }
+                }
+            }
+            
+            foreach (var zoomCache in _wayIndexesCache)
+            {
+                foreach (var tileCache in zoomCache.Value)
+                {
+                    if (tileCache.Value.IsDirty)
+                    {
+                        var tile = Tile.FromLocalId(zoomCache.Key, tileCache.Key);
+                        DatabaseCommon.SaveIndex(_path, tile, OsmGeoType.Way, tileCache.Value);
+                    }
+                }
+            }
+            
+            // foreach (var zoomCache in _relationIndexesCache)
+            // {
+            //     foreach (var tileCache in zoomCache.Value)
+            //     {
+            //         if (tileCache.Value.IsDirty)
+            //         {
+            //             var tile = Tile.FromLocalId(zoomCache.Key, tileCache.Key);
+            //             DatabaseCommon.SaveIndex(_path, tile, OsmGeoType.Way, tileCache.Value);
+            //         }
+            //     }
+            // }
         }
     }
 }

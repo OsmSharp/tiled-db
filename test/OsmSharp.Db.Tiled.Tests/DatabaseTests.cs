@@ -35,6 +35,8 @@ namespace OsmSharp.Db.Tiled.Tests
             };
             db.CreateNode(node);
 
+            // make sure it persisted by createing a new db.
+            db = new Database(@"/db", new MemoryIdGenerator());
             var dbNode = db.GetNode(-1);
             Assert.IsNotNull(dbNode);
             Assert.AreEqual(node.Id, dbNode.Id);

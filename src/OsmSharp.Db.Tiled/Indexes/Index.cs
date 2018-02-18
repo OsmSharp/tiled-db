@@ -21,15 +21,29 @@ namespace OsmSharp.Db.Tiled.Indexes
         public Index()
         {
             _data = new MemoryArray<ulong>(1024);
+
+            this.IsDirty = false;
         }
         
         private Index(ArrayBase<ulong> data)
         {
             _data = data;
             _pointer = _data.Length;
+
+            this.IsDirty = false;
         }
 
         private long _pointer = 0;
+
+        /// <summary>
+        /// Returns true if the data in this index wasn't saved to disk.
+        /// </summary>
+        /// <returns></returns>
+        public bool IsDirty
+        {
+            get;
+            private set;
+        }
         
         /// <summary>
         /// Adds a new entry in this index.
@@ -55,6 +69,8 @@ namespace OsmSharp.Db.Tiled.Indexes
             Encode(id, mask, out data);
             _data[_pointer] = data;
             _pointer++;
+
+            this.IsDirty = true;
         }
 
         /// <summary>
@@ -63,6 +79,8 @@ namespace OsmSharp.Db.Tiled.Indexes
         public void Trim()
         {
             _data.Resize(_pointer);
+
+            this.IsDirty = true;
         }
 
         /// <summary>
@@ -85,6 +103,8 @@ namespace OsmSharp.Db.Tiled.Indexes
             var size = _data.Length * 8 + 8;
             stream.Write(BitConverter.GetBytes(_data.Length), 0, 8);
             _data.CopyTo(stream);
+
+            this.IsDirty = false;
 
             return size;
         }

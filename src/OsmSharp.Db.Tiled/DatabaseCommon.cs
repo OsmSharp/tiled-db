@@ -24,7 +24,7 @@ namespace OsmSharp.Db.Tiled
         public static Index LoadIndex(string path, Tile tile, OsmGeoType type)
         {
             var extension = ".nodes.idx";
-            if (type == OsmGeoType.Node)
+            if (type == OsmGeoType.Way)
             {
                 extension = ".ways.idx";
             }
@@ -51,7 +51,7 @@ namespace OsmSharp.Db.Tiled
         public static void SaveIndex(string path, Tile tile, OsmGeoType type, Index index)
         {
             var extension = ".nodes.idx";
-            if (type == OsmGeoType.Node)
+            if (type == OsmGeoType.Way)
             {
                 extension = ".ways.idx";
             }
