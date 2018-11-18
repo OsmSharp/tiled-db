@@ -201,19 +201,17 @@ namespace OsmSharp.Db.Tiled
 
             var nodes = new HashSet<long>();
             using (var stream = DatabaseCommon.LoadTile(_path, OsmGeoType.Node, tile))
+            //using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
             {
-                using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
+                var source = new OsmSharp.Streams.BinaryOsmStreamSource(stream);
+                while (source.MoveNext(false, true, true))
                 {
-                    var source = new OsmSharp.Streams.BinaryOsmStreamSource(uncompressed);
-                    while (source.MoveNext(false, true, true))
-                    {
-                        var current = source.Current();
+                    var current = source.Current();
 
-                        var n = current as Node;
-                        var nodeId = n.Id.Value;
+                    var n = current as Node;
+                    var nodeId = n.Id.Value;
 
-                        nodes.Add(n.Id.Value);
-                    }
+                    nodes.Add(n.Id.Value);
                 }
             }
 
@@ -222,9 +220,9 @@ namespace OsmSharp.Db.Tiled
             {
                 if (stream != null)
                 {
-                    using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
-                    {
-                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(uncompressed);
+                    //using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
+                    //{
+                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(stream);
                         while (source.MoveNext(true, false, true))
                         {
                             var current = source.Current();
@@ -244,7 +242,7 @@ namespace OsmSharp.Db.Tiled
                                 }
                             }
                         }
-                    }
+                    //}
                 }
             }
 
@@ -253,9 +251,9 @@ namespace OsmSharp.Db.Tiled
             var hasNextSortedId = sortedIdsEnumerator.MoveNext();
             using (var stream = DatabaseCommon.LoadTile(_path, OsmGeoType.Node, tile))
             {
-                using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
-                {
-                    var source = new OsmSharp.Streams.BinaryOsmStreamSource(uncompressed);
+                //using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
+                //{
+                    var source = new OsmSharp.Streams.BinaryOsmStreamSource(stream);
                     while (source.MoveNext(false, true, true))
                     {
                         var current = source.Current();
@@ -277,16 +275,16 @@ namespace OsmSharp.Db.Tiled
                         hasData = true;
                         target.AddNode(n);
                     }
-                }
+                //}
             }
 
             using (var stream = DatabaseCommon.LoadTile(_path, OsmGeoType.Way, tile))
             {
                 if (stream != null)
                 {
-                    using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
-                    {
-                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(uncompressed);
+                    //using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
+                    //{
+                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(stream);
                         while (source.MoveNext(true, false, true))
                         {
                             var current = source.Current();
@@ -295,7 +293,7 @@ namespace OsmSharp.Db.Tiled
 
                             target.AddWay(w);
                         }
-                    }
+                    //}
                 }
             }
 
@@ -303,9 +301,9 @@ namespace OsmSharp.Db.Tiled
             {
                 if (stream != null)
                 {
-                    using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
-                    {
-                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(uncompressed);
+                    //using (var uncompressed = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Decompress))
+                    //{
+                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(stream);
                         while (source.MoveNext(true, true, false))
                         {
                             var current = source.Current();
@@ -314,7 +312,7 @@ namespace OsmSharp.Db.Tiled
 
                             target.AddRelation(r);
                         }
-                    }
+                    //}
                 }
             }
 

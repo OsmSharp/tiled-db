@@ -59,19 +59,20 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 .WriteTo.LiterateConsole()
                 .CreateLogger();
 
-            // build db.
-            var source = new OsmSharp.Streams.PBFOsmStreamSource(
-                File.OpenRead(args[0]));
-            var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-            progress.RegisterSource(source);
-
-            // building database.
-            var ticks = DateTime.Now.Ticks;
-            Build.Builder.Build(progress, args[1], zoom);
-            var span = new TimeSpan(DateTime.Now.Ticks - ticks);
-            Console.WriteLine("Splitting took {0}s", span);
+//            // build db.
+//            var source = new OsmSharp.Streams.PBFOsmStreamSource(
+//                File.OpenRead(args[0]));
+//            var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+//            progress.RegisterSource(source);
+//
+//            // building database.
+//            var ticks = DateTime.Now.Ticks;
+//            Build.Builder.Build(progress, args[1], zoom);
+//            var span = new TimeSpan(DateTime.Now.Ticks - ticks);
+//            Console.WriteLine("Splitting took {0}s", span);
 
             // reading some data.
+            Console.WriteLine("Loading database...");
             var db = new Database(args[1]);
             
             // write some complete tiles.
@@ -84,16 +85,16 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 Console.WriteLine("Base tile found: {0}", baseTile);
 
                 var file = Path.Combine(args[2], baseTile.Zoom.ToInvariantString(), baseTile.X.ToInvariantString(),
-                    baseTile.Y.ToInvariantString() + ".osm.pbf");
+                    baseTile.Y.ToInvariantString() + ".osm");
                 var fileInfo = new FileInfo(file);
-                if (!fileInfo.Directory.Exists)
+                if (fileInfo.Directory != null && !fileInfo.Directory.Exists)
                 {
                     fileInfo.Directory.Create();
                 }
 
                 using (var stream = File.Open(file, FileMode.Create))
                 {
-                    var target = new OsmSharp.Streams.PBFOsmStreamTarget(stream);
+                    var target = new OsmSharp.Streams.XmlOsmStreamTarget(stream);
                     target.Initialize();
 
                     db.GetCompleteTile(baseTile, target);
@@ -103,6 +104,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 }
             }
 
+            Console.WriteLine("Testing done!");
             Console.ReadLine();
         }
     }

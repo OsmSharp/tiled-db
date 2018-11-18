@@ -39,7 +39,7 @@ namespace OsmSharp.Db.Tiled.IO
 
         public string DirectoryName(string directory)
         {
-            return Path.GetDirectoryName(directory);
+            return (new DirectoryInfo(directory)).Name;
         }
 
         public IEnumerable<string> EnumerateDirectories(string directory)
