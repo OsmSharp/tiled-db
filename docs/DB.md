@@ -3,20 +3,18 @@ Database Design
 
 The tiled-osm-db has the following priorities:
 
-- Consistency: Applying a changeset applies everyting or nothing, unless specified otherwise.
+- Consistency: 
+    - Applying a changeset applies everything or nothing, unless specified otherwise.
 - Read performance: 
 	- Reading OSM-data in a tiled format or boundingbox should be fast!
 	- Reading individual Nodes, Ways or Relations in a similar geographical area should be fast.
-- Forkable:
-  - It should be trivial to fork a db.
-  - A db with only changes should be possible.
-    - A reference db with all the data is defined.
-	- Only the changeset are described by the database.
-	
+	- It should be possible to query for individual nodes, ways or relations by ID but performance is non-cricical.
+	- It is outside of scope to query for nodes, ways or relations by their tags. This is not a database that handles generic queries.
+
 # Lifetime
 
-1. Creation: A database is create either empty or from an OSM file.
-2. Active: From now on all ID's are determined by the DB and only CRUD operations are possible.
+1. Creation: A database is created from an OSM file.
+2. Updates: Updates are done by applying changesets.
   
 # Data Structure
 

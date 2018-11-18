@@ -16,7 +16,6 @@ namespace OsmSharp.Db.Tiled
     {
         private readonly string _path;
         private readonly uint _zoom;
-        private readonly IIdGenerator _idGenerator;
         private const uint ZoomOffset = 2;
 
         private Dictionary<uint, Dictionary<ulong, Index>> _nodeIndexesCache;
@@ -25,48 +24,47 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Creates a new data based on the given folder.
         /// </summary>
-        public Database(string folder, IIdGenerator idGenerator, uint zoom = 14)
+        public Database(string folder, uint zoom = 14)
         {
             // TODO: verify that zoomoffset leads to zoom zero from the given zoom level here.
             // in other words, zoom level has to be exactly dividable by ZoomOffset.
             _path = folder;
             _zoom = zoom;
-            _idGenerator = idGenerator;
 
             _nodeIndexesCache = new Dictionary<uint, Dictionary<ulong, Index>>();
             _wayIndexesCache = new Dictionary<uint, Dictionary<ulong, Index>>();
         }
 
-        /// <summary>
-        /// Creates a new node.
-        /// </summary>
-        public void CreateNode(Node node)
-        {
-            var tile = DatabaseCommon.FindTileByLocation(_zoom, node.Latitude.Value, node.Longitude.Value);
-            //var index = this.LoadIndex(OsmGeoType.Node, tile);
-            
-            var nodeId = _idGenerator.GenerateNew(OsmGeoType.Node);
-            node.Id = nodeId;
-
-            // write node.
-            DatabaseCommon.AppendToTile(_path, tile, node);
-
-            // recursively update indexes.
-            var mask = tile.BuildMask2();
-            while (tile.Zoom != 0)
-            {
-                tile = tile.ParentTileAt(tile.Zoom - ZoomOffset);
-
-                var index = this.LoadIndex(OsmGeoType.Node, tile, true);
-                index.Add(nodeId, mask);
-                if (tile.Zoom > 0)
-                {
-                    mask = tile.BuildMask2();
-                }
-            }
-
-            this.Flush();
-        }
+//        /// <summary>
+//        /// Creates a new node.
+//        /// </summary>
+//        public void CreateNode(Node node)
+//        {
+//            var tile = DatabaseCommon.FindTileByLocation(_zoom, node.Latitude.Value, node.Longitude.Value);
+//            //var index = this.LoadIndex(OsmGeoType.Node, tile);
+//            
+//            var nodeId = _idGenerator.GenerateNew(OsmGeoType.Node);
+//            node.Id = nodeId;
+//
+//            // write node.
+//            DatabaseCommon.AppendToTile(_path, tile, node);
+//
+//            // recursively update indexes.
+//            var mask = tile.BuildMask2();
+//            while (tile.Zoom != 0)
+//            {
+//                tile = tile.ParentTileAt(tile.Zoom - ZoomOffset);
+//
+//                var index = this.LoadIndex(OsmGeoType.Node, tile, true);
+//                index.Add(nodeId, mask);
+//                if (tile.Zoom > 0)
+//                {
+//                    mask = tile.BuildMask2();
+//                }
+//            }
+//
+//            this.Flush();
+//        }
         
         /// <summary>
         /// Gets the node with given id.

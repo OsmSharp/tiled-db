@@ -3,6 +3,7 @@ using System.IO;
 using Serilog;
 using System.Collections.Generic;
 using OsmSharp.Db.Tiled.Ids;
+using OsmSharp.Logging;
 
 namespace OsmSharp.Db.Tiled.Tests.Functional
 {
@@ -12,16 +13,45 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
         {
             args = new string[]
             {
-                @"/media/xivk/5TB Backup Ben/data/osm/belgium-latest.osm.pbf",
+                @"/home/xivk/work/data/OSM/luxembourg-latest.osm.pbf",
                 @"/home/xivk/work/anyways/data/tiled-osm-db/db",
                 @"/home/xivk/work/anyways/data/tiled-osm-db/complete"
             };
 
             uint zoom = 14;
-
+            
             OsmSharp.Logging.Logger.LogAction = (o, level, message, parameters) =>
             {
-                Console.WriteLine(string.Format("[{0}] {1} - {2}", o, level, message));
+#if RELEASE
+                if (level == "verbose")
+                {
+                    return;
+                }
+#endif
+                if (level == TraceEventType.Verbose.ToString().ToLower())
+                {
+                    Log.Debug(string.Format("[{0}] {1} - {2}", o, level, message));
+                }
+                else if (level == TraceEventType.Information.ToString().ToLower())
+                {
+                    Log.Information(string.Format("[{0}] {1} - {2}", o, level, message));
+                }
+                else if (level == TraceEventType.Warning.ToString().ToLower())
+                {
+                    Log.Warning(string.Format("[{0}] {1} - {2}", o, level, message));
+                }
+                else if (level == TraceEventType.Critical.ToString().ToLower())
+                {
+                    Log.Fatal(string.Format("[{0}] {1} - {2}", o, level, message));
+                }
+                else if (level == TraceEventType.Error.ToString().ToLower())
+                {
+                    Log.Error(string.Format("[{0}] {1} - {2}", o, level, message));
+                }
+                else
+                {
+                    Log.Debug(string.Format("[{0}] {1} - {2}", o, level, message));
+                }
             };
 
             Log.Logger = new LoggerConfiguration()
@@ -42,7 +72,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             Console.WriteLine("Splitting took {0}s", span);
 
             // reading some data.
-            var db = new Database(args[1], new MemoryIdGenerator());
+            var db = new Database(args[1]);
             
             // write some complete tiles.
             if (!Directory.Exists(args[2]))

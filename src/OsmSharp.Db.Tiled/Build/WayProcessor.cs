@@ -81,7 +81,7 @@ namespace OsmSharp.Db.Tiled.Build
                             FileSystemFacade.FileSystem.CreateDirectory(fileDirectory);
                         }
                         stream = FileSystemFacade.FileSystem.Open(file, FileMode.Create);
-                        stream = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Compress);
+                        //stream = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Compress);
 
                         subtiles[wayTile.LocalId] = stream;
                     }

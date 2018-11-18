@@ -64,9 +64,7 @@ namespace OsmSharp.Db.Tiled.Build
             Log.Logger.Information("Building for tile {0}/{1}/{2}...", tile.Zoom, tile.X, tile.Y);
 
             // split nodes and return nodes index and non-empty tiles.
-            List<Tile> nonEmptyTiles;
-            bool hasNext;
-            var nodeIndex = NodeProcessor.Process(source, path, maxZoom, tile, out nonEmptyTiles, out hasNext);
+            var nodeIndex = NodeProcessor.Process(source, path, maxZoom, tile, out var nonEmptyTiles, out var hasNext);
 
             // split ways using the node index and return the way index.
             Index wayIndex = null;
@@ -80,11 +78,8 @@ namespace OsmSharp.Db.Tiled.Build
 
             nodeIndex.WriteAsync(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                     tile.X.ToInvariantString(), tile.Y.ToInvariantString() + ".nodes.idx"));
-            if (wayIndex != null)
-            {
-                wayIndex.WriteAsync(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
-                        tile.X.ToInvariantString(), tile.Y.ToInvariantString() + ".ways.idx"));
-            }
+            wayIndex?.WriteAsync(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
+                tile.X.ToInvariantString(), tile.Y.ToInvariantString() + ".ways.idx"));
             //relationIndex.WriteAsync(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
             //        tile.X.ToInvariantString(), tile.Y.ToInvariantString() + ".relations.idx"));
 
@@ -110,14 +105,13 @@ namespace OsmSharp.Db.Tiled.Build
                 return new List<Tile>();
             }
             using (var nodeStream = FileSystemFacade.FileSystem.OpenRead(nodeFile))
-            using (var nodeStreamUncompressed = new LZ4.LZ4Stream(nodeStream, LZ4.LZ4StreamMode.Decompress))
+            //using (var nodeStreamUncompressed = new LZ4.LZ4Stream(nodeStream, LZ4.LZ4StreamMode.Decompress))
             {
-                var nodeSource = new OsmSharp.Streams.BinaryOsmStreamSource(nodeStreamUncompressed);
+                var nodeSource = new OsmSharp.Streams.BinaryOsmStreamSource(nodeStream);
 
                 // split nodes and return nodes index and non-empty tiles.
-                bool hasNext;
                 nodeIndex = NodeProcessor.Process(nodeSource, path, maxZoom, tile, out nonEmptyTiles,
-                    out hasNext);
+                    out _);
             }
 
             // build the ways index.
@@ -127,9 +121,9 @@ namespace OsmSharp.Db.Tiled.Build
             if (FileSystemFacade.FileSystem.Exists(wayFile))
             {
                 using (var wayStream = FileSystemFacade.FileSystem.OpenRead(wayFile))
-                using (var wayStreamUncompressed = new LZ4.LZ4Stream(wayStream, LZ4.LZ4StreamMode.Decompress))
+                //using (var wayStreamUncompressed = new LZ4.LZ4Stream(wayStream, LZ4.LZ4StreamMode.Decompress))
                 {
-                    var waySource = new OsmSharp.Streams.BinaryOsmStreamSource(wayStreamUncompressed);
+                    var waySource = new OsmSharp.Streams.BinaryOsmStreamSource(wayStream);
                     if (waySource.MoveNext())
                     {
                         wayIndex = WayProcessor.Process(waySource, path, maxZoom, tile, nodeIndex);

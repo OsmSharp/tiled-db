@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OsmSharp" Version="6.0.0" />
+    <PackageReference Include="OsmSharp" Version="6.1.0" />
     <PackageReference Include="OsmSharp.IO.Binary" Version="0.0.12-alpha" />
     <PackageReference Include="Serilog" Version="2.4.0" />
     <PackageReference Include="lz4net" Version="1.0.15.93" />

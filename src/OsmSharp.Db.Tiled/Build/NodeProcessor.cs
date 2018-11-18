@@ -49,8 +49,7 @@ namespace OsmSharp.Db.Tiled.Build
                 var nodeTile = Tiles.Tile.WorldToTileIndex(n.Latitude.Value, n.Longitude.Value, tile.Zoom + 2);
 
                 // is tile a subtile.
-                Stream stream;
-                if (!subtiles.TryGetValue(nodeTile.LocalId, out stream))
+                if (!subtiles.TryGetValue(nodeTile.LocalId, out var stream))
                 {
                     continue;
                 }
@@ -66,7 +65,7 @@ namespace OsmSharp.Db.Tiled.Build
                         FileSystemFacade.FileSystem.CreateDirectory(fileDirectory);
                     }
                     stream = FileSystemFacade.FileSystem.Open(file, FileMode.Create);
-                    stream = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Compress);
+                    //stream = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Compress);
 
                     subtiles[nodeTile.LocalId] = stream;
                 }
