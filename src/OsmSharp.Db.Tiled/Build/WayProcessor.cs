@@ -11,9 +11,8 @@ namespace OsmSharp.Db.Tiled.Build
     /// <summary>
     /// The way processor.
     /// </summary>
-    static class WayProcessor
+    internal static class WayProcessor
     {
-        
         /// <summary>
         /// Processes the ways in the given stream until the first on-way object is reached. Assumed the current stream position already contains a way.
         /// </summary>
@@ -22,9 +21,10 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="maxZoom">The maximum zoom.</param>
         /// <param name="tile">The tile being split.</param>
         /// <param name="nodeIndex">The node index.</param>
+        /// <param name="compressed">A flag to allow compression of target files.</param>
         /// <returns>The indexed node id's with a masked zoom.</returns>
         public static Index Process(OsmStreamSource source, string path, uint maxZoom, Tile tile,
-            Index nodeIndex)
+            Index nodeIndex, bool compressed = false)
         { 
             // split ways.
             var subtiles = new Dictionary<ulong, Stream>();
@@ -53,8 +53,7 @@ namespace OsmSharp.Db.Tiled.Build
                 var mask = 0;
                 foreach (var node in w.Nodes)
                 {
-                    int nodeMask;
-                    if (nodeIndex.TryGetMask(node, out nodeMask))
+                    if (nodeIndex.TryGetMask(node, out var nodeMask))
                     {
                         mask |= nodeMask;
                     }
@@ -64,8 +63,7 @@ namespace OsmSharp.Db.Tiled.Build
                 foreach(var wayTile in tile.SubTilesForMask2(mask))
                 {
                     // is tile a subtile.
-                    Stream stream;
-                    if (!subtiles.TryGetValue(wayTile.LocalId, out stream))
+                    if (!subtiles.TryGetValue(wayTile.LocalId, out var stream))
                     {
                         continue;
                     }
@@ -73,21 +71,12 @@ namespace OsmSharp.Db.Tiled.Build
                     // initialize stream if needed.
                     if (stream == null)
                     {
-                        var file = FileSystemFacade.FileSystem.Combine(path, wayTile.Zoom.ToInvariantString(), wayTile.X.ToInvariantString(),
-                            wayTile.Y.ToInvariantString() + ".ways.osm.bin");
-                        var fileDirectory = FileSystemFacade.FileSystem.DirectoryForFile(file);
-                        if (!FileSystemFacade.FileSystem.DirectoryExists(fileDirectory))
-                        {
-                            FileSystemFacade.FileSystem.CreateDirectory(fileDirectory);
-                        }
-                        stream = FileSystemFacade.FileSystem.Open(file, FileMode.Create);
-                        //stream = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Compress);
-
+                        stream = DatabaseCommon.CreateTile(path, OsmGeoType.Way, wayTile, compressed);
                         subtiles[wayTile.LocalId] = stream;
                     }
 
                     // write way.
-                    BinarySerializer.Append(stream, w);
+                    stream.Append(w);
                 }
                 
                 // add way to index.
@@ -97,11 +86,9 @@ namespace OsmSharp.Db.Tiled.Build
             // flush/dispose all subtile streams.
             foreach (var subtile in subtiles)
             {
-                if (subtile.Value != null)
-                {
-                    subtile.Value.Flush();
-                    subtile.Value.Dispose();
-                }
+                if (subtile.Value == null) continue;
+                subtile.Value.Flush();
+                subtile.Value.Dispose();
             }
 
             return wayIndex;

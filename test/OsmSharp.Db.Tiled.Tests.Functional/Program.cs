@@ -11,101 +11,135 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
     {
         static void Main(string[] args)
         {
-            args = new string[]
+//#if DEBUG
+            if (args == null || args.Length == 0)
             {
-                @"/home/xivk/work/data/OSM/luxembourg-latest.osm.pbf",
-                @"/home/xivk/work/anyways/data/tiled-osm-db/db",
-                @"/home/xivk/work/anyways/data/tiled-osm-db/complete"
-            };
-
-            uint zoom = 14;
+                args = new string[]
+                {
+                    @"/data/work/data/OSM/belgium-latest.osm.pbf",
+                    @"/data/work/openplannerteam/data/tilesdb-belgium/",
+                    @"14",
+                    @"/data/work/openplannerteam/data/routabletiles/",
+                };
+            }
+//#endif
             
-            OsmSharp.Logging.Logger.LogAction = (o, level, message, parameters) =>
+            // enable logging.
+            OsmSharp.Logging.Logger.LogAction = (origin, level, message, parameters) =>
             {
-#if RELEASE
-                if (level == "verbose")
+                var formattedMessage = $"{origin} - {message}";
+                switch (level)
                 {
-                    return;
-                }
-#endif
-                if (level == TraceEventType.Verbose.ToString().ToLower())
-                {
-                    Log.Debug(string.Format("[{0}] {1} - {2}", o, level, message));
-                }
-                else if (level == TraceEventType.Information.ToString().ToLower())
-                {
-                    Log.Information(string.Format("[{0}] {1} - {2}", o, level, message));
-                }
-                else if (level == TraceEventType.Warning.ToString().ToLower())
-                {
-                    Log.Warning(string.Format("[{0}] {1} - {2}", o, level, message));
-                }
-                else if (level == TraceEventType.Critical.ToString().ToLower())
-                {
-                    Log.Fatal(string.Format("[{0}] {1} - {2}", o, level, message));
-                }
-                else if (level == TraceEventType.Error.ToString().ToLower())
-                {
-                    Log.Error(string.Format("[{0}] {1} - {2}", o, level, message));
-                }
-                else
-                {
-                    Log.Debug(string.Format("[{0}] {1} - {2}", o, level, message));
+                    case "critical":
+                        Log.Fatal(formattedMessage);
+                        break;
+                    case "error":
+                        Log.Error(formattedMessage);
+                        break;
+                    case "warning":
+                        Log.Warning(formattedMessage);
+                        break; 
+                    case "verbose":
+                        Log.Verbose(formattedMessage);
+                        break; 
+                    case "information":
+                        Log.Information(formattedMessage);
+                        break; 
+                    default:
+                        Log.Debug(formattedMessage);
+                        break;
                 }
             };
 
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
-                .WriteTo.LiterateConsole()
+                .WriteTo.Console()
+                .WriteTo.File(Path.Combine("logs", "log-.txt"), rollingInterval: RollingInterval.Day)
                 .CreateLogger();
 
-//            // build db.
-//            var source = new OsmSharp.Streams.PBFOsmStreamSource(
-//                File.OpenRead(args[0]));
-//            var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-//            progress.RegisterSource(source);
-//
-//            // building database.
-//            var ticks = DateTime.Now.Ticks;
-//            Build.Builder.Build(progress, args[1], zoom);
-//            var span = new TimeSpan(DateTime.Now.Ticks - ticks);
-//            Console.WriteLine("Splitting took {0}s", span);
-
-            // reading some data.
-            Console.WriteLine("Loading database...");
-            var db = new Database(args[1]);
-            
-            // write some complete tiles.
-            if (!Directory.Exists(args[2]))
+            try
             {
-                throw new Exception();
-            }
-            foreach (var baseTile in db.GetTiles())
-            {
-                Console.WriteLine("Base tile found: {0}", baseTile);
-
-                var file = Path.Combine(args[2], baseTile.Zoom.ToInvariantString(), baseTile.X.ToInvariantString(),
-                    baseTile.Y.ToInvariantString() + ".osm");
-                var fileInfo = new FileInfo(file);
-                if (fileInfo.Directory != null && !fileInfo.Directory.Exists)
+                // validate arguments.
+                if (args.Length < 4)
                 {
-                    fileInfo.Directory.Create();
+                    Log.Fatal("Expected 4 arguments: inputfile cache zoom routablestiles");
+                    return;
+                }
+                if (!File.Exists(args[0]))
+                {
+                    Log.Fatal("Input file not found: {0}", args[0]);
+                    return;
+                }
+                if (!Directory.Exists(args[1]))
+                {
+                    Log.Fatal("Cache directory doesn't exist: {0}", args[1]);
+                    return;
+                }
+                if (!uint.TryParse(args[2], out var zoom))
+                {
+                    Log.Fatal("Can't parse zoom: {0}", args[2]);
+                    return;
+                }
+                if (!Directory.Exists(args[3]))
+                {
+                    Log.Fatal("Output directory doesn't exist: {0}", args[3]);
+                    return;
                 }
 
-                using (var stream = File.Open(file, FileMode.Create))
+                var ticks = DateTime.Now.Ticks;
+                bool compressed = true;
+                if (!File.Exists(Path.Combine(args[1], "0", "0", "0.nodes.idx")))
                 {
-                    var target = new OsmSharp.Streams.XmlOsmStreamTarget(stream);
-                    target.Initialize();
+                    Log.Information("The tiled DB doesn't exist yet, rebuilding...");
+                    var source = new OsmSharp.Streams.PBFOsmStreamSource(
+                        File.OpenRead(args[0]));
+                    var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+                    progress.RegisterSource(source);
 
-                    db.GetCompleteTile(baseTile, target);
-
-                    target.Flush();
-                    target.Close();
+                    // splitting tiles and writing indexes.
+                    Build.Builder.Build(progress, args[1], zoom, compressed);
                 }
-            }
+                else
+                {
+                    Log.Information("The tiled DB already exists, reusing...");
+                }
+                
+                // create a database object that can read individual objects.
+                Log.Information($"Loading database: {args[1]}");
+                var db = new Database(args[1], zoom: zoom, compressed: compressed);
 
-            Console.WriteLine("Testing done!");
-            Console.ReadLine();
+/*                //Parallel.ForEach(db.GetTiles(), (baseTile) =>
+                foreach (var baseTile in db.GetTiles())
+                {
+                    Log.Information($"Base tile found: {baseTile}");
+
+                    var file = Path.Combine(args[3], baseTile.Zoom.ToString(), baseTile.X.ToString(),
+                        baseTile.Y.ToString(), "index.json");
+                    var fileInfo = new FileInfo(file);
+                    if (fileInfo.Directory != null && !fileInfo.Directory.Exists)
+                    {
+                        fileInfo.Directory.Create();
+                    }
+
+                    using (var stream = File.Open(file, FileMode.Create))
+                    {
+                        var target = new TileOsmStreamTarget(stream);
+                        target.Initialize();
+
+                        target.RegisterSource(db.GetRoutableTile(baseTile));
+
+                        target.Pull();
+                        target.Close();
+                    }
+                }
+                var span = new TimeSpan(DateTime.Now.Ticks - ticks);
+                Log.Information($"Writing tiles took: {span}");*/
+            }
+            catch (Exception e)
+            {
+                Log.Fatal(e, "Unhandled exception.");
+                throw;
+            }
         }
     }
 }

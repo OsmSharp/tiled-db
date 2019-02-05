@@ -40,3 +40,5 @@ packages/*
 !packages/repositories.config
 
 **/.idea/
+
+log-*.txt

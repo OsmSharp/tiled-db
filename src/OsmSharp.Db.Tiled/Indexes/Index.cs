@@ -3,17 +3,17 @@ using System.IO;
 using Reminiscence.Arrays;
 using Reminiscence.IO;
 using Reminiscence.IO.Streams;
-using System.Collections.Generic;
 
 namespace OsmSharp.Db.Tiled.Indexes
 {
     /// <summary>
-    /// Represents an index matching id's to one or more subtiles.
+    /// Represents an index matching ids to one or more subtiles.
     /// </summary>
-    public class Index
+    public class Index : IDisposable
     {
         private readonly ArrayBase<ulong> _data;
-        private const int SUBTILES = 16;
+        private readonly bool _mapped = false;
+        private const int Subtiles = 16;
         
         /// <summary>
         /// Creates a new index.
@@ -29,6 +29,7 @@ namespace OsmSharp.Db.Tiled.Indexes
         {
             _data = data;
             _pointer = _data.Length;
+            _mapped = (data is Array<ulong>);
 
             this.IsDirty = false;
         }
@@ -54,9 +55,7 @@ namespace OsmSharp.Db.Tiled.Indexes
 
             if (_pointer > 0)
             {
-                int previousMask;
-                long previousId;
-                Decode(_data[_pointer - 1], out previousId, out previousMask);
+                Decode(_data[_pointer - 1], out var previousId, out _);
 
                 if (id < previousId)
                 {
@@ -65,8 +64,7 @@ namespace OsmSharp.Db.Tiled.Indexes
             }
 
             _data.EnsureMinimumSize(_pointer + 1);
-            ulong data;
-            Encode(id, mask, out data);
+            Encode(id, mask, out var data);
             _data[_pointer] = data;
             _pointer++;
 
@@ -88,7 +86,11 @@ namespace OsmSharp.Db.Tiled.Indexes
         /// </summary>
         public bool TryGetMask(long id, out int mask)
         {
-            return Search(id, out mask) != -1;
+            if (!_mapped) return Search(id, out mask) != -1;
+            lock (this)
+            {
+                return Search(id, out mask) != -1;
+            }
         }
 
         /// <summary>
@@ -136,14 +138,14 @@ namespace OsmSharp.Db.Tiled.Indexes
 
         private const long MAX_MASK = 65536 - 1;
         private const ulong MAX_ID = ((ulong)1 << 47) - 1;
-        private const long ID_MASK = ~(MAX_MASK << (64 - SUBTILES));
+        private const long ID_MASK = ~(MAX_MASK << (64 - Subtiles));
 
         /// <summary>
         /// Decodes an id and a mask.
         /// </summary>
         public static void Decode(ulong data, out long id, out int mask)
         {
-            mask = (int)(data >> (64 - SUBTILES));
+            mask = (int)(data >> (64 - Subtiles));
 
             ulong idmask = 0x00007fffffffffff;
             id = (long)(data & idmask);
@@ -169,7 +171,7 @@ namespace OsmSharp.Db.Tiled.Indexes
             if (unsignedId > MAX_ID) { throw new ArgumentOutOfRangeException(nameof(id)); }
 
             // left 16-bits are the mask.
-            var masked = (ulong)mask << (64 - SUBTILES);
+            var masked = (ulong)mask << (64 - Subtiles);
             // right 48-bits are signed id.
             // copy 47 left bits (leave 48 for sign).
             ulong idmask = 0x0000ffffffffffff;
@@ -186,13 +188,14 @@ namespace OsmSharp.Db.Tiled.Indexes
         {
             var min = 0L;
             var max = _pointer - 1;
-            
+
             long minId;
             Decode(_data[min], out minId, out mask);
             if (minId == id)
             {
                 return min;
             }
+
             long maxId;
             Decode(_data[max], out maxId, out mask);
             if (maxId == id)
@@ -224,6 +227,11 @@ namespace OsmSharp.Db.Tiled.Indexes
                     return -1;
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            _data?.Dispose();
         }
     }
 }

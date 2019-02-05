@@ -21,9 +21,11 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="maxZoom">The maximum zoom.</param>
         /// <param name="tile">The tile being split.</param>
         /// <param name="nonEmptyTiles">The subtiles that have data in them.</param>
+        /// <param name="hasNext">A flag indicating if there is still more data.</param>
+        /// <param name="compressed">A flag to allow compression of target files.</param>
         /// <returns>The indexed node id's with a masked zoom.</returns>
         public static Index Process(OsmStreamSource source, string path, uint maxZoom, Tile tile,
-            out List<Tile> nonEmptyTiles, out bool hasNext)
+            out List<Tile> nonEmptyTiles, out bool hasNext, bool compressed = false)
         {            
             // build the set of possible subtiles.
             var subtiles = new Dictionary<ulong, Stream>();
@@ -57,21 +59,12 @@ namespace OsmSharp.Db.Tiled.Build
                 // initialize stream if needed.
                 if (stream == null)
                 {
-                    var file = FileSystemFacade.FileSystem.Combine(path, nodeTile.Zoom.ToInvariantString(), nodeTile.X.ToInvariantString(),
-                        nodeTile.Y.ToInvariantString() + ".nodes.osm.bin");
-                    var fileDirectory = FileSystemFacade.FileSystem.DirectoryForFile(file);
-                    if (!FileSystemFacade.FileSystem.DirectoryExists(fileDirectory))
-                    {
-                        FileSystemFacade.FileSystem.CreateDirectory(fileDirectory);
-                    }
-                    stream = FileSystemFacade.FileSystem.Open(file, FileMode.Create);
-                    //stream = new LZ4.LZ4Stream(stream, LZ4.LZ4StreamMode.Compress);
-
+                    stream = DatabaseCommon.CreateTile(path, OsmGeoType.Node, nodeTile, compressed);
                     subtiles[nodeTile.LocalId] = stream;
                 }
 
                 // write node.
-                BinarySerializer.Append(stream, n);
+                stream.Append(n);
 
                 // add node to index.
                 nodeIndex.Add(n.Id.Value, nodeTile.BuildMask2());
@@ -82,15 +75,13 @@ namespace OsmSharp.Db.Tiled.Build
             nonEmptyTiles = new List<Tile>();
             foreach (var subtile in subtiles)
             {
-                if (subtile.Value != null)
-                {
-                    subtile.Value.Flush();
-                    subtile.Value.Dispose();
+                if (subtile.Value == null) continue;
+                subtile.Value.Flush();
+                subtile.Value.Dispose();
 
-                    if (tile.Zoom + 2 < maxZoom)
-                    {
-                        nonEmptyTiles.Add(Tile.FromLocalId(tile.Zoom + 2, subtile.Key));
-                    }
+                if (tile.Zoom + 2 < maxZoom)
+                {
+                    nonEmptyTiles.Add(Tile.FromLocalId(tile.Zoom + 2, subtile.Key));
                 }
             }
 
