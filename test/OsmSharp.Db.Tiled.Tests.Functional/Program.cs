@@ -106,7 +106,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 
                 // create a database object that can read individual objects.
                 Log.Information($"Loading database: {args[1]}");
-                var db = new Database(args[1], zoom: zoom, compressed: compressed);
+                var db = new DatabaseSnapshot(args[1], zoom: zoom, compressed: compressed);
 
 /*                //Parallel.ForEach(db.GetTiles(), (baseTile) =>
                 foreach (var baseTile in db.GetTiles())

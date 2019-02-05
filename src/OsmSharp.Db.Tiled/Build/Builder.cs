@@ -70,12 +70,9 @@ namespace OsmSharp.Db.Tiled.Build
             // write the indices to disk.
             var actions = new List<Action>
             {
-                () => nodeIndex.Write(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToString(),
-                    tile.X.ToString(), tile.Y.ToString() + ".nodes.idx")),
-                () => wayIndex?.Write(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToString(),
-                    tile.X.ToString(), tile.Y.ToString() + ".ways.idx")),
-                () => relationIndex?.Write(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToString(),
-                    tile.X.ToString(), tile.Y.ToString() + ".relations.idx"))
+                () => nodeIndex.Write(DatabaseCommon.PathToIndex(path, OsmGeoType.Node, tile)),
+                () => wayIndex?.Write(DatabaseCommon.PathToIndex(path, OsmGeoType.Way, tile)),
+                () => relationIndex?.Write(DatabaseCommon.PathToIndex(path, OsmGeoType.Relation, tile))
             };
             System.Threading.Tasks.Parallel.ForEach(actions, (a) => a());
             
@@ -91,7 +88,7 @@ namespace OsmSharp.Db.Tiled.Build
             List<Tile> nonEmptyTiles = null;
             Index nodeIndex = null;
             
-            var nodeFile = DatabaseCommon.BuildPathToTile(path, OsmGeoType.Node, tile, compressed);
+            var nodeFile = DatabaseCommon.PathToTile(path, OsmGeoType.Node, tile, compressed);
             if (!FileSystemFacade.FileSystem.Exists(nodeFile))
             {
                 Log.Logger.Warning("Tile {0}/{1}/{2} not found: {3}", tile.Zoom, tile.X, tile.Y,
@@ -109,7 +106,7 @@ namespace OsmSharp.Db.Tiled.Build
 
             // build the ways index.
             Index wayIndex = null;
-            var wayFile = DatabaseCommon.BuildPathToTile(path, OsmGeoType.Way, tile, compressed);
+            var wayFile = DatabaseCommon.PathToTile(path, OsmGeoType.Way, tile, compressed);
             if (FileSystemFacade.FileSystem.Exists(wayFile))
             {
                 using (var wayStream = DatabaseCommon.LoadTile(path, OsmGeoType.Way, tile, compressed))
@@ -124,7 +121,7 @@ namespace OsmSharp.Db.Tiled.Build
 
             // build the relations index.
             Index relationIndex = null;
-            var relationFile = DatabaseCommon.BuildPathToTile(path, OsmGeoType.Relation, tile, compressed);
+            var relationFile = DatabaseCommon.PathToTile(path, OsmGeoType.Relation, tile, compressed);
             if (FileSystemFacade.FileSystem.Exists(relationFile))
             {
                 using (var relationStream = DatabaseCommon.LoadTile(path, OsmGeoType.Relation, tile, compressed))
@@ -140,12 +137,9 @@ namespace OsmSharp.Db.Tiled.Build
             // write the indexes to disk.
             var actions = new List<Action>
             {
-                () => nodeIndex.Write(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToString(),
-                    tile.X.ToString(), tile.Y.ToString() + ".nodes.idx")),
-                () => wayIndex?.Write(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToString(),
-                    tile.X.ToString(), tile.Y.ToString() + ".ways.idx")),
-                () => relationIndex?.Write(FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToString(),
-                    tile.X.ToString(), tile.Y.ToString() + ".relations.idx"))
+                () => nodeIndex.Write(DatabaseCommon.PathToIndex(path, OsmGeoType.Node, tile)),
+                () => wayIndex?.Write(DatabaseCommon.PathToIndex(path, OsmGeoType.Way, tile)),
+                () => relationIndex?.Write(DatabaseCommon.PathToIndex(path, OsmGeoType.Relation, tile))
             };
             System.Threading.Tasks.Parallel.ForEach(actions, (a) => a());
 

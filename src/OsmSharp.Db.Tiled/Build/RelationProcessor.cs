@@ -182,7 +182,6 @@ namespace OsmSharp.Db.Tiled.Build
                         continue;
                     }
 
-
                     // initialize stream if needed.
                     if (stream == null)
                     {
@@ -198,12 +197,12 @@ namespace OsmSharp.Db.Tiled.Build
                 relationIndex.Add(r.Id.Value, mask);
             } while (source.MoveNext());
 
-            // flush/dispose all subtile streams.
-            foreach (var subtile in subTiles)
+            // flush/dispose all sub tile streams.
+            foreach (var subTile in subTiles)
             {
-                if (subtile.Value == null) continue;
-                subtile.Value.Flush();
-                subtile.Value.Dispose();
+                if (subTile.Value == null) continue;
+                subTile.Value.Flush();
+                subTile.Value.Dispose();
             }
 
             return relationIndex;

@@ -27,10 +27,10 @@ namespace OsmSharp.Db.Tiled.Build
             Index nodeIndex, bool compressed = false)
         { 
             // split ways.
-            var subtiles = new Dictionary<ulong, Stream>();
+            var subTiles = new Dictionary<ulong, Stream>();
             foreach (var subTile in tile.GetSubtilesAt(tile.Zoom + 2))
             {
-                subtiles.Add(subTile.LocalId, null);
+                subTiles.Add(subTile.LocalId, null);
             }
 
             // build the ways index.
@@ -62,8 +62,8 @@ namespace OsmSharp.Db.Tiled.Build
                 // add way to output(s).
                 foreach(var wayTile in tile.SubTilesForMask2(mask))
                 {
-                    // is tile a subtile.
-                    if (!subtiles.TryGetValue(wayTile.LocalId, out var stream))
+                    // is tile a sub tile.
+                    if (!subTiles.TryGetValue(wayTile.LocalId, out var stream))
                     {
                         continue;
                     }
@@ -72,7 +72,7 @@ namespace OsmSharp.Db.Tiled.Build
                     if (stream == null)
                     {
                         stream = DatabaseCommon.CreateTile(path, OsmGeoType.Way, wayTile, compressed);
-                        subtiles[wayTile.LocalId] = stream;
+                        subTiles[wayTile.LocalId] = stream;
                     }
 
                     // write way.
@@ -83,12 +83,12 @@ namespace OsmSharp.Db.Tiled.Build
                 wayIndex.Add(w.Id.Value, mask);
             } while (source.MoveNext());
 
-            // flush/dispose all subtile streams.
-            foreach (var subtile in subtiles)
+            // flush/dispose all sub tile streams.
+            foreach (var subTile in subTiles)
             {
-                if (subtile.Value == null) continue;
-                subtile.Value.Flush();
-                subtile.Value.Dispose();
+                if (subTile.Value == null) continue;
+                subTile.Value.Flush();
+                subTile.Value.Dispose();
             }
 
             return wayIndex;

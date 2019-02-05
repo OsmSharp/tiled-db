@@ -1,177 +1,50 @@
-﻿using OsmSharp.Db.Tiled.Ids;
-using OsmSharp.Db.Tiled.Indexes;
-using OsmSharp.Db.Tiled.IO;
-using OsmSharp.Db.Tiled.Tiles;
-using OsmSharp.Streams;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using OsmSharp.Db.Tiled.Collections;
-using Serilog;
+using OsmSharp.Changesets;
 
 namespace OsmSharp.Db.Tiled
 {
+    /// <summary>
+    /// A database, a collection of snapshots, diffs and branches.
+    /// </summary>
     public class Database
     {
-        private readonly string _path;
-        private readonly bool _compressed;
-        private readonly uint _zoom;
-        private const uint ZoomOffset = 2;
-        private const bool _mapped = true;
-
-        private readonly ConcurrentDictionary<uint, LRUCache<ulong, Index>> _nodeIndexesCache;
-        private readonly ConcurrentDictionary<uint, LRUCache<ulong, Index>> _wayIndexesCache;
+        private readonly DatabaseSnapshot _initial;
 
         /// <summary>
-        /// Creates a new data based on the given folder.
+        /// Creates a new database.
         /// </summary>
-        public Database(string folder, uint zoom = 12, bool compressed = true)
+        /// <param name="initial">The initial snapshot.</param>
+        public Database(DatabaseSnapshot initial)
         {
-            // TODO: verify that zoom offset leads to zoom zero from the given zoom level here.
-            // in other words, zoom level has to be exactly dividable by ZoomOffset.
-            _path = folder;
-            _compressed = compressed;
-            _zoom = zoom;
-
-            _nodeIndexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, Index>>();
-            _wayIndexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, Index>>();
+            _initial = initial;
         }
 
         /// <summary>
-        /// Gets the zoom.
+        /// Applies the given change set.
         /// </summary>
-        public uint Zoom => _zoom;
-        
-        /// <summary>
-        /// Gets the node with given id.
-        /// </summary>
-        public Node GetNode(long id)
+        /// <param name="changeSet">The changes to apply.</param>
+        /// <returns>True if applying the changes succeeded.</returns>
+        public bool ApplyChangeSet(OsmChange changeSet)
         {
-            var tile = new Tile(0, 0, 0);
-            var index = LoadIndex(OsmGeoType.Node, tile);
+            // creates a new database diff representing the given changes.
 
-            while (index != null &&
-                   index.TryGetMask(id, out var mask))
-            {
-                var subTiles = tile.SubTilesForMask2(mask);
-                var subTile = subTiles.First();
-
-                if (subTile.Zoom == _zoom)
-                { // load data and find node.
-                    var stream = DatabaseCommon.LoadTile(_path, OsmGeoType.Node, subTile, _compressed);
-                    if (stream == null)
-                    {
-                        Log.Warning($"Could not find sub tile, it should be there: {subTile}");
-                        return null;
-                    }
-                    using (stream)
-                    {
-                        var source = new OsmSharp.Streams.BinaryOsmStreamSource(stream);
-                        while (source.MoveNext(false, true, true))
-                        {
-                            var current = source.Current();
-
-                            if (current.Id == id)
-                            {
-                                return current as Node;
-                            }
-                        }
-                    }
-                }
-
-                tile = subTile;
-                index = LoadIndex(OsmGeoType.Node, tile);
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Loads the index for the given type and tile.
-        /// </summary>
-        private Index LoadIndex(OsmGeoType type, Tile tile, bool create = false)
-        {
-            if (type == OsmGeoType.Node)
-            {
-                if (!_nodeIndexesCache.TryGetValue(tile.Zoom, out var cached))
-                {
-                    cached = new LRUCache<ulong, Index>(10);
-                    _nodeIndexesCache[tile.Zoom] = cached;
-                }
-
-                if (cached.TryGetValue(tile.LocalId, out var index))
-                {
-                    return index;
-                }
-
-                index = DatabaseCommon.LoadIndex(_path, tile, type, _mapped);
-                if (create && index == null)
-                {
-                    index = new Index();
-                }
-                cached.Add(tile.LocalId, index);
-                return index;
-            }
-            else
-            {
-                if (!_wayIndexesCache.TryGetValue(tile.Zoom, out var cached))
-                {
-                    cached = new LRUCache<ulong, Index>(10);
-                    _wayIndexesCache[tile.Zoom] = cached;
-                }
-
-                if (cached.TryGetValue(tile.LocalId, out var index))
-                {
-                    return index;
-                }
-
-                index = DatabaseCommon.LoadIndex(_path, tile, type, _mapped);
-                if (create && index == null)
-                {
-                    index = new Index();
-                }
-                cached.Add(tile.LocalId, index);
-                return index;
-            }
-        }
-        
-        /// <summary>
-        /// Gets all the relevant tiles.
-        /// </summary>
-        /// <returns></returns>
-        public IEnumerable<Tile> GetTiles()
-        {
-            var basePath = FileSystemFacade.FileSystem.Combine(_path, _zoom.ToInvariantString());
-            if (!FileSystemFacade.FileSystem.DirectoryExists(basePath))
-            {
-                yield break;
-            }
-            var mask = "*.nodes.osm.bin";
-            if (_compressed) mask = mask + ".zip";
-            foreach(var xDir in FileSystemFacade.FileSystem.EnumerateDirectories(
-                basePath))
-            {
-                var xDirName = FileSystemFacade.FileSystem.DirectoryName(xDir);
-                if (!uint.TryParse(xDirName, out var x))
-                {
-                    continue;
-                }
-
-                foreach (var tile in FileSystemFacade.FileSystem.EnumerateFiles(xDir, mask))
-                {
-                    var tileName = FileSystemFacade.FileSystem.FileName(tile);
-
-                    if (!uint.TryParse(tileName.Substring(0,
-                        tileName.IndexOf('.')), out var y))
-                    {
-                        continue;
-                    }
-
-                    yield return new Tile(x, y, _zoom);
-                }
-            }
+            var latest = _initial;
+            
+            // deleting an existing object.
+            // 1. find the tile its in.
+            // 2. copy the tile.
+            // 3. remove the object from that tile.
+            
+            // adding a new object.
+            // 1. find the tile its supposed to be in.
+            // 2. copy the tile.
+            // 3. add the object to that tile.
+            
+            // updating an object.
+            // 1. delete the object.
+            // 2. add the object.
+            
+            throw new NotImplementedException();
         }
     }
 }

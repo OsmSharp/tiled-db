@@ -26,7 +26,7 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         public static Stream LoadTile(string path, OsmGeoType type, Tile tile, bool compressed = false)
         {
-            var location = DatabaseCommon.BuildPathToTile(path, type, tile, compressed);
+            var location = DatabaseCommon.PathToTile(path, type, tile, compressed);
 
             if (!FileSystemFacade.FileSystem.Exists(location))
             {
@@ -46,7 +46,7 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         public static Stream CreateTile(string path, OsmGeoType type, Tile tile, bool compressed = false)
         {
-            var location = DatabaseCommon.BuildPathToTile(path, type, tile, compressed);
+            var location = DatabaseCommon.PathToTile(path, type, tile, compressed);
 
             var fileDirectory = FileSystemFacade.FileSystem.DirectoryForFile(location);
             if (!FileSystemFacade.FileSystem.DirectoryExists(fileDirectory))
@@ -65,7 +65,7 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Builds a path to the given tile.
         /// </summary>
-        public static string BuildPathToTile(string path, OsmGeoType type, Tile tile, bool compressed = false)
+        public static string PathToTile(string path, OsmGeoType type, Tile tile, bool compressed = false)
         {
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString());
@@ -139,18 +139,41 @@ namespace OsmSharp.Db.Tiled
         }
         
         /// <summary>
+        /// Creates a tile.
+        /// </summary>
+        public static string PathToIndex(string path, OsmGeoType type, Tile tile)
+        {
+            var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
+                tile.X.ToInvariantString());
+            switch (type)
+            {
+                case OsmGeoType.Node:
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".nodes.idx");
+                    break;
+                case OsmGeoType.Way:
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".ways.idx");
+                    break;
+                default:
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".relations.idx");
+                    break;
+            }
+            return location;
+        }
+        
+        /// <summary>
         /// Loads an index for the given tile from disk (if any).
         /// </summary>
         public static Index LoadIndex(string path, Tile tile, OsmGeoType type, bool mapped = false)
         {
             var extension = ".nodes.idx";
-            if (type == OsmGeoType.Way)
+            switch (type)
             {
-                extension = ".ways.idx";
-            }
-            else if (type == OsmGeoType.Relation)
-            {
-                extension = ".relations.idx";
+                case OsmGeoType.Way:
+                    extension = ".ways.idx";
+                    break;
+                case OsmGeoType.Relation:
+                    extension = ".relations.idx";
+                    break;
             }
 
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
@@ -168,6 +191,50 @@ namespace OsmSharp.Db.Tiled
             using (var stream = FileSystemFacade.FileSystem.OpenRead(location))
             {
                 return Index.Deserialize(stream);
+            }
+        }
+        
+        /// <summary>
+        /// Creates a tile.
+        /// </summary>
+        public static string PathToDiffIndex(string path, OsmGeoType type, Tile tile)
+        {
+            var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
+                tile.X.ToInvariantString());
+            switch (type)
+            {
+                case OsmGeoType.Node:
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".nodes.idx.diff");
+                    break;
+                case OsmGeoType.Way:
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".ways.idx.diff");
+                    break;
+                default:
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".relations.idx.diff");
+                    break;
+            }
+            return location;
+        }
+        
+        /// <summary>
+        /// Loads a diff index for the given tile from disk (if any).
+        /// </summary>
+        public static DiffIndex LoadDiffIndex(string path, Tile tile, OsmGeoType type, bool mapped = false)
+        {
+            var location = DatabaseCommon.PathToDiffIndex(path, type, tile);
+            if (!FileSystemFacade.FileSystem.Exists(location))
+            {
+                return null;
+            }
+
+            if (mapped)
+            {
+                var stream = FileSystemFacade.FileSystem.OpenRead(location);
+                return DiffIndex.Deserialize(stream, ArrayProfile.NoCache);
+            }
+            using (var stream = FileSystemFacade.FileSystem.OpenRead(location))
+            {
+                return DiffIndex.Deserialize(stream);
             }
         }
     }
