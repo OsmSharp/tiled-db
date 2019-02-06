@@ -332,7 +332,7 @@ namespace OsmSharp.Db.Tiled
 //            stream.Seek(stream.Length, SeekOrigin.End);
 //            return stream;
 //        }
-        
+
         /// <summary>
         /// Opens a stream to append to a data tile. Creates the tile if it doesn't exist yet.
         /// </summary>
@@ -348,14 +348,7 @@ namespace OsmSharp.Db.Tiled
             {
                 FileSystemFacade.FileSystem.CreateDirectory(parentPath);
             }
-            if (!FileSystemFacade.FileSystem.Exists(location))
-            {
-                return FileSystemFacade.FileSystem.Open(location, FileMode.Create);
-            }
-
-            var stream = FileSystemFacade.FileSystem.OpenWrite(location);
-            stream.Seek(stream.Length, SeekOrigin.End);
-            return stream;
+            return FileSystemFacade.FileSystem.Open(location, FileMode.Append);
         }
     }
 }

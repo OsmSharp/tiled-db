@@ -2,6 +2,7 @@
 using System.IO;
 using Serilog;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Ids;
 using OsmSharp.Db.Tiled.Tiles;
@@ -20,7 +21,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/wechel.osm.pbf",
+                    @"/data/work/data/OSM/belgium/belgium-190205.osm.pbf",
                     @"/data/work/anyways/data/test/tilesdb/",
                     @"14"
                 };
@@ -68,16 +69,19 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     Log.Fatal("Expected 4 arguments: inputfile db zoom");
                     return;
                 }
+
                 if (!File.Exists(args[0]))
                 {
                     Log.Fatal("Input file not found: {0}", args[0]);
                     return;
                 }
+
                 if (!Directory.Exists(args[1]))
                 {
                     Log.Fatal("Db directory doesn't exist: {0}", args[1]);
                     return;
                 }
+
                 if (!uint.TryParse(args[2], out var zoom))
                 {
                     Log.Fatal("Can't parse zoom: {0}", args[2]);
@@ -100,7 +104,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 {
                     Log.Information("The tiled DB already exists, reusing...");
                 }
-                
+
                 // create a database object that can read individual objects.
                 Log.Information($"Loading database: {args[1]}");
                 var db = new DatabaseSnapshot(args[1], new DatabaseMeta()
@@ -135,56 +139,100 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
 //                }
 //                var span = new TimeSpan(DateTime.Now.Ticks - ticks);
 //                Log.Information($"Writing tiles took: {span}");
+//
+//                // tests a single deletion.
+//                Log.Information($"Deleted a way and fetching the resulting tile.");
+//                var diff = db.ApplyChangeset(new OsmChange()
+//                {
+//                    Delete = new OsmGeo[]
+//                    {
+//                        new Way()
+//                        {
+//                            Id = 76586523
+//                        }
+//                    }
+//                });
+//                var tile = diff.GetTile(new Tile(8410, 5465, 14));
+//                using (var stream = File.Open("diff1.osm", FileMode.Create))
+//                {
+//                    var xmlTarget = new XmlOsmStreamTarget(stream);
+//                    xmlTarget.Initialize();
+//                    xmlTarget.RegisterSource(tile);
+//                    xmlTarget.Pull();
+//                    xmlTarget.Close();
+//                }
+//
+//                // tests a single creation.
+//                Log.Information($"Creating a node and fetching the resulting tile.");
+//                diff = db.ApplyChangeset(new OsmChange()
+//                {
+//                    Create = new OsmGeo[]
+//                    {
+//                        new Node()
+//                        {
+//                            Id = -1,
+//                            ChangeSetId = -1,
+//                            Longitude = 4.8023101687431335,
+//                            Latitude = 51.268242070542804,
+//                            Tags = new TagsCollection(
+//                                new Tag("barrier", "bollard")),
+//                            Version = 1,
+//                            TimeStamp = DateTime.Now,
+//                            UserId = -1,
+//                            UserName = "Ben"
+//                        }
+//                    }
+//                });
+//                tile = diff.GetTile(new Tile(8410, 5465, 14));
+//                using (var stream = File.Open("diff2.osm", FileMode.Create))
+//                {
+//                    var xmlTarget = new XmlOsmStreamTarget(stream);
+//                    xmlTarget.Initialize();
+//                    xmlTarget.RegisterSource(tile);
+//                    xmlTarget.Pull();
+//                    xmlTarget.Close();
+//                }
+//
+//                // test a single modify.
+//                Log.Information($"Modifying a node and fetching the resulting tile.");
+//                diff = db.ApplyChangeset(new OsmChange()
+//                {
+//                    Modify = new OsmGeo[]
+//                    {
+//                        new Node()
+//                        {
+//                            Id = 902643939,
+//                            ChangeSetId = int.MaxValue,
+//                            Longitude = 4.8023101687431335,
+//                            Latitude = 51.268242070542804,
+//                            Tags = null,
+//                            Version = 6,
+//                            TimeStamp = DateTime.Now,
+//                            UserId = 1,
+//                            UserName = "Ben"
+//                        }
+//                    }
+//                });
+//                tile = diff.GetTile(new Tile(8410, 5465, 14));
+//                using (var stream = File.Open("diff3.osm", FileMode.Create))
+//                {
+//                    var xmlTarget = new XmlOsmStreamTarget(stream);
+//                    xmlTarget.Initialize();
+//                    xmlTarget.RegisterSource(tile);
+//                    xmlTarget.Pull();
+//                    xmlTarget.Close();
+//                }
 
-                var diff1 = db.ApplyChangeset(new OsmChange()
+                // apply a daily changeset.
+                OsmChange osmChange;
+                using (var stream = File.OpenRead(@"/data/work/data/OSM/belgium/daily/20190206.osc"))
                 {
-                    Delete = new OsmGeo[]
-                    {
-                        new Way()
-                        {
-                            Id = 76586523
-                        }
-                    }
-                });
-
-                var tile = diff1.GetTile(new Tile(8410, 5465, 14));
-                using (var stream = File.Open("diff1.osm", FileMode.Create))
-                {
-                    var xmlTarget = new XmlOsmStreamTarget(stream);
-                    xmlTarget.Initialize();
-                    xmlTarget.RegisterSource(tile);
-                    xmlTarget.Pull();
-                    xmlTarget.Close();
+                    var serializer = new XmlSerializer(typeof(OsmChange));
+                    osmChange = serializer.Deserialize(
+                        new StreamReader(stream)) as OsmChange;
                 }
 
-                var diff2 = db.ApplyChangeset(new OsmChange()
-                {
-                    Create = new OsmGeo[]
-                    {
-                        new Node()
-                        {
-                            Id = -1,
-                            ChangeSetId = -1,
-                            Longitude = 4.8023101687431335,
-                            Latitude = 51.268242070542804,
-                            Tags = new TagsCollection(
-                                new Tag("barrier", "bollard")),
-                            Version = 1,
-                            TimeStamp = DateTime.Now,
-                            UserId = -1,
-                            UserName = "Ben"
-                        }
-                    }
-                });
-                tile = diff2.GetTile(new Tile(8410, 5465, 14));
-                using (var stream = File.Open("diff2.osm", FileMode.Create))
-                {
-                    var xmlTarget = new XmlOsmStreamTarget(stream);
-                    xmlTarget.Initialize();
-                    xmlTarget.RegisterSource(tile);
-                    xmlTarget.Pull();
-                    xmlTarget.Close();
-                }
+                var daily = db.ApplyChangeset(osmChange);
             }
             catch (Exception e)
             {

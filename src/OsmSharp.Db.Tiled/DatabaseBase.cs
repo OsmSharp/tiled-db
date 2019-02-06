@@ -83,6 +83,11 @@ namespace OsmSharp.Db.Tiled
 
                 if (cached.TryGetValue(tile.LocalId, out var index))
                 {
+                    if (index == null && create)
+                    {
+                        index = new Index();
+                        cached.Add(tile.LocalId, index);
+                    }
                     return index;
                 }
 
@@ -104,6 +109,11 @@ namespace OsmSharp.Db.Tiled
 
                 if (cached.TryGetValue(tile.LocalId, out var index))
                 {
+                    if (index == null && create)
+                    {
+                        index = new Index();
+                        cached.Add(tile.LocalId, index);
+                    }
                     return index;
                 }
 
