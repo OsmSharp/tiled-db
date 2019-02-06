@@ -43,7 +43,11 @@ The structure of a snapshot consists of three different file types:
 
 The structure of a diff consists of three different file types, a bit different from snapshots because they need to be able to represents deletes.
 
-- `{y}.{type}.idx.diff`: Index files per tile indicating where objects are in the sub tiles but with an additional bit indicating deletions. An object not in the index or an index that doesn't exist means that nothing has changed.
+- `{y}.{type}.idx.delete`: Index files per tile indicating where objects are in the sub tiles but with an additional bit indicating deletions. An object not in the index or an index that doesn't exist means that nothing has changed.
 - `{y}.{type}.osm.bin{.zip}`: An actual tile with data. This is exactly the same format as in the snapshots but it contains only updated/new data.
 - `{id}.{type}.osm.bin{.zip}`: A single object that doesn't belong in any tile. This is exactly the same format as in the snapshots but it contains only updated/new data.
+
+### Applying changes
+
+Changesets can be applied to any _view_, resulting in a new _diff_. 
 

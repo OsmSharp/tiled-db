@@ -63,6 +63,13 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
             return Path.Combine(paths);
         }
 
+        public string ParentDirectory(string path)
+        {
+            var dirInfo = new DirectoryInfo(path);
+
+            return dirInfo.Parent.FullName;
+        }
+
         public void CreateDirectory(string directory)
         {
             var dirs = this.Get(directory);

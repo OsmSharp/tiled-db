@@ -8,15 +8,6 @@ namespace OsmSharp.Db.Tiled
     /// </summary>
     public static class Extensions
     {
-        public static int CompareIdAndVersion(this OsmGeo osmGeo, OsmGeo other)
-        {
-            if (osmGeo.Id == other.Id)
-            {
-                return osmGeo.Version.Value.CompareTo(osmGeo.Version.Value);
-            }
-            return osmGeo.Id.Value.CompareTo(other.Id.Value);
-        }
-        
         /// <summary>
         /// Ensures that this <see cref="ArrayBase{T}"/> has room for at least
         /// the given number of elements, resizing if not.

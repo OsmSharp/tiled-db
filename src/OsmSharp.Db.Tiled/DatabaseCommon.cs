@@ -63,6 +63,14 @@ namespace OsmSharp.Db.Tiled
         }
 
         /// <summary>
+        /// Builds a path to the database meta file.
+        /// </summary>
+        public static string PathToMeta(string path)
+        {
+            return FileSystemFacade.FileSystem.Combine(path, "meta.bin");
+        }
+
+        /// <summary>
         /// Builds a path to the given tile.
         /// </summary>
         public static string PathToTile(string path, OsmGeoType type, Tile tile, bool compressed = false)
@@ -195,47 +203,85 @@ namespace OsmSharp.Db.Tiled
         }
         
         /// <summary>
-        /// Creates a tile.
+        /// Builds a path to a deleted index.
         /// </summary>
-        public static string PathToDiffIndex(string path, OsmGeoType type, Tile tile)
+        public static string PathToDeletedIndex(string path, OsmGeoType type, Tile tile)
         {
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString());
             switch (type)
             {
                 case OsmGeoType.Node:
-                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".nodes.idx.diff");
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".nodes.idx.deleted");
                     break;
                 case OsmGeoType.Way:
-                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".ways.idx.diff");
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".ways.idx.deleted");
                     break;
                 default:
-                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".relations.idx.diff");
+                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".relations.idx.deleted");
                     break;
             }
             return location;
         }
         
         /// <summary>
-        /// Loads a diff index for the given tile from disk (if any).
+        /// Opens a stream to append to a deleted index. Creates the index if it doesn't exist yet.
         /// </summary>
-        public static DiffIndex LoadDiffIndex(string path, Tile tile, OsmGeoType type, bool mapped = false)
+        /// <param name="path">The path.</param>
+        /// <param name="type">The object type.</param>
+        /// <param name="tile">The tile.</param>
+        /// <returns>The stream.</returns>
+        internal static Stream OpenAppendStreamDeletedIndex(string path, OsmGeoType type, Tile tile)
         {
-            var location = DatabaseCommon.PathToDiffIndex(path, type, tile);
-            if (!FileSystemFacade.FileSystem.Exists(location))
+            var indexPath = DatabaseCommon.PathToDeletedIndex(path, type, tile);
+
+            var parentPath = FileSystemFacade.FileSystem.ParentDirectory(indexPath);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
             {
-                return null;
+                FileSystemFacade.FileSystem.CreateDirectory(parentPath);
+            }
+            
+            return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Append);
+        }
+        
+        /// <summary>
+        /// Opens a stream to append to an index. Creates the index if it doesn't exist yet.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="type">The object type.</param>
+        /// <param name="tile">The tile.</param>
+        /// <returns>The stream.</returns>
+        internal static Stream OpenAppendStreamIndex(string path, OsmGeoType type, Tile tile)
+        {
+            var indexPath = DatabaseCommon.PathToIndex(path, type, tile);
+            if (!FileSystemFacade.FileSystem.Exists(indexPath))
+            {
+                return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Create);
             }
 
-            if (mapped)
+            var stream = FileSystemFacade.FileSystem.OpenWrite(indexPath);
+            stream.Seek(stream.Length, SeekOrigin.End);
+            return stream;
+        }
+        
+        /// <summary>
+        /// Opens a stream to append to a data tile. Creates the tile if it doesn't exist yet.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="type">The object type.</param>
+        /// <param name="tile">The tile.</param>
+        /// <returns>The stream.</returns>
+        internal static Stream OpenAppendStreamTile(string path, OsmGeoType type, Tile tile)
+        {
+            var indexPath = DatabaseCommon.PathToTile(path, type, tile, false);
+            if (!FileSystemFacade.FileSystem.Exists(indexPath))
             {
-                var stream = FileSystemFacade.FileSystem.OpenRead(location);
-                return DiffIndex.Deserialize(stream, ArrayProfile.NoCache);
+                return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Create);
             }
-            using (var stream = FileSystemFacade.FileSystem.OpenRead(location))
-            {
-                return DiffIndex.Deserialize(stream);
-            }
+
+            var stream = FileSystemFacade.FileSystem.OpenWrite(indexPath);
+            stream.Seek(stream.Length, SeekOrigin.End);
+            return stream;
         }
     }
 }

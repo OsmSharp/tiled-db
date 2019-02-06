@@ -2,8 +2,10 @@
 using System.IO;
 using Serilog;
 using System.Collections.Generic;
+using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Ids;
 using OsmSharp.Logging;
+using OsmSharp.Streams;
 
 namespace OsmSharp.Db.Tiled.Tests.Functional
 {
@@ -16,10 +18,9 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/belgium-latest.osm.pbf",
-                    @"/data/work/openplannerteam/data/tilesdb-belgium/",
-                    @"14",
-                    @"/data/work/openplannerteam/data/routabletiles/",
+                    @"/data/work/data/OSM/wechel.osm.pbf",
+                    @"/data/work/anyways/data/test/tilesdb/",
+                    @"14"
                 };
             }
 //#endif
@@ -60,9 +61,9 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             try
             {
                 // validate arguments.
-                if (args.Length < 4)
+                if (args.Length < 3)
                 {
-                    Log.Fatal("Expected 4 arguments: inputfile cache zoom routablestiles");
+                    Log.Fatal("Expected 4 arguments: inputfile db zoom");
                     return;
                 }
                 if (!File.Exists(args[0]))
@@ -72,7 +73,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 }
                 if (!Directory.Exists(args[1]))
                 {
-                    Log.Fatal("Cache directory doesn't exist: {0}", args[1]);
+                    Log.Fatal("Db directory doesn't exist: {0}", args[1]);
                     return;
                 }
                 if (!uint.TryParse(args[2], out var zoom))
@@ -80,14 +81,8 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     Log.Fatal("Can't parse zoom: {0}", args[2]);
                     return;
                 }
-                if (!Directory.Exists(args[3]))
-                {
-                    Log.Fatal("Output directory doesn't exist: {0}", args[3]);
-                    return;
-                }
 
                 var ticks = DateTime.Now.Ticks;
-                bool compressed = true;
                 if (!File.Exists(Path.Combine(args[1], "0", "0", "0.nodes.idx")))
                 {
                     Log.Information("The tiled DB doesn't exist yet, rebuilding...");
@@ -97,7 +92,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     progress.RegisterSource(source);
 
                     // splitting tiles and writing indexes.
-                    Build.Builder.Build(progress, args[1], zoom, compressed);
+                    Build.Builder.Build(progress, args[1], zoom);
                 }
                 else
                 {
@@ -106,14 +101,18 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 
                 // create a database object that can read individual objects.
                 Log.Information($"Loading database: {args[1]}");
-                var db = new DatabaseSnapshot(args[1], zoom: zoom, compressed: compressed);
+                var db = new DatabaseSnapshot(args[1], new DatabaseMeta()
+                {
+                    Base = null,
+                    Zoom = zoom
+                });
 
-/*                //Parallel.ForEach(db.GetTiles(), (baseTile) =>
+                var testOutput = "test-output";
                 foreach (var baseTile in db.GetTiles())
                 {
                     Log.Information($"Base tile found: {baseTile}");
 
-                    var file = Path.Combine(args[3], baseTile.Zoom.ToString(), baseTile.X.ToString(),
+                    var file = Path.Combine(testOutput, baseTile.Zoom.ToString(), baseTile.X.ToString(),
                         baseTile.Y.ToString(), "index.json");
                     var fileInfo = new FileInfo(file);
                     if (fileInfo.Directory != null && !fileInfo.Directory.Exists)
@@ -123,17 +122,28 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
 
                     using (var stream = File.Open(file, FileMode.Create))
                     {
-                        var target = new TileOsmStreamTarget(stream);
+                        var target = new OsmSharp.Streams.BinaryOsmStreamTarget(stream);
                         target.Initialize();
 
-                        target.RegisterSource(db.GetRoutableTile(baseTile));
+                        target.RegisterSource(db.GetTile(baseTile));
 
                         target.Pull();
                         target.Close();
                     }
                 }
                 var span = new TimeSpan(DateTime.Now.Ticks - ticks);
-                Log.Information($"Writing tiles took: {span}");*/
+                Log.Information($"Writing tiles took: {span}");
+
+                var diff1 = db.ApplyChangeset(new OsmChange()
+                {
+                    Delete = new OsmGeo[]
+                    {
+                        new Way()
+                        {
+                            Id = 76586523
+                        }
+                    }
+                });
             }
             catch (Exception e)
             {

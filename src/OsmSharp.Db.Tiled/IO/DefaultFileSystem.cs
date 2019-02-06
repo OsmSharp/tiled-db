@@ -71,5 +71,12 @@ namespace OsmSharp.Db.Tiled.IO
         {
             Directory.CreateDirectory(directory);
         }
+
+        public string ParentDirectory(string path)
+        {
+            var dirInfo = new DirectoryInfo(path);
+
+            return dirInfo.Parent.FullName;
+        }
     }
 }

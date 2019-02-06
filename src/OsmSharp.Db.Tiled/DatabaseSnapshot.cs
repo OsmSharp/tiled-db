@@ -8,7 +8,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using OsmSharp.Changesets;
+using OsmSharp.Db.Tiled.Changesets;
 using OsmSharp.Db.Tiled.Collections;
+using OsmSharp.IO.PBF;
 using Serilog;
 
 namespace OsmSharp.Db.Tiled
@@ -24,8 +27,8 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Creates a new data based on the given folder.
         /// </summary>
-        public DatabaseSnapshot(string path, uint zoom = 14, bool compressed = true, bool mapped = true)
-            : base(path, mapped, zoom, compressed)
+        public DatabaseSnapshot(string path, DatabaseMeta meta, bool mapped = true)
+            : base(path, meta, mapped)
         {
             
         }
@@ -66,28 +69,17 @@ namespace OsmSharp.Db.Tiled
                 }
             }
         }
-        
-        /// <summary>
-        /// Gets the object with the given type and id.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="id">The id.</param>
-        /// <returns>The object.</returns>
-        public OsmGeo Get(OsmGeoType type, long id)
-        {
-            // in a snapshot a local is all we need.
+
+        /// <inheritdoc/>
+        public override OsmGeo Get(OsmGeoType type, long id)
+        { // in a snapshot the local tiles contain all data.
             return this.GetLocal(type, id);
         }
 
-        /// <summary>
-        /// Gets the data in the given tile.
-        /// </summary>
-        /// <param name="tile"></param>
-        /// <returns></returns>
-        public IEnumerable<OsmGeo> GetTile(Tile tile)
-        {
-            // in a snapshot a local is all we need.
-            return this.GetLocalTile(tile);
+        /// <inheritdoc/>
+        public override IEnumerable<OsmGeo> GetTile(Tile tile, OsmGeoType type)
+        { // in a snapshot the local tiles contain all data.
+            return this.GetLocalTile(tile, type);
         }
     }
 }

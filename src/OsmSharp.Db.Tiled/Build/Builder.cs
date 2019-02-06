@@ -18,7 +18,7 @@ namespace OsmSharp.Db.Tiled.Build
         /// <summary>
         /// Builds a new database and write the structure to the given path.
         /// </summary>
-        public static void Build(OsmStreamSource source, string path, uint maxZoom = 12, bool compressed = false)
+        public static void Build(OsmStreamSource source, string path, uint maxZoom = 12, bool compressed = true)
         {
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
             if (path == null) { throw new ArgumentNullException(nameof(path)); }

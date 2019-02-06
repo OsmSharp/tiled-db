@@ -70,5 +70,12 @@ namespace OsmSharp.Db.Tiled.IO
         /// Combines an array of strings into a path.
         /// </summary>
         string Combine(params string[] paths);
+
+        /// <summary>
+        /// Returns the parent directory of the given directory.
+        /// </summary>
+        /// <param name="path">The directory.</param>
+        /// <returns>The parent directory.</returns>
+        string ParentDirectory(string path);
     }
 }
