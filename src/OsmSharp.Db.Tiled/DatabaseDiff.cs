@@ -51,16 +51,9 @@ namespace OsmSharp.Db.Tiled
             if (tile.Zoom != this.Zoom) throw new ArgumentException("Tile doesn't have the correct zoom level.");
             
             // get the deleted index if any.
-            var deletedIndexPath = DatabaseCommon.PathToDeletedIndex(this.Path, type, tile);
-            DeletedIndex deletedIndex = null;
-            if (FileSystemFacade.FileSystem.Exists(deletedIndexPath))
-            {
-                using (var stream = FileSystemFacade.FileSystem.OpenRead(deletedIndexPath))
-                {
-                    deletedIndex = DeletedIndex.Deserialize(stream);
-                }
-            }
+            var deletedIndex = DatabaseCommon.LoadDeletedIndex(this.Path, tile, type);
 
+            // enumerate all data in tile.
             using (var localData = this.GetLocalTile(tile, type).GetEnumerator())
             using (var baseData = this._baseView.GetTile(tile, type).GetEnumerator())
             {
@@ -129,7 +122,7 @@ namespace OsmSharp.Db.Tiled
                 switch (type)
                 {
                     case OsmGeoType.Node:
-                        if (nodeIndex == null) nodeIndex = LoadIndex(type, tile);
+                        if (nodeIndex == null) nodeIndex = LoadIndex(tile, type);
                         if (nodeIndex != null &&
                             nodeIndex.TryGetMask(id, out var nodeMask))
                         {
@@ -138,7 +131,7 @@ namespace OsmSharp.Db.Tiled
 
                         break;
                     case OsmGeoType.Way:
-                        if (wayIndex == null) wayIndex = LoadIndex(type, tile);
+                        if (wayIndex == null) wayIndex = LoadIndex(tile, type);
                         if (wayIndex != null &&
                             wayIndex.TryGetMask(id, out var wayMask))
                         {
@@ -147,7 +140,7 @@ namespace OsmSharp.Db.Tiled
 
                         break;
                     case OsmGeoType.Relation:
-                        if (relationIndex == null) relationIndex = LoadIndex(type, tile);
+                        if (relationIndex == null) relationIndex = LoadIndex(tile, type);
                         if (relationIndex != null &&
                             relationIndex.TryGetMask(id, out var relationMask))
                         {
@@ -187,7 +180,7 @@ namespace OsmSharp.Db.Tiled
                             switch (type)
                             {
                                 case OsmGeoType.Node:
-                                    if (nodeIndex == null) nodeIndex = LoadIndex(type, currentTile);
+                                    if (nodeIndex == null) nodeIndex = LoadIndex(currentTile, type);
                                     if (nodeIndex != null &&
                                         nodeIndex.TryGetMask(id, out var nodeMask))
                                     {
@@ -195,7 +188,7 @@ namespace OsmSharp.Db.Tiled
                                     }
                                     break;
                                 case OsmGeoType.Way:
-                                    if (wayIndex == null) wayIndex = LoadIndex(type, currentTile);
+                                    if (wayIndex == null) wayIndex = LoadIndex(currentTile, type);
                                     if (wayIndex != null &&
                                         wayIndex.TryGetMask(id, out var wayMask))
                                     {
@@ -203,7 +196,7 @@ namespace OsmSharp.Db.Tiled
                                     }
                                     break;
                                 case OsmGeoType.Relation:
-                                    if (relationIndex == null) relationIndex = LoadIndex(type, currentTile);
+                                    if (relationIndex == null) relationIndex = LoadIndex(currentTile, type);
                                     if (relationIndex != null &&
                                         relationIndex.TryGetMask(id, out var relationMask))
                                     {
@@ -240,10 +233,17 @@ namespace OsmSharp.Db.Tiled
             var tiles = this.GetTilesFor(new[] {(type, id)});
             var dataTiles = tiles[tiles.Count - 1];
 
+            // update the deleted index for each tile.
             foreach (var dataTile in dataTiles)
             {
-                var deletedIndexStream = DatabaseCommon.OpenAppendStreamDeletedIndex(this.Path, type, dataTile.tile);
-                deletedIndexStream.AppendToDeletedIndex(id);
+                // load index.
+                var deletedIndex = DatabaseCommon.LoadDeletedIndex(this.Path, dataTile.tile, type) ?? new DeletedIndex();
+
+                // add id.
+                deletedIndex.Add(id);
+                
+                // save index.
+                DatabaseCommon.SaveDeletedIndex(this.Path, dataTile.tile, type, deletedIndex);
             }
         }
 
@@ -288,10 +288,9 @@ namespace OsmSharp.Db.Tiled
             {
                 foreach (var (tile, mask) in tiles[l])
                 {
-                    using (var stream = DatabaseCommon.OpenAppendStreamIndex(this.Path, osmGeo.Type, tile))
-                    {
-                        stream.AppendToIndex(osmGeo.Id.Value, mask);
-                    }
+                    var index = this.LoadIndex(tile, osmGeo.Type, true);
+                    index.Add(osmGeo.Id.Value, mask);
+                    this.SaveIndex(tile, osmGeo.Type, index);
                 }
             }
             

@@ -203,9 +203,78 @@ namespace OsmSharp.Db.Tiled
         }
         
         /// <summary>
+        /// Saves an index for the given tile to disk.
+        /// </summary>
+        public static void SaveIndex(string path, Tile tile, OsmGeoType type, Index index)
+        {
+            var extension = ".nodes.idx";
+            switch (type)
+            {
+                case OsmGeoType.Way:
+                    extension = ".ways.idx";
+                    break;
+                case OsmGeoType.Relation:
+                    extension = ".relations.idx";
+                    break;
+            }
+
+            var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
+                tile.X.ToInvariantString(), tile.Y.ToInvariantString() + extension);
+            var parentPath = FileSystemFacade.FileSystem.ParentDirectory(location);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
+            {
+                FileSystemFacade.FileSystem.CreateDirectory(parentPath);
+            }
+            using (var stream = FileSystemFacade.FileSystem.Open(location, FileMode.Create))
+            {
+                index.Serialize(stream);
+            }
+        }
+        
+        /// <summary>
+        /// Loads a deleted index for the given tile from disk (if any).
+        /// </summary>
+        internal static DeletedIndex LoadDeletedIndex(string path, Tile tile, OsmGeoType type, bool mapped = false)
+        {
+            var location = DatabaseCommon.PathToDeletedIndex(path, tile, type);
+            if (!FileSystemFacade.FileSystem.Exists(location))
+            {
+                return null;
+            }
+
+            if (mapped)
+            {
+                var stream = FileSystemFacade.FileSystem.OpenRead(location);
+                return DeletedIndex.Deserialize(stream, ArrayProfile.NoCache);
+            }
+            using (var stream = FileSystemFacade.FileSystem.OpenRead(location))
+            {
+                return DeletedIndex.Deserialize(stream);
+            }
+        }
+
+        /// <summary>
+        /// Saves a deleted index for the given tile to disk.
+        /// </summary>
+        internal static void SaveDeletedIndex(string path, Tile tile, OsmGeoType type, DeletedIndex deletedIndex)
+        {
+            var location = DatabaseCommon.PathToDeletedIndex(path, tile, type);
+            var parentPath = FileSystemFacade.FileSystem.ParentDirectory(location);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
+            {
+                FileSystemFacade.FileSystem.CreateDirectory(parentPath);
+            }
+
+            using (var stream = FileSystemFacade.FileSystem.Open(location, FileMode.Create))
+            {
+                deletedIndex.Serialize(stream);
+            }
+        }
+
+        /// <summary>
         /// Builds a path to a deleted index.
         /// </summary>
-        public static string PathToDeletedIndex(string path, OsmGeoType type, Tile tile)
+        public static string PathToDeletedIndex(string path, Tile tile, OsmGeoType type)
         {
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString());
@@ -224,45 +293,45 @@ namespace OsmSharp.Db.Tiled
             return location;
         }
         
-        /// <summary>
-        /// Opens a stream to append to a deleted index. Creates the index if it doesn't exist yet.
-        /// </summary>
-        /// <param name="path">The path.</param>
-        /// <param name="type">The object type.</param>
-        /// <param name="tile">The tile.</param>
-        /// <returns>The stream.</returns>
-        internal static Stream OpenAppendStreamDeletedIndex(string path, OsmGeoType type, Tile tile)
-        {
-            var indexPath = DatabaseCommon.PathToDeletedIndex(path, type, tile);
-
-            var parentPath = FileSystemFacade.FileSystem.ParentDirectory(indexPath);
-            if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
-            {
-                FileSystemFacade.FileSystem.CreateDirectory(parentPath);
-            }
-            
-            return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Append);
-        }
+//        /// <summary>
+//        /// Opens a stream to append to a deleted index. Creates the index if it doesn't exist yet.
+//        /// </summary>
+//        /// <param name="path">The path.</param>
+//        /// <param name="type">The object type.</param>
+//        /// <param name="tile">The tile.</param>
+//        /// <returns>The stream.</returns>
+//        internal static Stream OpenAppendStreamDeletedIndex(string path, OsmGeoType type, Tile tile)
+//        {
+//            var indexPath = DatabaseCommon.PathToDeletedIndex(path, type, tile);
+//
+//            var parentPath = FileSystemFacade.FileSystem.ParentDirectory(indexPath);
+//            if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
+//            {
+//                FileSystemFacade.FileSystem.CreateDirectory(parentPath);
+//            }
+//            
+//            return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Append);
+//        }
         
-        /// <summary>
-        /// Opens a stream to append to an index. Creates the index if it doesn't exist yet.
-        /// </summary>
-        /// <param name="path">The path.</param>
-        /// <param name="type">The object type.</param>
-        /// <param name="tile">The tile.</param>
-        /// <returns>The stream.</returns>
-        internal static Stream OpenAppendStreamIndex(string path, OsmGeoType type, Tile tile)
-        {
-            var indexPath = DatabaseCommon.PathToIndex(path, type, tile);
-            if (!FileSystemFacade.FileSystem.Exists(indexPath))
-            {
-                return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Create);
-            }
-
-            var stream = FileSystemFacade.FileSystem.OpenWrite(indexPath);
-            stream.Seek(stream.Length, SeekOrigin.End);
-            return stream;
-        }
+//        /// <summary>
+//        /// Opens a stream to append to an index. Creates the index if it doesn't exist yet.
+//        /// </summary>
+//        /// <param name="path">The path.</param>
+//        /// <param name="type">The object type.</param>
+//        /// <param name="tile">The tile.</param>
+//        /// <returns>The stream.</returns>
+//        internal static Stream OpenAppendStreamIndex(string path, OsmGeoType type, Tile tile)
+//        {
+//            var indexPath = DatabaseCommon.PathToIndex(path, type, tile);
+//            if (!FileSystemFacade.FileSystem.Exists(indexPath))
+//            {
+//                return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Create);
+//            }
+//
+//            var stream = FileSystemFacade.FileSystem.OpenWrite(indexPath);
+//            stream.Seek(stream.Length, SeekOrigin.End);
+//            return stream;
+//        }
         
         /// <summary>
         /// Opens a stream to append to a data tile. Creates the tile if it doesn't exist yet.
@@ -273,13 +342,18 @@ namespace OsmSharp.Db.Tiled
         /// <returns>The stream.</returns>
         internal static Stream OpenAppendStreamTile(string path, OsmGeoType type, Tile tile)
         {
-            var indexPath = DatabaseCommon.PathToTile(path, type, tile, false);
-            if (!FileSystemFacade.FileSystem.Exists(indexPath))
+            var location = DatabaseCommon.PathToTile(path, type, tile, false);
+            var parentPath = FileSystemFacade.FileSystem.ParentDirectory(location);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
             {
-                return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Create);
+                FileSystemFacade.FileSystem.CreateDirectory(parentPath);
+            }
+            if (!FileSystemFacade.FileSystem.Exists(location))
+            {
+                return FileSystemFacade.FileSystem.Open(location, FileMode.Create);
             }
 
-            var stream = FileSystemFacade.FileSystem.OpenWrite(indexPath);
+            var stream = FileSystemFacade.FileSystem.OpenWrite(location);
             stream.Seek(stream.Length, SeekOrigin.End);
             return stream;
         }

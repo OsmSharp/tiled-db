@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using OsmSharp.Db.Tiled.Collections.Sorting;
 using Reminiscence.Arrays;
 using Reminiscence.IO;
 using Reminiscence.IO.Streams;
@@ -34,6 +35,7 @@ namespace OsmSharp.Db.Tiled.Indexes
         }
 
         private long _pointer = 0;
+        private bool _sorted = false;
 
         /// <summary>
         /// Returns true if the data in this index wasn't saved to disk.
@@ -68,6 +70,23 @@ namespace OsmSharp.Db.Tiled.Indexes
         }
 
         /// <summary>
+        /// Sorts this index.
+        /// </summary>
+        private void Sort()
+        {
+            if (_sorted) return;
+            
+            QuickSort.Sort(i => _data[i],
+                (i1, i2) =>
+                {
+                    var t = _data[i1];
+                    _data[i1] = _data[i2];
+                    _data[i2] = t;
+                }, 0, _pointer - 1);
+            _sorted = true;
+        }
+
+        /// <summary>
         /// Returns true if the given id in the index.
         /// </summary>
         public bool Contains(long id)
@@ -87,6 +106,7 @@ namespace OsmSharp.Db.Tiled.Indexes
         public long Serialize(Stream stream)
         {
             this.Trim();
+            this.Sort();
 
             var size = _data.Length * 8 + 8;
             stream.Write(BitConverter.GetBytes(_data.Length), 0, 8);
@@ -124,6 +144,16 @@ namespace OsmSharp.Db.Tiled.Indexes
 
         private bool Search(long id)
         {
+            if (!_sorted)
+            { // unsorted, just try all data.
+                for (var i = 0; i < _pointer; i++)
+                {
+                    if (_data[i] == id) return true;
+                }
+                return false;
+            }
+            
+            // do a binary search.
             var min = 0L;
             var max = _pointer - 1;
 

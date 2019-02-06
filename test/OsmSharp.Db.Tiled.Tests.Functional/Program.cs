@@ -4,8 +4,10 @@ using Serilog;
 using System.Collections.Generic;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Ids;
+using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Logging;
 using OsmSharp.Streams;
+using OsmSharp.Tags;
 
 namespace OsmSharp.Db.Tiled.Tests.Functional
 {
@@ -107,32 +109,32 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     Zoom = zoom
                 });
 
-                var testOutput = "test-output";
-                foreach (var baseTile in db.GetTiles())
-                {
-                    Log.Information($"Base tile found: {baseTile}");
-
-                    var file = Path.Combine(testOutput, baseTile.Zoom.ToString(), baseTile.X.ToString(),
-                        baseTile.Y.ToString(), "index.json");
-                    var fileInfo = new FileInfo(file);
-                    if (fileInfo.Directory != null && !fileInfo.Directory.Exists)
-                    {
-                        fileInfo.Directory.Create();
-                    }
-
-                    using (var stream = File.Open(file, FileMode.Create))
-                    {
-                        var target = new OsmSharp.Streams.BinaryOsmStreamTarget(stream);
-                        target.Initialize();
-
-                        target.RegisterSource(db.GetTile(baseTile));
-
-                        target.Pull();
-                        target.Close();
-                    }
-                }
-                var span = new TimeSpan(DateTime.Now.Ticks - ticks);
-                Log.Information($"Writing tiles took: {span}");
+//                var testOutput = "test-output";
+//                foreach (var baseTile in db.GetTiles())
+//                {
+//                    Log.Information($"Base tile found: {baseTile}");
+//
+//                    var file = Path.Combine(testOutput, baseTile.Zoom.ToString(), baseTile.X.ToString(),
+//                        baseTile.Y.ToString(), "index.json");
+//                    var fileInfo = new FileInfo(file);
+//                    if (fileInfo.Directory != null && !fileInfo.Directory.Exists)
+//                    {
+//                        fileInfo.Directory.Create();
+//                    }
+//
+//                    using (var stream = File.Open(file, FileMode.Create))
+//                    {
+//                        var target = new OsmSharp.Streams.BinaryOsmStreamTarget(stream);
+//                        target.Initialize();
+//
+//                        target.RegisterSource(db.GetTile(baseTile));
+//
+//                        target.Pull();
+//                        target.Close();
+//                    }
+//                }
+//                var span = new TimeSpan(DateTime.Now.Ticks - ticks);
+//                Log.Information($"Writing tiles took: {span}");
 
                 var diff1 = db.ApplyChangeset(new OsmChange()
                 {
@@ -144,6 +146,45 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                         }
                     }
                 });
+
+                var tile = diff1.GetTile(new Tile(8410, 5465, 14));
+                using (var stream = File.Open("diff1.osm", FileMode.Create))
+                {
+                    var xmlTarget = new XmlOsmStreamTarget(stream);
+                    xmlTarget.Initialize();
+                    xmlTarget.RegisterSource(tile);
+                    xmlTarget.Pull();
+                    xmlTarget.Close();
+                }
+
+                var diff2 = db.ApplyChangeset(new OsmChange()
+                {
+                    Create = new OsmGeo[]
+                    {
+                        new Node()
+                        {
+                            Id = -1,
+                            ChangeSetId = -1,
+                            Longitude = 4.8023101687431335,
+                            Latitude = 51.268242070542804,
+                            Tags = new TagsCollection(
+                                new Tag("barrier", "bollard")),
+                            Version = 1,
+                            TimeStamp = DateTime.Now,
+                            UserId = -1,
+                            UserName = "Ben"
+                        }
+                    }
+                });
+                tile = diff2.GetTile(new Tile(8410, 5465, 14));
+                using (var stream = File.Open("diff2.osm", FileMode.Create))
+                {
+                    var xmlTarget = new XmlOsmStreamTarget(stream);
+                    xmlTarget.Initialize();
+                    xmlTarget.RegisterSource(tile);
+                    xmlTarget.Pull();
+                    xmlTarget.Close();
+                }
             }
             catch (Exception e)
             {

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using OsmSharp.Db.Tiled.Collections.Sorting;
 using Reminiscence.Arrays;
 using Reminiscence.IO;
 using Reminiscence.IO.Streams;
@@ -35,7 +36,8 @@ namespace OsmSharp.Db.Tiled.Indexes
         }
 
         private long _pointer = 0;
-
+        private bool _sorted = true;
+        
         /// <summary>
         /// Returns true if the data in this index wasn't saved to disk.
         /// </summary>
@@ -53,13 +55,13 @@ namespace OsmSharp.Db.Tiled.Indexes
         {
             if (mask > MAX_MASK) {throw new ArgumentOutOfRangeException(nameof(mask));}
 
-            if (_pointer > 0)
-            {
+            if (_pointer > 0 && _sorted)
+            { // verify if sorted, if not resort when saving.
                 Decode(_data[_pointer - 1], out var previousId, out _);
 
                 if (id < previousId)
                 {
-                    throw new ArgumentException("Id is smaller than the previous one, id's should be added in ascending order.");
+                    _sorted = false;
                 }
             }
 
@@ -69,6 +71,27 @@ namespace OsmSharp.Db.Tiled.Indexes
             _pointer++;
 
             this.IsDirty = true;
+        }
+
+        /// <summary>
+        /// Sorts this index.
+        /// </summary>
+        private void Sort()
+        {
+            if (_sorted) return;
+            
+            QuickSort.Sort(i =>
+                {
+                    Decode(_data[i], out var id, out _);
+                    return id;
+                },
+                (i1, i2) =>
+                {
+                    var t = _data[i1];
+                    _data[i1] = _data[i2];
+                    _data[i2] = t;
+                }, 0, _pointer - 1);
+            _sorted = true;
         }
 
         /// <summary>
@@ -101,6 +124,7 @@ namespace OsmSharp.Db.Tiled.Indexes
         public long Serialize(Stream stream)
         {
             this.Trim();
+            this.Sort();
 
             var size = _data.Length * 8 + 8;
             stream.Write(BitConverter.GetBytes(_data.Length), 0, 8);
@@ -186,18 +210,31 @@ namespace OsmSharp.Db.Tiled.Indexes
 
         private long Search(long id, out int mask)
         {
+            if (!_sorted)
+            { // unsorted, just try all data.
+                for (var i = 0; i < _pointer; i++)
+                {
+                    Decode(_data[i], out var currentId, out mask);
+                    if (currentId == id)
+                    {
+                        return i;
+                    }
+                }
+
+                mask = -1;
+                return -1;
+            }
+            
             var min = 0L;
             var max = _pointer - 1;
 
-            long minId;
-            Decode(_data[min], out minId, out mask);
+            Decode(_data[min], out var minId, out mask);
             if (minId == id)
             {
                 return min;
             }
 
-            long maxId;
-            Decode(_data[max], out maxId, out mask);
+            Decode(_data[max], out var maxId, out mask);
             if (maxId == id)
             {
                 return max;
@@ -206,8 +243,7 @@ namespace OsmSharp.Db.Tiled.Indexes
             while (true)
             {
                 var mid = (min + max) / 2;
-                long midId;
-                Decode(_data[mid], out midId, out mask);
+                Decode(_data[mid], out var midId, out mask);
                 if (midId == id)
                 {
                     return mid;

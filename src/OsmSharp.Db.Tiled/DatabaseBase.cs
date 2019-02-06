@@ -70,11 +70,8 @@ namespace OsmSharp.Db.Tiled
         {
             return DiffBuilder.Build(this, changeset, path);
         }
-
-        /// <summary>
-        /// Loads the index for the given type and tile.
-        /// </summary>
-        protected Index LoadIndex(OsmGeoType type, Tile tile, bool create = false)
+        
+        protected Index LoadIndex(Tile tile, OsmGeoType type, bool create = false)
         {
             if (type == OsmGeoType.Node)
             {
@@ -120,10 +117,15 @@ namespace OsmSharp.Db.Tiled
             }
         }
         
+        protected void SaveIndex(Tile tile, OsmGeoType type, Index index)
+        {
+            DatabaseCommon.SaveIndex(_path, tile, type, index);
+        }
+
         protected OsmGeo GetLocal(OsmGeoType type, long id)
         {
             var tile = new Tile(0, 0, 0);
-            var index = LoadIndex(type, tile);
+            var index = LoadIndex(tile, type);
 
             while (index != null &&
                    index.TryGetMask(id, out var mask))
@@ -155,7 +157,7 @@ namespace OsmSharp.Db.Tiled
                 }
 
                 tile = subTile;
-                index = LoadIndex(type, tile);
+                index = LoadIndex(tile, type);
             }
 
             return null;
@@ -172,7 +174,7 @@ namespace OsmSharp.Db.Tiled
             var tilesPerZoom = new List<IEnumerable<(Tile tile, int mask)>>();
             var tile = new Tile(0, 0, 0);
             uint zoom = 0;
-            while (zoom <= this.Zoom)
+            while (zoom < this.Zoom)
             {
                 // determine next tile.
                 var nextTile = Tiles.Tile.WorldToTileIndex(latitude, longitude, zoom + 2);
@@ -182,6 +184,7 @@ namespace OsmSharp.Db.Tiled
                 tilesPerZoom.Add(new[] {(tile, mask)});
                 
                 // move to next tile.
+                tile = nextTile;
                 zoom += 2;
             }
             
@@ -211,7 +214,7 @@ namespace OsmSharp.Db.Tiled
                 switch (type)
                 {
                     case OsmGeoType.Node:
-                        if (nodeIndex == null) nodeIndex = LoadIndex(type, tile);
+                        if (nodeIndex == null) nodeIndex = LoadIndex(tile, type);
                         if (nodeIndex != null &&
                             nodeIndex.TryGetMask(id, out var nodeMask))
                         {
@@ -220,7 +223,7 @@ namespace OsmSharp.Db.Tiled
 
                         break;
                     case OsmGeoType.Way:
-                        if (wayIndex == null) wayIndex = LoadIndex(type, tile);
+                        if (wayIndex == null) wayIndex = LoadIndex(tile, type);
                         if (wayIndex != null &&
                             wayIndex.TryGetMask(id, out var wayMask))
                         {
@@ -229,7 +232,7 @@ namespace OsmSharp.Db.Tiled
 
                         break;
                     case OsmGeoType.Relation:
-                        if (relationIndex == null) relationIndex = LoadIndex(type, tile);
+                        if (relationIndex == null) relationIndex = LoadIndex(tile, type);
                         if (relationIndex != null &&
                             relationIndex.TryGetMask(id, out var relationMask))
                         {
@@ -264,7 +267,7 @@ namespace OsmSharp.Db.Tiled
                             switch (type)
                             {
                                 case OsmGeoType.Node:
-                                    if (nodeIndex == null) nodeIndex = LoadIndex(type, currentTile);
+                                    if (nodeIndex == null) nodeIndex = LoadIndex(currentTile, type);
                                     if (nodeIndex != null &&
                                         nodeIndex.TryGetMask(id, out var nodeMask))
                                     {
@@ -272,7 +275,7 @@ namespace OsmSharp.Db.Tiled
                                     }
                                     break;
                                 case OsmGeoType.Way:
-                                    if (wayIndex == null) wayIndex = LoadIndex(type, currentTile);
+                                    if (wayIndex == null) wayIndex = LoadIndex(currentTile, type);
                                     if (wayIndex != null &&
                                         wayIndex.TryGetMask(id, out var wayMask))
                                     {
@@ -280,7 +283,7 @@ namespace OsmSharp.Db.Tiled
                                     }
                                     break;
                                 case OsmGeoType.Relation:
-                                    if (relationIndex == null) relationIndex = LoadIndex(type, currentTile);
+                                    if (relationIndex == null) relationIndex = LoadIndex(currentTile, type);
                                     if (relationIndex != null &&
                                         relationIndex.TryGetMask(id, out var relationMask))
                                     {
