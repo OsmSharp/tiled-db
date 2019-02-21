@@ -8,6 +8,7 @@ using OsmSharp.Db.Tiled.Indexes;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
+using Serilog;
 
 namespace OsmSharp.Db.Tiled
 {
@@ -228,6 +229,7 @@ namespace OsmSharp.Db.Tiled
         /// <param name="id">The id.</param>
         internal void Delete(OsmGeoType type, long id)
         {
+            Log.Information($"Deleting: {type} - {id}");
             // TODO: deletions could cause another object to be removed from tiles.
             
             var tiles = this.GetTilesFor(new[] {(type, id)});
@@ -253,6 +255,7 @@ namespace OsmSharp.Db.Tiled
         /// <param name="osmGeo">The object to create.</param>
         internal void Create(OsmGeo osmGeo)
         {
+            Log.Information($"Creating: {osmGeo}");
             // TODO: creating relations could cause loops in the relations and change tile membership.
             
             // determine the tile for this new object.
@@ -321,15 +324,23 @@ namespace OsmSharp.Db.Tiled
         /// <param name="osmGeo">The object to modify.</param>
         internal void Modify(OsmGeo osmGeo)
         {
+            Log.Information($"Modifying: {osmGeo}");
+            
             var recreate = new Dictionary<OsmGeoKey, OsmGeo>();
             
             if (osmGeo.Type == OsmGeoType.Node)
             {
                 var oldTiles = this.GetTilesFor(new[] {(osmGeo.Type, osmGeo.Id.Value)});
-                
-                var node = osmGeo as Node;
+
+                if (!oldTiles[oldTiles.Count - 1].Any())
+                { // no old tiles found, object didn't exist yet, this is possible with extracts.
+                    Log.Warning($"Modification converted into create: {osmGeo} not found");
+                    this.Create(osmGeo);
+                    return;
+                }
 
                 var oldTile = oldTiles[oldTiles.Count - 1].First();
+                var node = osmGeo as Node;
                 var newTiles = this.GetTilesFor(node.Longitude.Value, node.Latitude.Value);
                 var newTile = newTiles[newTiles.Count - 1].First();
 
@@ -359,6 +370,14 @@ namespace OsmSharp.Db.Tiled
                 
                 // build set of old tiles.
                 var oldTiles = this.GetTilesFor(new[] {(osmGeo.Type, osmGeo.Id.Value)});
+                
+                if (!oldTiles[oldTiles.Count - 1].Any())
+                { // no old tiles found, object didn't exist yet, this is possible with extracts.
+                    Log.Warning($"Modification converted into create: {osmGeo} not found");
+                    this.Create(osmGeo);
+                    return;
+                }
+                
                 var oldTileSet = new HashSet<ulong>();
                 foreach (var oldTile in oldTiles[oldTiles.Count - 1])
                 {
@@ -400,7 +419,7 @@ namespace OsmSharp.Db.Tiled
                         // add the node to the data tile.
                         using (var stream = DatabaseCommon.OpenAppendStreamTile(this.Path, osmGeo.Type, newTile.tile))
                         {
-                            stream.Append(osmGeo as Node);
+                            stream.Append(way);
                         }
                     }
                 }
@@ -411,6 +430,14 @@ namespace OsmSharp.Db.Tiled
                 
                 // build set of old tiles.
                 var oldTiles = this.GetTilesFor(new[] {(osmGeo.Type, osmGeo.Id.Value)});
+                
+                if (!oldTiles[oldTiles.Count - 1].Any())
+                { // no old tiles found, object didn't exist yet, this is possible with extracts.
+                    Log.Warning($"Modification converted into create: {osmGeo} not found");
+                    this.Create(osmGeo);
+                    return;
+                }
+                
                 var oldTileSet = new HashSet<ulong>();
                 foreach (var oldTile in oldTiles[oldTiles.Count - 1])
                 {
@@ -452,7 +479,7 @@ namespace OsmSharp.Db.Tiled
                         // add the node to the data tile.
                         using (var stream = DatabaseCommon.OpenAppendStreamTile(this.Path, osmGeo.Type, newTile.tile))
                         {
-                            stream.Append(osmGeo as Node);
+                            stream.Append(relation);
                         }
                     }
                 }

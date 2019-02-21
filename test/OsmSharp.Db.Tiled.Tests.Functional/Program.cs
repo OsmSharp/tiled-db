@@ -105,13 +105,13 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     Log.Information("The tiled DB already exists, reusing...");
                 }
 
-                // create a database object that can read individual objects.
-                Log.Information($"Loading database: {args[1]}");
-                var db = new DatabaseSnapshot(args[1], new DatabaseMeta()
-                {
-                    Base = null,
-                    Zoom = zoom
-                });
+//                // create a database object that can read individual objects.
+//                Log.Information($"Loading database: {args[1]}");
+//                var db = new DatabaseSnapshot(args[1], new DatabaseMeta()
+//                {
+//                    Base = null,
+//                    Zoom = zoom
+//                });
 
 //                var testOutput = "test-output";
 //                foreach (var baseTile in db.GetTiles())
@@ -225,14 +225,21 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
 
                 // apply a daily changeset.
                 OsmChange osmChange;
-                using (var stream = File.OpenRead(@"/data/work/data/OSM/belgium/daily/20190206.osc"))
+                using (var stream = File.OpenRead(@"/data/work/data/OSM/belgium/daily/20190207.osc"))
                 {
                     var serializer = new XmlSerializer(typeof(OsmChange));
                     osmChange = serializer.Deserialize(
                         new StreamReader(stream)) as OsmChange;
                 }
 
+                var db = IDatabaseViewExtensions.LoadFromMeta(
+                    @"/data/work/anyways/data/test/tilesdb/meta.bin");
                 var daily = db.ApplyChangeset(osmChange);
+//                var daily = IDatabaseViewExtensions.LoadFromMeta(
+//                    @"/data/work/anyways/data/test/diff-1549541354388/meta.bin");
+//                //https://a.tile.openstreetmap.org/14/8338/5468.png
+//                db.GetTile(new Tile(8338, 5468, 14)).WriteToOsmXml("14-8338-5468-old.osm");
+                daily.GetTile(new Tile(8338, 5468, 14)).WriteToOsmXml("14-8338-5468.osm");
             }
             catch (Exception e)
             {

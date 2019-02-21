@@ -10,12 +10,15 @@ namespace OsmSharp.Db.Tiled.IO
         /// </summary>
         public static long WriteWithSize(this System.IO.Stream stream, string value)
         {
+            byte[] bytes;
             if (value == null)
             {
-                stream.WriteByte(0);
-                return 1;
+                bytes = new byte [0];
             }
-            var bytes = System.Text.Encoding.Unicode.GetBytes(value);
+            else
+            {
+                bytes = System.Text.Encoding.Unicode.GetBytes(value);
+            }
             return stream.WriteWithSize(bytes);
         }
 

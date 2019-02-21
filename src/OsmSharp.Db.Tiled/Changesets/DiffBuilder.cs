@@ -48,42 +48,42 @@ namespace OsmSharp.Db.Tiled.Changesets
                 Compressed = false
             }, false);
             
-//            // execute the deletes.
-//            if (changeset.Delete != null &&
-//                changeset.Delete.Length > 0)
-//            {
-//                for (var d = 0; d < changeset.Delete.Length; d++)
-//                {
-//                    var delete = changeset.Delete[d];
-//                    diff.Delete(delete.Type, delete.Id.Value);
-//                    if (changeset.Create.Length > 1000 && d % 1000 == 0)
-//                    {
-//                        Log.Information($"Deleted {d+1}/{changeset.Delete.Length} objects.");
-//                    }
-//                }
-//                if (changeset.Delete.Length > 1000)
-//                {
-//                    Log.Information($"Deleted {changeset.Delete.Length}/{changeset.Delete.Length} objects.");
-//                }
-//            }
+            // execute the deletes.
+            if (changeset.Delete != null &&
+                changeset.Delete.Length > 0)
+            {
+                for (var d = 0; d < changeset.Delete.Length; d++)
+                {
+                    var delete = changeset.Delete[d];
+                    diff.Delete(delete.Type, delete.Id.Value);
+                    if (changeset.Create.Length > 1000 && d % 1000 == 0)
+                    {
+                        Log.Information($"Deleted {d+1}/{changeset.Delete.Length} objects.");
+                    }
+                }
+                if (changeset.Delete.Length > 1000)
+                {
+                    Log.Information($"Deleted {changeset.Delete.Length}/{changeset.Delete.Length} objects.");
+                }
+            }
             
-//            // execute the creations.
-//            if (changeset.Create != null &&
-//                changeset.Create.Length > 0)
-//            {
-//                for (var c = 0; c < changeset.Create.Length; c++)
-//                {
-//                    diff.Create(changeset.Create[c]);
-//                    if (changeset.Create.Length > 1000 && c % 1000 == 0)
-//                    {
-//                        Log.Information($"Created {c}/{changeset.Create.Length} objects.");
-//                    }
-//                }
-//                if (changeset.Create.Length > 1000)
-//                {
-//                    Log.Information($"Created {changeset.Create.Length}/{changeset.Create.Length} objects.");
-//                }
-//            }
+            // execute the creations.
+            if (changeset.Create != null &&
+                changeset.Create.Length > 0)
+            {
+                for (var c = 0; c < changeset.Create.Length; c++)
+                {
+                    diff.Create(changeset.Create[c]);
+                    if (changeset.Create.Length > 1000 && c % 1000 == 0)
+                    {
+                        Log.Information($"Created {c}/{changeset.Create.Length} objects.");
+                    }
+                }
+                if (changeset.Create.Length > 1000)
+                {
+                    Log.Information($"Created {changeset.Create.Length}/{changeset.Create.Length} objects.");
+                }
+            }
             
             // execute the modifications.
             if (changeset.Modify != null &&

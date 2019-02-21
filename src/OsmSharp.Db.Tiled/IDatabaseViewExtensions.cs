@@ -24,7 +24,8 @@ namespace OsmSharp.Db.Tiled
                 }
                 else
                 { // this is a view, first load parent.
-                    var parent = LoadFromMeta(dbMeta.Base);
+                    var baseMeta = DatabaseCommon.PathToMeta(dbMeta.Base);
+                    var parent = LoadFromMeta(baseMeta);
                     return new DatabaseDiff(parent, path, dbMeta);
                 }
             }
