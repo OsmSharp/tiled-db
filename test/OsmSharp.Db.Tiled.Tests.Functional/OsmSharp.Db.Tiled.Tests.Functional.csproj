@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\OsmSharp.Db.Tiled.Replication\OsmSharp.Db.Tiled.Replication.csproj" />
     <ProjectReference Include="..\..\src\OsmSharp.Db.Tiled\OsmSharp.Db.Tiled.csproj" />
   </ItemGroup>
 
@@ -11,7 +12,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
 </Project>

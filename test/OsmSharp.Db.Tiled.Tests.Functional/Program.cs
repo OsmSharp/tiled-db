@@ -2,9 +2,11 @@
 using System.IO;
 using Serilog;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Ids;
+using OsmSharp.Db.Tiled.Replication;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Logging;
 using OsmSharp.Streams;
@@ -14,7 +16,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
 //#if DEBUG
             if (args == null || args.Length == 0)
@@ -61,6 +63,15 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 .WriteTo.File(Path.Combine("logs", "log-.txt"), rollingInterval: RollingInterval.Day)
                 .CreateLogger();
 
+            var config = ReplicationConfig.Minutely;
+            var enumerator = config.GetDiffEnumerator();
+            while (await enumerator.MoveNext())
+            {
+                var diff = enumerator.Current;
+
+                Console.WriteLine($"Another diff {enumerator.SequenceNumber}: {diff.Create?.Length ?? 0}cre,  {diff.Modify?.Length ?? 0}mod,  {diff.Delete?.Length ?? 0}del");
+            }
+            
             try
             {
                 // validate arguments.
