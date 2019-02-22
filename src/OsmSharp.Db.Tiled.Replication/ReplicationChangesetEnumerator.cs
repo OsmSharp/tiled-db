@@ -19,12 +19,7 @@ namespace OsmSharp.Db.Tiled.Replication
         }
         
         private long _lastReturned = -1;
-        private OsmChange _diff = null;
-
-        /// <summary>
-        /// Gets the current sequence number.
-        /// </summary>
-        public long SequenceNumber => _lastReturned;
+        private long _highestLatest = -1;
 
         /// <summary>
         /// Moves to the next diff, returns true when it's available.
@@ -32,34 +27,47 @@ namespace OsmSharp.Db.Tiled.Replication
         /// <returns></returns>
         public async Task<bool> MoveNext()
         {
-            var latest = await _config.GetLatestReplicationState();
-            _diff = null;
+            if (_highestLatest < 0)
+            {
+                var latest = await _config.GetLatestReplicationState();
+                _highestLatest = latest.SequenceNumber;
+            }
+
+            Current = null;
             
             if (_lastReturned < 0)
             { // start from the latest.
-                _lastReturned = latest.SequenceNumber;
+                _lastReturned = _highestLatest;
             }
             else
             {
                 // there is a sequence number, try to increase.
                 var next = _lastReturned + 1;
 
-                while (next > latest.SequenceNumber)
+                while (next > _highestLatest)
                 { // keep waiting until next is latest.
                     await Task.Delay((_config.Period / 10) * 1000);
-                    latest = await _config.GetLatestReplicationState();
+                    var latest = await _config.GetLatestReplicationState();
+                    _highestLatest = latest.SequenceNumber;
                 }
 
                 _lastReturned = next;
             }
             
-            _diff = await _config.DownloadDiff(_lastReturned);
+            // download all the things.
+            Current = await _config.DownloadDiff(_lastReturned);
+            State = await _config.GetReplicationState(_lastReturned);
             return true;
         }
 
         /// <summary>
         /// Gets the current diff.
         /// </summary>
-        public OsmChange Current => _diff;
+        public OsmChange Current { get; private set; }
+
+        /// <summary>
+        /// Gets the replication state.
+        /// </summary>
+        public ReplicationState State { get; private set; }
     }
 }

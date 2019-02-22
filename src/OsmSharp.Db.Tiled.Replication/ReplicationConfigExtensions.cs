@@ -46,6 +46,39 @@ namespace OsmSharp.Db.Tiled.Replication
         }
 
         /// <summary>
+        /// Gets the replication state.
+        /// </summary>
+        /// <param name="config">The replication config.</param>
+        /// <param name="sequenceNumber">The sequence number.</param>
+        /// <param name="client">A http-client to use, if any.</param>
+        /// <returns>The latest replication state.</returns>
+        public static async Task<ReplicationState> GetReplicationState(this ReplicationConfig config, long sequenceNumber, HttpClient client = null)
+        {
+            if (client == null) client = ThreadLocalClient.Value;
+            using (var stream = await client.GetStreamAsync(config.ReplicationStateUrl(sequenceNumber)))
+            using (var streamReader = new StreamReader(stream))
+            {
+                return streamReader.ParseReplicationState();
+            }
+        }
+
+        /// <summary>
+        /// Gets the url for the diff associated with the given replication state.
+        /// </summary>
+        /// <param name="config">The replication config.</param>
+        /// <param name="sequenceNumber">The sequence number.</param>
+        /// <returns>The url to download the diff at.</returns>
+        internal static string ReplicationStateUrl(this ReplicationConfig config, long sequenceNumber)
+        {
+            var sequenceNumberString =  "000000000" + sequenceNumber;
+            sequenceNumberString = sequenceNumberString.Substring(sequenceNumberString.Length - 9);
+            var folder1 = sequenceNumberString.Substring(0, 3);
+            var folder2 = sequenceNumberString.Substring(3, 3);
+            var name = sequenceNumberString.Substring(6, 3);
+            return new Uri(new Uri(config.Url), $"{folder1}/{folder2}/{name}.state.txt").ToString();
+        }
+
+        /// <summary>
         /// Gets the url for the diff associated with the given replication state.
         /// </summary>
         /// <param name="config">The replication config.</param>

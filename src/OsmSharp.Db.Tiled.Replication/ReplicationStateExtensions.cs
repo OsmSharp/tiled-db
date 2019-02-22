@@ -16,6 +16,7 @@ namespace OsmSharp.Db.Tiled.Replication
         public static ReplicationState ParseReplicationState(this StreamReader streamReader)
         {
             var sequenceNumber = long.MaxValue;
+            var timestamp = default(DateTime);
             while (!streamReader.EndOfStream)
             {
                 var line = streamReader.ReadLine();
@@ -27,9 +28,16 @@ namespace OsmSharp.Db.Tiled.Replication
                     if (keyValue == null || keyValue.Length != 2) throw new Exception($"Could not parse {ReplicationState.SequenceNumberKey}");
                     if (!long.TryParse(keyValue[1], out sequenceNumber)) throw new Exception($"Could not parse {ReplicationState.SequenceNumberKey}");
                 }
+                else if (line.StartsWith(ReplicationState.TimestampKey))
+                {
+                    var keyValue = line.Split('=');
+                    if (keyValue == null || keyValue.Length != 2) throw new Exception($"Could not parse {ReplicationState.TimestampKey}");
+                    keyValue[1] = keyValue[1].Replace("\\", string.Empty);
+                    if (!DateTime.TryParse(keyValue[1], out timestamp)) throw new Exception($"Could not parse {ReplicationState.TimestampKey}");
+                }
             }
 
-            return new ReplicationState(sequenceNumber);
+            return new ReplicationState(sequenceNumber, timestamp);
         }
     }
 }

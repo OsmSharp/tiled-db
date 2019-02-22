@@ -64,12 +64,12 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 .CreateLogger();
 
             var config = ReplicationConfig.Minutely;
-            var enumerator = config.GetDiffEnumerator();
+            var enumerator = config.GetDiffEnumerator(3376946);
             while (await enumerator.MoveNext())
             {
                 var diff = enumerator.Current;
 
-                Console.WriteLine($"Another diff {enumerator.SequenceNumber}: {diff.Create?.Length ?? 0}cre,  {diff.Modify?.Length ?? 0}mod,  {diff.Delete?.Length ?? 0}del");
+                Console.WriteLine($"Another diff {enumerator.State}: {diff.Create?.Length ?? 0}cre,  {diff.Modify?.Length ?? 0}mod,  {diff.Delete?.Length ?? 0}del");
             }
             
             try
