@@ -61,11 +61,16 @@ namespace OsmSharp.Db.Tiled.Build
             Index wayIndex = null;
             if (hasNext)
             {
-                wayIndex = WayProcessor.Process(source, path, maxZoom, tile, nodeIndex, compressed);
+                wayIndex = WayProcessor.Process(source, path, maxZoom, tile, nodeIndex, out hasNext, compressed);
             }
 
             // split relations using the node and way index and return the relation index.
-            var relationIndex = RelationProcessor.Process(source, path, maxZoom, tile, nodeIndex, wayIndex, compressed, true);
+            Index relationIndex = null;
+            if (hasNext)
+            {
+                relationIndex =
+                    RelationProcessor.Process(source, path, maxZoom, tile, nodeIndex, wayIndex, compressed, true);
+            }
 
             // write the indices to disk.
             var actions = new List<Action>
@@ -114,7 +119,7 @@ namespace OsmSharp.Db.Tiled.Build
                     var waySource = new OsmSharp.Streams.BinaryOsmStreamSource(wayStream);
                     if (waySource.MoveNext())
                     {
-                        wayIndex = WayProcessor.Process(waySource, path, maxZoom, tile, nodeIndex, compressed);
+                        wayIndex = WayProcessor.Process(waySource, path, maxZoom, tile, nodeIndex, out _, compressed);
                     }
                 }
             }  

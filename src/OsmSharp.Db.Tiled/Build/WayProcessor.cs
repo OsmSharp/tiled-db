@@ -24,7 +24,7 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="compressed">A flag to allow compression of target files.</param>
         /// <returns>The indexed node id's with a masked zoom.</returns>
         public static Index Process(OsmStreamSource source, string path, uint maxZoom, Tile tile,
-            Index nodeIndex, bool compressed = false)
+            Index nodeIndex, out bool hasNext, bool compressed = false)
         { 
             // split ways.
             var subTiles = new Dictionary<ulong, Stream>();
@@ -35,11 +35,13 @@ namespace OsmSharp.Db.Tiled.Build
 
             // build the ways index.
             var wayIndex = new Index();
+            hasNext = false;
             do
             {
                 var current = source.Current();
                 if (current.Type != OsmGeoType.Way)
                 {
+                    hasNext = true;
                     break;
                 }
 
