@@ -229,7 +229,7 @@ namespace OsmSharp.Db.Tiled
         /// <param name="id">The id.</param>
         internal void Delete(OsmGeoType type, long id)
         {
-            Log.Information($"Deleting: {type} - {id}");
+            //Log.Information($"Deleting: {type} - {id}");
             // TODO: deletions could cause another object to be removed from tiles.
             
             var tiles = this.GetTilesFor(new[] {(type, id)});
@@ -255,7 +255,7 @@ namespace OsmSharp.Db.Tiled
         /// <param name="osmGeo">The object to create.</param>
         internal void Create(OsmGeo osmGeo)
         {
-            Log.Information($"Creating: {osmGeo}");
+            //Log.Information($"Creating: {osmGeo}");
             // TODO: creating relations could cause loops in the relations and change tile membership.
             
             // determine the tile for this new object.
@@ -324,7 +324,7 @@ namespace OsmSharp.Db.Tiled
         /// <param name="osmGeo">The object to modify.</param>
         internal void Modify(OsmGeo osmGeo)
         {
-            Log.Information($"Modifying: {osmGeo}");
+            //Log.Information($"Modifying: {osmGeo}");
             
             var recreate = new Dictionary<OsmGeoKey, OsmGeo>();
             
@@ -334,7 +334,7 @@ namespace OsmSharp.Db.Tiled
 
                 if (!oldTiles[oldTiles.Count - 1].Any())
                 { // no old tiles found, object didn't exist yet, this is possible with extracts.
-                    Log.Warning($"Modification converted into create: {osmGeo} not found");
+                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
                     this.Create(osmGeo);
                     return;
                 }
@@ -373,7 +373,7 @@ namespace OsmSharp.Db.Tiled
                 
                 if (!oldTiles[oldTiles.Count - 1].Any())
                 { // no old tiles found, object didn't exist yet, this is possible with extracts.
-                    Log.Warning($"Modification converted into create: {osmGeo} not found");
+                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
                     this.Create(osmGeo);
                     return;
                 }
@@ -433,7 +433,7 @@ namespace OsmSharp.Db.Tiled
                 
                 if (!oldTiles[oldTiles.Count - 1].Any())
                 { // no old tiles found, object didn't exist yet, this is possible with extracts.
-                    Log.Warning($"Modification converted into create: {osmGeo} not found");
+                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
                     this.Create(osmGeo);
                     return;
                 }

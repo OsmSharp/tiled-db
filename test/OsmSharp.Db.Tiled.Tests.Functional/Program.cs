@@ -23,7 +23,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/belgium/belgium-190205.osm.pbf",
+                    @"/data/work/data/OSM/belgium-latest.osm.pbf",
                     @"/data/work/anyways/data/test/tilesdb/",
                     @"14"
                 };
@@ -62,15 +62,6 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 .WriteTo.Console()
                 .WriteTo.File(Path.Combine("logs", "log-.txt"), rollingInterval: RollingInterval.Day)
                 .CreateLogger();
-
-            var config = ReplicationConfig.Minutely;
-            var enumerator = config.GetDiffEnumerator(3376946);
-            while (await enumerator.MoveNext())
-            {
-                var diff = enumerator.Current;
-
-                Console.WriteLine($"Another diff {enumerator.State}: {diff.Create?.Length ?? 0}cre,  {diff.Modify?.Length ?? 0}mod,  {diff.Delete?.Length ?? 0}del");
-            }
             
             try
             {
@@ -116,141 +107,27 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     Log.Information("The tiled DB already exists, reusing...");
                 }
 
-//                // create a database object that can read individual objects.
-//                Log.Information($"Loading database: {args[1]}");
-//                var db = new DatabaseSnapshot(args[1], new DatabaseMeta()
-//                {
-//                    Base = null,
-//                    Zoom = zoom
-//                });
-
-//                var testOutput = "test-output";
-//                foreach (var baseTile in db.GetTiles())
-//                {
-//                    Log.Information($"Base tile found: {baseTile}");
-//
-//                    var file = Path.Combine(testOutput, baseTile.Zoom.ToString(), baseTile.X.ToString(),
-//                        baseTile.Y.ToString(), "index.json");
-//                    var fileInfo = new FileInfo(file);
-//                    if (fileInfo.Directory != null && !fileInfo.Directory.Exists)
-//                    {
-//                        fileInfo.Directory.Create();
-//                    }
-//
-//                    using (var stream = File.Open(file, FileMode.Create))
-//                    {
-//                        var target = new OsmSharp.Streams.BinaryOsmStreamTarget(stream);
-//                        target.Initialize();
-//
-//                        target.RegisterSource(db.GetTile(baseTile));
-//
-//                        target.Pull();
-//                        target.Close();
-//                    }
-//                }
-//                var span = new TimeSpan(DateTime.Now.Ticks - ticks);
-//                Log.Information($"Writing tiles took: {span}");
-//
-//                // tests a single deletion.
-//                Log.Information($"Deleted a way and fetching the resulting tile.");
-//                var diff = db.ApplyChangeset(new OsmChange()
-//                {
-//                    Delete = new OsmGeo[]
-//                    {
-//                        new Way()
-//                        {
-//                            Id = 76586523
-//                        }
-//                    }
-//                });
-//                var tile = diff.GetTile(new Tile(8410, 5465, 14));
-//                using (var stream = File.Open("diff1.osm", FileMode.Create))
-//                {
-//                    var xmlTarget = new XmlOsmStreamTarget(stream);
-//                    xmlTarget.Initialize();
-//                    xmlTarget.RegisterSource(tile);
-//                    xmlTarget.Pull();
-//                    xmlTarget.Close();
-//                }
-//
-//                // tests a single creation.
-//                Log.Information($"Creating a node and fetching the resulting tile.");
-//                diff = db.ApplyChangeset(new OsmChange()
-//                {
-//                    Create = new OsmGeo[]
-//                    {
-//                        new Node()
-//                        {
-//                            Id = -1,
-//                            ChangeSetId = -1,
-//                            Longitude = 4.8023101687431335,
-//                            Latitude = 51.268242070542804,
-//                            Tags = new TagsCollection(
-//                                new Tag("barrier", "bollard")),
-//                            Version = 1,
-//                            TimeStamp = DateTime.Now,
-//                            UserId = -1,
-//                            UserName = "Ben"
-//                        }
-//                    }
-//                });
-//                tile = diff.GetTile(new Tile(8410, 5465, 14));
-//                using (var stream = File.Open("diff2.osm", FileMode.Create))
-//                {
-//                    var xmlTarget = new XmlOsmStreamTarget(stream);
-//                    xmlTarget.Initialize();
-//                    xmlTarget.RegisterSource(tile);
-//                    xmlTarget.Pull();
-//                    xmlTarget.Close();
-//                }
-//
-//                // test a single modify.
-//                Log.Information($"Modifying a node and fetching the resulting tile.");
-//                diff = db.ApplyChangeset(new OsmChange()
-//                {
-//                    Modify = new OsmGeo[]
-//                    {
-//                        new Node()
-//                        {
-//                            Id = 902643939,
-//                            ChangeSetId = int.MaxValue,
-//                            Longitude = 4.8023101687431335,
-//                            Latitude = 51.268242070542804,
-//                            Tags = null,
-//                            Version = 6,
-//                            TimeStamp = DateTime.Now,
-//                            UserId = 1,
-//                            UserName = "Ben"
-//                        }
-//                    }
-//                });
-//                tile = diff.GetTile(new Tile(8410, 5465, 14));
-//                using (var stream = File.Open("diff3.osm", FileMode.Create))
-//                {
-//                    var xmlTarget = new XmlOsmStreamTarget(stream);
-//                    xmlTarget.Initialize();
-//                    xmlTarget.RegisterSource(tile);
-//                    xmlTarget.Pull();
-//                    xmlTarget.Close();
-//                }
-
-                // apply a daily changeset.
-                OsmChange osmChange;
-                using (var stream = File.OpenRead(@"/data/work/data/OSM/belgium/daily/20190207.osc"))
+                // create a database object that can read individual objects.
+                Log.Information($"Loading database: {args[1]}");
+                IDatabaseView db = new DatabaseSnapshot(args[1], new DatabaseMeta()
                 {
-                    var serializer = new XmlSerializer(typeof(OsmChange));
-                    osmChange = serializer.Deserialize(
-                        new StreamReader(stream)) as OsmChange;
-                }
+                    Base = null,
+                    Zoom = zoom
+                });
+                
+                // start replication.
+                var config = ReplicationConfig.Minutely;
+                var enumerator = config.GetDiffEnumerator(3376992);
+                while (await enumerator.MoveNext())
+                {
+                    var diff = enumerator.Current;
 
-                var db = IDatabaseViewExtensions.LoadFromMeta(
-                    @"/data/work/anyways/data/test/tilesdb/meta.bin");
-                var daily = db.ApplyChangeset(osmChange);
-//                var daily = IDatabaseViewExtensions.LoadFromMeta(
-//                    @"/data/work/anyways/data/test/diff-1549541354388/meta.bin");
-//                //https://a.tile.openstreetmap.org/14/8338/5468.png
-//                db.GetTile(new Tile(8338, 5468, 14)).WriteToOsmXml("14-8338-5468-old.osm");
-                daily.GetTile(new Tile(8338, 5468, 14)).WriteToOsmXml("14-8338-5468.osm");
+                    Log.Information($"Another diff {enumerator.State}: " +
+                                    $"{diff.Create?.Length ?? 0}cre,  {diff.Modify?.Length ?? 0}mod,  {diff.Delete?.Length ?? 0}del");
+                    Log.Information("Applying changes...");
+                    db = db.ApplyChangeset(diff, $"/data/work/anyways/data/test/tilesdb-minutely-{enumerator.State.SequenceNumber}/");
+                    Log.Information($"Changes applied, new database: {db}");
+                }
             }
             catch (Exception e)
             {
