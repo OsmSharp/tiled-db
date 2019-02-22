@@ -160,8 +160,8 @@ namespace OsmSharp.Db.Tiled.Tests.Build
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/12/2093/1389.nodes.idx"));
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/12/2093/1389.ways.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/14/8374"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/14/8374/5556.nodes.osm.bin"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/14/8374/5556.ways.osm.bin"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/14/8374/5556.nodes.osm.bin.zip"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/14/8374/5556.ways.osm.bin.zip"));
         }
 
         ///// <summary>
