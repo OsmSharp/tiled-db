@@ -8,17 +8,15 @@ namespace OsmSharp.Db.Tiled.Replication
     /// <summary>
     /// A replication changeset enumerator.
     /// </summary>
-    public class ReplicationChangesetEnumerator
+    public class ReplicationChangesetEnumerator : IReplicationChangesetEnumerator
     {
-        private readonly ReplicationConfig _config;
-
-        internal ReplicationChangesetEnumerator(ReplicationConfig config, long? sequenceNumber = null)
+        internal ReplicationChangesetEnumerator(ReplicationConfig config, long sequenceNumber)
         {
-            _config = config;
-            if (sequenceNumber != null) _lastReturned = sequenceNumber.Value - 1;
+            Config = config;
+            _lastReturned = sequenceNumber;
         }
         
-        private long _lastReturned = -1;
+        private long _lastReturned;
         private long _highestLatest = -1;
 
         /// <summary>
@@ -29,7 +27,7 @@ namespace OsmSharp.Db.Tiled.Replication
         {
             if (_highestLatest < 0)
             {
-                var latest = await _config.GetLatestReplicationState();
+                var latest = await Config.LatestReplicationState();
                 _highestLatest = latest.SequenceNumber;
             }
 
@@ -46,8 +44,8 @@ namespace OsmSharp.Db.Tiled.Replication
 
                 while (next > _highestLatest)
                 { // keep waiting until next is latest.
-                    await Task.Delay((_config.Period / 10) * 1000);
-                    var latest = await _config.GetLatestReplicationState();
+                    await Task.Delay((Config.Period / 10) * 1000);
+                    var latest = await Config.LatestReplicationState();
                     _highestLatest = latest.SequenceNumber;
                 }
 
@@ -55,8 +53,9 @@ namespace OsmSharp.Db.Tiled.Replication
             }
             
             // download all the things.
-            Current = await _config.DownloadDiff(_lastReturned);
-            State = await _config.GetReplicationState(_lastReturned);
+            Current = await Config.DownloadDiff(_lastReturned);
+            State = await Config.GetReplicationState(_lastReturned);
+            IsLatest = (_lastReturned == _highestLatest);
             return true;
         }
 
@@ -66,8 +65,18 @@ namespace OsmSharp.Db.Tiled.Replication
         public OsmChange Current { get; private set; }
 
         /// <summary>
+        /// Gets the replication config.
+        /// </summary>
+        public ReplicationConfig Config { get; }
+
+        /// <summary>
         /// Gets the replication state.
         /// </summary>
         public ReplicationState State { get; private set; }
+        
+        /// <summary>
+        /// Returns true if the current state is the latest.
+        /// </summary>
+        public bool IsLatest { get; private set; }
     }
 }

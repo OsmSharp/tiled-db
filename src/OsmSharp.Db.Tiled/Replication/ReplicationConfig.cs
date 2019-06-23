@@ -1,4 +1,7 @@
 ﻿using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace OsmSharp.Db.Tiled.Replication
 {
@@ -28,15 +31,44 @@ namespace OsmSharp.Db.Tiled.Replication
         /// </summary>
         public int Period { get; }
 
-        /// <summary>
-        /// Gets the default configuration for minutely updates.
-        /// </summary>
-        public static ReplicationConfig Minutely =>
-            new ReplicationConfig("https://planet.openstreetmap.org/replication/minute/", 60);
+        private ReplicationState _state = null;
 
         /// <summary>
-        /// Gets the default configuration for hourly updates.
+        /// Gets the latest replication state.
         /// </summary>
-        public static ReplicationConfig Hourly => new ReplicationConfig("https://planet.openstreetmap.org/replication/hour/", 3600);
+        /// <param name="client">A http-client to use, if any.</param>
+        /// <returns>The latest replication state.</returns>
+        public async Task<ReplicationState> LatestReplicationState(HttpClient client = null)
+        {
+            if (_state != null &&
+                _state.Timestamp > DateTime.Now.AddSeconds(this.Period))
+            { // there cannot be a new latest.
+                return _state;
+            }
+            
+            if (client == null) client = Replication.ThreadLocalClient.Value;
+            using (var stream = await client.GetStreamAsync(new Uri(new Uri(this.Url), "state.txt").ToString()))
+            using (var streamReader = new StreamReader(stream))
+            {
+                _state = streamReader.ParseReplicationState();
+            }
+
+            return _state;
+        }
+
+        /// <summary>
+        /// Returns true if this config is daily.
+        /// </summary>
+        public bool IsDaily => this.Period == Replication.Daily.Period;
+
+        /// <summary>
+        /// Returns true if this config is hourly.
+        /// </summary>
+        public bool IsHourly => this.Period == Replication.Hourly.Period;
+
+        /// <summary>
+        /// Returns true if this config is minutely.
+        /// </summary>
+        public bool IsMinutely => this.Period == Replication.Minutely.Period;
     }
 }

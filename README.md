@@ -15,7 +15,6 @@ On top of that this database supports:
   - Create a copy from a snapshot without actually copying anything.
   - Apply changesets to a _branch_.
   
-  
 ## Design
 
 The database is just a collection of files and folders. We define a few key principles:
@@ -51,3 +50,60 @@ The structure of a diff consists of three different file types, a bit different 
 
 Changesets can be applied to any _view_, resulting in a new _diff_. 
 
+## API
+
+On top of the core database, we have designed an API to make it instantly usable for different scenarios.
+
+We use the following structure:
+
+- One default _branch_ that keeps up with OSM data.
+- One or more branches that are create when applying non-OSM sourced changes. 
+
+### Meta data & status
+
+There are a few calls to get global information on the data.
+
+`GET /status`  
+
+Gets the status of the default fork. Returns a minimum the following data about the database:
+ - The date of the latest change.
+ - The zoom level of the tiling in the db.
+
+`GET /view/{date}`  
+`GET /{branch}/view/{date}`  
+
+Gets the view that represents the state of the database at the given date/time. There are a few parameters:
+
+- `{date}`: A data/time.
+- `{branch}`: A branch, if any.
+
+### Getting data
+
+There are a few calls to get data:
+
+##### By tile:
+
+`GET /{view}/{zoom}/{x}/{y}`  
+`GET /{branch}/{view}/{zoom}/{x}/{y}`  
+`GET /{view}/{zoom}/{x}/{y}/complete`  
+`GET /{branch}/{view}/{zoom}/{x}/{y}/complete`  
+
+Gets all data in the given tile. There are a few parameters:
+
+- `{view}`: The name of the view. `latest` is used as a shortcut to the latest version of the data.
+- `{branch}`: Optionally a branch can be defined.
+- `{zoom}`: The zoom level of the tile to get.
+- `{x}/{y}`: The coordinates of the tile to get.
+- `complete`: When complete is defined, all nodes in ways are returned even if outside of the tile.
+
+### Updating data
+
+Updating data is done via OSM changesets. A changeset can contain several delete/update/modify operations on one or more nodes/ways or relations.
+
+`PUT /{view}`    
+`PUT /{branch}/{view}`      
+
+The body of this request needs to an XML OSM changeset. 
+
+- `{view}`: The name of the view. The `{view}` should not exist yet.
+- `{branch}`: Optionally a branch can be defined.

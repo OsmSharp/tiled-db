@@ -21,9 +21,5 @@
       <Link>SharedAssemblyVersion.cs</Link>
     </Compile>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Replication" />
-  </ItemGroup>
   
 </Project>
