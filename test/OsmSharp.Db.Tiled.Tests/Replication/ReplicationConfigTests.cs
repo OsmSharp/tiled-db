@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using OsmSharp.Db.Tiled.Replication;
@@ -44,7 +45,7 @@ namespace OsmSharp.Db.Tiled.Tests.Replication
         }
         
         [Test]
-        public async Task ReplicationConfig_DailyConfig_Test()
+        public async Task ReplicationConfig_DailyConfig_LatestShouldGiveStateSequence()
         {
             IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
             var replicationConfig = new ReplicationConfig("https://planet.openstreetmap.org/replication/day/", 24 * 3600);
@@ -52,6 +53,17 @@ namespace OsmSharp.Db.Tiled.Tests.Replication
             var result = await replicationConfig.LatestReplicationState();
             
             Assert.AreEqual(2568, result.SequenceNumber);
+        }
+
+        [Test]
+        public async Task ReplicationConfig_DailyConfig_SequenceNumberAt_ShouldReturnSequenceNumberContainingDay()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var replicationConfig = new ReplicationConfig("https://planet.openstreetmap.org/replication/day/", 24 * 3600);
+
+            var result = await replicationConfig.SequenceNumberAt(new DateTime(2019, 08, 3, 8, 15, 0));
+            
+            Assert.AreEqual(2517, result);
         }
     }
 }
