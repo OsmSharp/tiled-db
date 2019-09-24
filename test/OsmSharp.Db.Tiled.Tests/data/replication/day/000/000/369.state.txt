@@ -1,0 +1,3 @@
+#Mon Sep 16 00:05:52 UTC 2013
+sequenceNumber=369
+timestamp=2013-09-16T00\:00\:00Z

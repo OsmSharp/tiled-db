@@ -1,0 +1,3 @@
+#Thu Jan 03 00:06:44 UTC 2013
+sequenceNumber=113
+timestamp=2013-01-03T00\:00\:00Z

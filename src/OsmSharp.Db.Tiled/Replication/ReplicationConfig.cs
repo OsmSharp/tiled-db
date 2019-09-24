@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using OsmSharp.Db.Tiled.IO.Http;
 
 namespace OsmSharp.Db.Tiled.Replication
 {
@@ -36,9 +37,8 @@ namespace OsmSharp.Db.Tiled.Replication
         /// <summary>
         /// Gets the latest replication state.
         /// </summary>
-        /// <param name="client">A http-client to use, if any.</param>
         /// <returns>The latest replication state.</returns>
-        public async Task<ReplicationState> LatestReplicationState(HttpClient client = null)
+        public async Task<ReplicationState> LatestReplicationState()
         {
             if (_state != null &&
                 _state.Timestamp > DateTime.Now.AddSeconds(this.Period))
@@ -46,11 +46,10 @@ namespace OsmSharp.Db.Tiled.Replication
                 return _state;
             }
             
-            if (client == null) client = Replication.ThreadLocalClient.Value;
-            using (var stream = await client.GetStreamAsync(new Uri(new Uri(this.Url), "state.txt").ToString()))
+            using (var stream = await HttpHandler.Default.GetStreamAsync(new Uri(new Uri(this.Url), "state.txt").ToString()))
             using (var streamReader = new StreamReader(stream))
             {
-                _state = streamReader.ParseReplicationState();
+                _state =  this.ParseReplicationState(streamReader);
             }
 
             return _state;
@@ -70,5 +69,10 @@ namespace OsmSharp.Db.Tiled.Replication
         /// Returns true if this config is minutely.
         /// </summary>
         public bool IsMinutely => this.Period == Replication.Minutely.Period;
+
+        public override string ToString()
+        {
+            return $"{this.Url} ({this.Period}s)";
+        }
     }
 }

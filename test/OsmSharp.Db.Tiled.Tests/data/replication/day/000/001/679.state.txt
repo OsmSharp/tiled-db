@@ -1,0 +1,3 @@
+#Tue Apr 18 00:06:44 UTC 2017
+sequenceNumber=1679
+timestamp=2017-04-18T00\:00\:00Z

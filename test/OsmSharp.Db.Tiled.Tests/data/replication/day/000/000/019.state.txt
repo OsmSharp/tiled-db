@@ -1,0 +1,3 @@
+#Mon Oct 01 00:06:48 UTC 2012
+sequenceNumber=19
+timestamp=2012-10-01T00\:00\:00Z

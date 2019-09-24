@@ -1,0 +1,3 @@
+#Sun Dec 02 00:07:15 UTC 2012
+sequenceNumber=81
+timestamp=2012-12-02T00\:00\:00Z

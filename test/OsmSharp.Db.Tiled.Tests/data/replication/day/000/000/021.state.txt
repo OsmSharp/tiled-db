@@ -1,0 +1,3 @@
+#Wed Oct 03 00:06:35 UTC 2012
+sequenceNumber=21
+timestamp=2012-10-03T00\:00\:00Z

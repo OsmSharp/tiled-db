@@ -8,7 +8,7 @@ namespace OsmSharp.Db.Tiled.Replication
     /// <summary>
     /// A replication changeset enumerator.
     /// </summary>
-    public class ReplicationChangesetEnumerator : IReplicationChangesetEnumerator
+    internal class ReplicationChangesetEnumerator : IReplicationChangesetEnumerator
     {
         internal ReplicationChangesetEnumerator(ReplicationConfig config, long sequenceNumber)
         {

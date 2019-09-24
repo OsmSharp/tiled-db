@@ -1,0 +1,3 @@
+#Thu Dec 07 00:06:35 UTC 2017
+sequenceNumber=1912
+timestamp=2017-12-07T00\:00\:00Z

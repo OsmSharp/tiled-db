@@ -1,0 +1,3 @@
+#Fri Dec 15 00:06:45 UTC 2017
+sequenceNumber=1920
+timestamp=2017-12-15T00\:00\:00Z

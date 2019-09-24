@@ -1,0 +1,3 @@
+#Mon Aug 05 00:05:42 UTC 2013
+sequenceNumber=327
+timestamp=2013-08-05T00\:00\:00Z

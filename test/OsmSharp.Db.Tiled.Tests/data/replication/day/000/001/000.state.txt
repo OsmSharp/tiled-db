@@ -1,0 +1,3 @@
+#Tue Jun 09 00:06:12 UTC 2015
+sequenceNumber=1000
+timestamp=2015-06-09T00\:00\:00Z

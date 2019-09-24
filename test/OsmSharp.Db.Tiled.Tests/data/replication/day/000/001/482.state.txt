@@ -1,0 +1,3 @@
+#Mon Oct 03 00:05:57 UTC 2016
+sequenceNumber=1482
+timestamp=2016-10-03T00\:00\:00Z

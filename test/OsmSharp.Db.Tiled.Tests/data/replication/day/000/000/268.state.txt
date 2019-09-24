@@ -1,0 +1,3 @@
+#Fri Jun 07 00:06:02 UTC 2013
+sequenceNumber=268
+timestamp=2013-06-07T00\:00\:00Z

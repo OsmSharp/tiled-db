@@ -1,0 +1,3 @@
+#Fri Sep 21 00:06:33 UTC 2012
+sequenceNumber=9
+timestamp=2012-09-21T00\:00\:00Z

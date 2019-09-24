@@ -1,0 +1,3 @@
+#Sat Oct 13 00:06:50 UTC 2012
+sequenceNumber=31
+timestamp=2012-10-13T00\:00\:00Z

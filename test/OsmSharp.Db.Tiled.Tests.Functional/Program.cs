@@ -25,7 +25,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 args = new string[]
                 {
                     @"/data/work/data/OSM/wechel.osm.pbf",
-                    @"/media/xivk/2T-SSD-EXT/replication-tests/tiles-db/",
+                    @"/media/xivk/2T-SSD-EXT/replication-tests/initial/",
                     @"14"
                 };
             }
@@ -69,7 +69,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 // validate arguments.
                 if (args.Length < 3)
                 {
-                    Log.Fatal("Expected 4 arguments: inputfile db zoom");
+                    Log.Fatal("Expected 4 arguments: input file db zoom");
                     return;
                 }
 
@@ -118,6 +118,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 else
                 {
                     //throw new Exception("Not rebuilding won't work, delete files.");
+                    latest = DateTime.Now;
                 }
 
                 // create a database object that can read individual objects.
@@ -129,34 +130,25 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 });
                 
                 // start catch up.
-                var catchUpEnumerator = Replication.Replication.GetCatchupDiffEnumerator(DateTime.Now.Date.AddHours(-2).AddMinutes(-2));
-                while (await catchUpEnumerator.MoveNext())
+                var enumerator = await Replication.Replication.Hourly.GetDiffEnumerator(
+                    await Replication.Replication.Hourly.SequenceNumberAt(latest));
+                while (await enumerator.MoveNext())
                 {
-                    var diff = catchUpEnumerator.Current;
+                    var diff = enumerator.Current;
 
-                    Log.Information($"Another diff {catchUpEnumerator.State}: " +
+                    Log.Information($"Another diff {enumerator.State}: " +
                                     $"{diff.Create?.Length ?? 0}cre, " +
                                     $"{diff.Modify?.Length ?? 0}mod, " +
                                     $"{diff.Delete?.Length ?? 0}del");
                     Log.Information("Applying changes...");
 
-                    var fileName = $"/media/xivk/2T-SSD-EXT/replication-tests/tilesdb-";
-                    if (catchUpEnumerator.Config.IsDaily)
+                    var directory = BuildPath($"/media/xivk/2T-SSD-EXT/replication-tests/", enumerator.State);
+                    if (!directory.Exists)
                     {
-                        fileName = fileName + "daily";
+                        directory.Create();
                     }
-                    else if (catchUpEnumerator.Config.IsHourly)
-                    {
-                        fileName = fileName + "hourly";
-                    }
-                    else
-                    {
-                        fileName = fileName + "minutely";
-                    }
-
-                    fileName = fileName + $"-{catchUpEnumerator.State.SequenceNumber}/";
                     
-                    db = db.ApplyChangeset(diff, fileName);
+                    db = db.ApplyChangeset(diff, directory.FullName);
                     Log.Information($"Changes applied, new database: {db}");
                 }
                 
@@ -184,6 +176,22 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 Log.Fatal(e, "Unhandled exception.");
                 throw;
             }
+        }
+
+        internal static DirectoryInfo BuildPath(string path, ReplicationState state)
+        {
+            var year = ("0000" + state.Timestamp.Year);
+            year = year.Substring(year.Length - 4, 4);
+            var month = ("00" + state.Timestamp.Month);
+            month = month.Substring(month.Length - 2, 2);
+            var day = ("00" + state.Timestamp.Day);
+            day = day.Substring(day.Length - 2, 2);
+            var hour = ("00" + state.Timestamp.Hour);
+            hour = hour.Substring(hour.Length - 2, 2);
+            var minute = ("00" + state.Timestamp.Minute);
+            minute = minute.Substring(minute.Length - 2, 2);
+            
+            return new DirectoryInfo(Path.Combine(path, year, month, day, hour, minute));
         }
     }
 }

@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OsmSharp.Changesets;
+using OsmSharp.Db.Tiled.IO.Http;
 
 namespace OsmSharp.Db.Tiled.Replication
 {
@@ -17,8 +18,6 @@ namespace OsmSharp.Db.Tiled.Replication
     /// </summary>
     public static class Replication
     {
-        internal static readonly ThreadLocal<HttpClient> ThreadLocalClient =
-            new ThreadLocal<HttpClient>(() => new HttpClient());
         internal static readonly ThreadLocal<XmlSerializer> ThreadLocalXmlSerializer =
             new ThreadLocal<XmlSerializer>(() => new XmlSerializer(typeof(OsmChange)));
 
@@ -45,15 +44,13 @@ namespace OsmSharp.Db.Tiled.Replication
         /// </summary>
         /// <param name="config">The replication config.</param>
         /// <param name="sequenceNumber">The sequence number.</param>
-        /// <param name="client">A http-client to use, if any.</param>
         /// <returns>The latest replication state.</returns>
-        public static async Task<ReplicationState> GetReplicationState(this ReplicationConfig config, long sequenceNumber, HttpClient client = null)
+        public static async Task<ReplicationState> GetReplicationState(this ReplicationConfig config, long sequenceNumber)
         {
-            if (client == null) client = ThreadLocalClient.Value;
-            using (var stream = await client.GetStreamAsync(config.ReplicationStateUrl(sequenceNumber)))
+            using (var stream = await HttpHandler.Default.GetStreamAsync(config.ReplicationStateUrl(sequenceNumber)))
             using (var streamReader = new StreamReader(stream))
             {
-                return streamReader.ParseReplicationState();
+                return config.ParseReplicationState(streamReader);
             }
         }
 
@@ -94,12 +91,10 @@ namespace OsmSharp.Db.Tiled.Replication
         /// </summary>
         /// <param name="config">The replication config.</param>
         /// <param name="sequenceNumber">The sequence number.</param>
-        /// <param name="client">A http-client to use, if any.</param>
         /// <returns>The raw diff stream.</returns>
-        internal static async Task<Stream> DownloadDiffStream(this ReplicationConfig config, long sequenceNumber, HttpClient client = null)
+        internal static async Task<Stream> DownloadDiffStream(this ReplicationConfig config, long sequenceNumber)
         {
-            if (client == null) client = ThreadLocalClient.Value;
-            return await client.GetStreamAsync(config.DiffUrl(sequenceNumber));
+            return await HttpHandler.Default.GetStreamAsync(config.DiffUrl(sequenceNumber));
         }
 
         /// <summary>
@@ -107,12 +102,10 @@ namespace OsmSharp.Db.Tiled.Replication
         /// </summary>
         /// <param name="config">The replication config.</param>
         /// <param name="sequenceNumber">The sequence number.</param>
-        /// <param name="client">A http-client to use, if any.</param>
         /// <returns>The diff.</returns>
-        public static async Task<OsmChange> DownloadDiff(this ReplicationConfig config, long sequenceNumber,
-            HttpClient client = null)
+        public static async Task<OsmChange> DownloadDiff(this ReplicationConfig config, long sequenceNumber)
         {
-            using (var stream = await config.DownloadDiffStream(sequenceNumber, client))
+            using (var stream = await config.DownloadDiffStream(sequenceNumber))
             using (var decompressed = new GZipStream(stream, CompressionMode.Decompress))
             using (var streamReader = new StreamReader(decompressed))
             {
@@ -137,7 +130,7 @@ namespace OsmSharp.Db.Tiled.Replication
         /// <param name="config">The replication config.</param>
         /// <param name="sequenceNumber">The sequence number, latest if empty.</param>
         /// <returns>The enumerator moved to the given changeset.</returns>
-        public static async Task<ReplicationChangesetEnumerator> GetDiffEnumerator(this ReplicationConfig config,
+        public static async Task<IReplicationChangesetEnumerator> GetDiffEnumerator(this ReplicationConfig config,
             long? sequenceNumber = null)
         {
             if (sequenceNumber == null)
@@ -147,6 +140,77 @@ namespace OsmSharp.Db.Tiled.Replication
             }
             
             return new ReplicationChangesetEnumerator(config, sequenceNumber.Value);
+        }
+        
+        /// <summary>
+        /// Returns the sequence number for the diff overlapping the given date time.
+        /// </summary>
+        /// <param name="config">The replication config.</param>
+        /// <param name="dateTime">The date time.</param>
+        /// <returns>The sequence number.</returns>
+        public static async Task<long> SequenceNumberAt(this ReplicationConfig config, DateTime dateTime)
+        {
+            var latest = await config.LatestReplicationState();
+            var start = latest.Timestamp.AddSeconds(-config.Period);
+            var diff = (int)(start - dateTime).TotalSeconds;
+            var leftOver = (diff % config.Period);
+            var sequenceOffset = (diff - leftOver) / config.Period;
+
+            return latest.SequenceNumber - sequenceOffset - 1;
+        }
+        
+        /// <summary>
+        /// Parses a replication state from a state file stream.
+        /// </summary>
+        /// <param name="config">The replication config.</param>
+        /// <param name="streamReader">The stream reader.</param>
+        /// <returns>The replication state.</returns>
+        /// <exception cref="Exception"></exception>
+        internal static ReplicationState ParseReplicationState(this ReplicationConfig config, StreamReader streamReader)
+        {
+            var sequenceNumber = long.MaxValue;
+            var timestamp = default(DateTime);
+            while (!streamReader.EndOfStream)
+            {
+                var line = streamReader.ReadLine();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (line.StartsWith("#")) continue;
+                if (line.StartsWith(ReplicationState.SequenceNumberKey))
+                { // this line has the sequence number.
+                    var keyValue = line.Split('=');
+                    if (keyValue.Length != 2) throw new Exception($"Could not parse {ReplicationState.SequenceNumberKey}");
+                    if (!long.TryParse(keyValue[1], out sequenceNumber)) throw new Exception($"Could not parse {ReplicationState.SequenceNumberKey}");
+                }
+                else if (line.StartsWith(ReplicationState.TimestampKey))
+                {
+                    var keyValue = line.Split('=');
+                    if (keyValue.Length != 2) throw new Exception($"Could not parse {ReplicationState.TimestampKey}");
+                    keyValue[1] = keyValue[1].Replace("\\", string.Empty);
+                    if (!DateTime.TryParse(keyValue[1], out timestamp)) throw new Exception($"Could not parse {ReplicationState.TimestampKey}");
+                }
+            }
+
+            return new ReplicationState(config, sequenceNumber, timestamp);
+        }
+
+        /// <summary>
+        /// Returns true if the given replication state represents a diff overlapping the given date/time.
+        /// </summary>
+        /// <param name="state">The replication state.</param>
+        /// <param name="dateTime">The date/time.</param>
+        /// <returns>True if the given date/time is in the range ]state.timestamp - period, state.timestamp].</returns>
+        public static bool Overlaps(this ReplicationState state, DateTime dateTime)
+        {
+            var start = state.Timestamp.AddSeconds(-state.Config.Period);
+            var end = state.Timestamp;
+
+            if (start < dateTime &&
+                end >= dateTime)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

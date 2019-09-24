@@ -1,0 +1,3 @@
+#Mon Sep 22 00:05:56 UTC 2014
+sequenceNumber=740
+timestamp=2014-09-22T00\:00\:00Z

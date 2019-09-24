@@ -1,0 +1,3 @@
+#Sun Jul 02 00:05:57 UTC 2017
+sequenceNumber=1754
+timestamp=2017-07-02T00\:00\:00Z
