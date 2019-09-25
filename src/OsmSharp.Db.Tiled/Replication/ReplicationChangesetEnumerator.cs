@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using OsmSharp.Changesets;
 
 [assembly: InternalsVisibleTo("OsmSharp.Db.Tiled.Tests")]
+[assembly: InternalsVisibleTo("OsmSharp.Db.Tiled.Tests.Functional")]
 namespace OsmSharp.Db.Tiled.Replication
 {
     /// <summary>
@@ -60,7 +61,7 @@ namespace OsmSharp.Db.Tiled.Replication
 
                 while (next > _highestLatest)
                 { // keep waiting until next is latest.
-                    await Task.Delay((Config.Period / 10) * 1000);
+                    await Task.Delay(Math.Min(60 * 1000, Config.Period * 1000 / 10));
                     var latest = await Config.LatestReplicationState();
                     _highestLatest = latest.SequenceNumber;
                 }
