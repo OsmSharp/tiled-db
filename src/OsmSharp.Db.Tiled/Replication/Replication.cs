@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -186,7 +187,7 @@ namespace OsmSharp.Db.Tiled.Replication
                     var keyValue = line.Split('=');
                     if (keyValue.Length != 2) throw new Exception($"Could not parse {ReplicationState.TimestampKey}");
                     keyValue[1] = keyValue[1].Replace("\\", string.Empty);
-                    if (!DateTime.TryParse(keyValue[1], out timestamp)) throw new Exception($"Could not parse {ReplicationState.TimestampKey}");
+                    if (!DateTime.TryParse(keyValue[1],null, DateTimeStyles.AdjustToUniversal, out timestamp)) throw new Exception($"Could not parse {ReplicationState.TimestampKey}");
                 }
             }
 

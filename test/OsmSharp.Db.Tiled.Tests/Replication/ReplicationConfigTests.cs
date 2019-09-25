@@ -65,5 +65,32 @@ namespace OsmSharp.Db.Tiled.Tests.Replication
             
             Assert.AreEqual(2517, result);
         }
+
+        [Test]
+        public async Task ReplicationConfig_DailyConfig_GetReplicationState_ShouldReturnSequenceNumberAndProperDate()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var replicationConfig = new ReplicationConfig("https://planet.openstreetmap.org/replication/day/", 24 * 3600);
+
+            var result = await replicationConfig.GetReplicationState(2517);
+            
+            Assert.AreEqual(2517, result.SequenceNumber);
+            Assert.AreEqual(new DateTime(2019, 08, 04, 0, 0, 0, DateTimeKind.Utc), result.Timestamp);
+            Assert.AreEqual(replicationConfig, result.Config);
+        }
+
+        [Test]
+        public async Task ReplicationConfig_DailyConfig_DownloadDiff_ShouldReturnParsedOsmChange()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var replicationConfig = new ReplicationConfig("https://planet.openstreetmap.org/replication/day/", 24 * 3600);
+
+            var result = await replicationConfig.DownloadDiff(2517);
+            
+            Assert.NotNull(result);
+            Assert.NotNull(result.Modify);
+            Assert.NotNull(result.Create);
+            Assert.NotNull(result.Delete);
+        }
     }
 }
