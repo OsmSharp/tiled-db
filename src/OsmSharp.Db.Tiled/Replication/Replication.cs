@@ -1,11 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
-using System.Net.Http;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
@@ -21,6 +17,11 @@ namespace OsmSharp.Db.Tiled.Replication
     {
         internal static readonly ThreadLocal<XmlSerializer> ThreadLocalXmlSerializer =
             new ThreadLocal<XmlSerializer>(() => new XmlSerializer(typeof(OsmChange)));
+        
+        /// <summary>
+        /// The maximum possible sequence number.
+        /// </summary>
+        public static readonly long MaxSequenceNumber = 999999999;
 
         /// <summary>
         /// Gets the default configuration for minutely updates.
@@ -48,10 +49,18 @@ namespace OsmSharp.Db.Tiled.Replication
         /// <returns>The latest replication state.</returns>
         public static async Task<ReplicationState> GetReplicationState(this ReplicationConfig config, long sequenceNumber)
         {
-            using (var stream = await HttpHandler.Default.GetStreamAsync(config.ReplicationStateUrl(sequenceNumber)))
-            using (var streamReader = new StreamReader(stream))
+            if (sequenceNumber <= 0) return null;
+            if (sequenceNumber > MaxSequenceNumber) return null;
+
+            var stream = await HttpHandler.Default.TryGetStreamAsync(config.ReplicationStateUrl(sequenceNumber));
+            if (stream == null) return null;
+
+            using (stream)
             {
-                return config.ParseReplicationState(streamReader);
+                using (var streamReader = new StreamReader(stream))
+                {
+                    return config.ParseReplicationState(streamReader);
+                }
             }
         }
 
@@ -95,7 +104,7 @@ namespace OsmSharp.Db.Tiled.Replication
         /// <returns>The raw diff stream.</returns>
         internal static async Task<Stream> DownloadDiffStream(this ReplicationConfig config, long sequenceNumber)
         {
-            return await HttpHandler.Default.GetStreamAsync(config.DiffUrl(sequenceNumber));
+            return await HttpHandler.Default.TryGetStreamAsync(config.DiffUrl(sequenceNumber));
         }
 
         /// <summary>
@@ -140,7 +149,12 @@ namespace OsmSharp.Db.Tiled.Replication
                 sequenceNumber = latest.SequenceNumber;
             }
             
-            return new ReplicationChangesetEnumerator(config, sequenceNumber.Value);
+            var enumerator = new ReplicationChangesetEnumerator(config);
+            if (!await enumerator.MoveTo(sequenceNumber.Value))
+            {
+                throw new Exception($"Sequence number {sequenceNumber.Value} not found.");
+            }
+            return enumerator;
         }
         
         /// <summary>

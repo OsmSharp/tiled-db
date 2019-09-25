@@ -46,7 +46,7 @@ namespace OsmSharp.Db.Tiled.Replication
                 return _state;
             }
             
-            using (var stream = await HttpHandler.Default.GetStreamAsync(new Uri(new Uri(this.Url), "state.txt").ToString()))
+            using (var stream = await HttpHandler.Default.TryGetStreamAsync(new Uri(new Uri(this.Url), "state.txt").ToString()))
             using (var streamReader = new StreamReader(stream))
             {
                 _state =  this.ParseReplicationState(streamReader);

@@ -30,6 +30,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 };
             }
 //#endif
+            // TODO: implement a functional test handling a 404 on a missing sequence.
             
             // enable logging.
             OsmSharp.Logging.Logger.LogAction = (origin, level, message, parameters) =>
@@ -134,7 +135,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     await Replication.Replication.Hourly.SequenceNumberAt(latest));
                 while (await enumerator.MoveNext())
                 {
-                    var diff = enumerator.Current;
+                    var diff = await enumerator.Diff();
 
                     Log.Information($"Another diff {enumerator.State}: " +
                                     $"{diff.Create?.Length ?? 0}cre, " +

@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using NUnit.Framework;
 using OsmSharp.API;
 
@@ -40,6 +41,42 @@ namespace OsmSharp.Db.Tiled.Tests.Replication
             Assert.False(replicationConfig.IsMinutely);
             Assert.False(replicationConfig.IsHourly);
             Assert.True(replicationConfig.IsDaily);
+        }
+
+        [Test]
+        public async Task Replication_GetReplicationState_0_ShouldReturnNull()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var result = await OsmSharp.Db.Tiled.Replication.Replication.GetReplicationState(OsmSharp.Db.Tiled.Replication.Replication.Daily, 
+                0);
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public async Task Replication_GetReplicationState_SmallerThanZero_ShouldReturnNull()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var result = await OsmSharp.Db.Tiled.Replication.Replication.GetReplicationState(OsmSharp.Db.Tiled.Replication.Replication.Daily, 
+                -10);
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public async Task Replication_GetReplicationState_AboveMax_ShouldReturnNull()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var result = await OsmSharp.Db.Tiled.Replication.Replication.GetReplicationState(OsmSharp.Db.Tiled.Replication.Replication.Daily, 
+                long.MaxValue);
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public async Task Replication_GetReplicationState_NonExisting_ShouldReturnNull()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var result = await OsmSharp.Db.Tiled.Replication.Replication.GetReplicationState(OsmSharp.Db.Tiled.Replication.Replication.Daily, 
+                OsmSharp.Db.Tiled.Replication.Replication.MaxSequenceNumber - 100024);
+            Assert.IsNull(result);
         }
     }
 }

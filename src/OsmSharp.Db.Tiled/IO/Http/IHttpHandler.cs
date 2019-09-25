@@ -13,6 +13,6 @@ namespace OsmSharp.Db.Tiled.IO.Http
         /// </summary>
         /// <param name="requestUri">The uri.</param>
         /// <returns>The stream.</returns>
-        Task<Stream> GetStreamAsync(string requestUri);
+        Task<Stream> TryGetStreamAsync(string requestUri);
     }
 }

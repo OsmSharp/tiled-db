@@ -1,8 +1,10 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using OsmSharp.Changesets;
 
+[assembly: InternalsVisibleTo("OsmSharp.Db.Tiled.Tests")]
 namespace OsmSharp.Db.Tiled.Replication
 {
     /// <summary>
@@ -10,14 +12,30 @@ namespace OsmSharp.Db.Tiled.Replication
     /// </summary>
     internal class ReplicationChangesetEnumerator : IReplicationChangesetEnumerator
     {
-        internal ReplicationChangesetEnumerator(ReplicationConfig config, long sequenceNumber)
+        internal ReplicationChangesetEnumerator(ReplicationConfig config)
         {
             Config = config;
-            _lastReturned = sequenceNumber;
+            _lastReturned = -1;
         }
         
         private long _lastReturned;
         private long _highestLatest = -1;
+
+        /// <summary>
+        /// Moves this enumerator to the given sequence number.
+        /// </summary>
+        /// <param name="sequenceNumber">The sequence number.</param>
+        /// <returns>True if the move was a success, false otherwise. Throw an exception on anything but a 404 from the server.</returns>
+        internal async Task<bool> MoveTo(long sequenceNumber)
+        {
+            var state = await Config.GetReplicationState(sequenceNumber);
+            if (state == null) return false;
+            
+            _lastReturned = sequenceNumber;
+            State = state;
+
+            return true;
+        }
 
         /// <summary>
         /// Moves to the next diff, returns true when it's available.
@@ -30,8 +48,6 @@ namespace OsmSharp.Db.Tiled.Replication
                 var latest = await Config.LatestReplicationState();
                 _highestLatest = latest.SequenceNumber;
             }
-
-            Current = null;
             
             if (_lastReturned < 0)
             { // start from the latest.
@@ -53,16 +69,10 @@ namespace OsmSharp.Db.Tiled.Replication
             }
             
             // download all the things.
-            Current = await Config.DownloadDiff(_lastReturned);
             State = await Config.GetReplicationState(_lastReturned);
             IsLatest = (_lastReturned == _highestLatest);
             return true;
         }
-
-        /// <summary>
-        /// Gets the current diff.
-        /// </summary>
-        public OsmChange Current { get; private set; }
 
         /// <summary>
         /// Gets the replication config.

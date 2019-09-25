@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using OsmSharp.Changesets;
 
 namespace OsmSharp.Db.Tiled.Replication
 {
@@ -85,12 +84,10 @@ namespace OsmSharp.Db.Tiled.Replication
             return false;
         }
 
-        public DateTime Start => _startDateTime;
-        
         /// <summary>
-        /// Gets the current diff.
+        /// Gets the start date time.
         /// </summary>
-        public OsmChange Current => _enumerator.Current;
+        public DateTime Start => _startDateTime;
         
         /// <summary>
         /// Gets the replication state.
