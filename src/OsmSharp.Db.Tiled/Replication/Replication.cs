@@ -129,9 +129,9 @@ namespace OsmSharp.Db.Tiled.Replication
         /// </summary>
         /// <param name="dateTime">The date time to catch up from.</param>
         /// <returns>The enumerator.</returns>
-        public static IReplicationChangesetEnumerator GetCatchupDiffEnumerator(DateTime dateTime)
+        public static IReplicationDiffEnumerator GetCatchupDiffEnumerator(DateTime dateTime)
         {
-            return new CatchupReplicationChangesetEnumerator(dateTime);
+            return new CatchupReplicationDiffEnumerator(dateTime);
         }
 
         /// <summary>
@@ -139,8 +139,8 @@ namespace OsmSharp.Db.Tiled.Replication
         /// </summary>
         /// <param name="config">The replication config.</param>
         /// <param name="sequenceNumber">The sequence number, latest if empty.</param>
-        /// <returns>The enumerator moved to the given changeset.</returns>
-        public static async Task<IReplicationChangesetEnumerator> GetDiffEnumerator(this ReplicationConfig config,
+        /// <returns>The enumerator moved to the given sequence number or null if the sequence number doesn't exist.</returns>
+        public static async Task<ReplicationDiffEnumerator> GetDiffEnumerator(this ReplicationConfig config,
             long? sequenceNumber = null)
         {
             if (sequenceNumber == null)
@@ -149,21 +149,40 @@ namespace OsmSharp.Db.Tiled.Replication
                 sequenceNumber = latest.SequenceNumber;
             }
             
-            var enumerator = new ReplicationChangesetEnumerator(config);
+            var enumerator = new ReplicationDiffEnumerator(config);
             if (!await enumerator.MoveTo(sequenceNumber.Value))
             {
-                throw new Exception($"Sequence number {sequenceNumber.Value} not found.");
+                return null;
             }
+            return enumerator;
+        }
+
+        /// <summary>
+        /// Gets an enumerator to loop over incoming diffs moved to the first diff overlapping the given timestamp.
+        /// </summary>
+        /// <param name="config">The replication config.</param>
+        /// <param name="timestamp">The sequence number, latest if empty.</param>
+        /// <returns>The enumerator moved to the given sequence number or null if the sequence number doesn't exist.</returns>
+        public static async Task<ReplicationDiffEnumerator> GetDiffEnumerator(this ReplicationConfig config,
+            DateTime timestamp)
+        {
+            var enumerator = await config.GetDiffEnumerator();
+            if (!await enumerator.MoveTo(timestamp))
+            {
+                return null;
+            }
+
             return enumerator;
         }
         
         /// <summary>
-        /// Returns the sequence number for the diff overlapping the given date time.
+        /// Guesses the sequence number for the diff overlapping the given date time.
         /// </summary>
         /// <param name="config">The replication config.</param>
         /// <param name="dateTime">The date time.</param>
         /// <returns>The sequence number.</returns>
-        public static async Task<long> SequenceNumberAt(this ReplicationConfig config, DateTime dateTime)
+        /// <remarks>This is just a guess because the time doesn't always exactly align with the increase of sequence numbers.</remarks>
+        public static async Task<long> GuessSequenceNumberAt(this ReplicationConfig config, DateTime dateTime)
         {
             var latest = await config.LatestReplicationState();
             var start = latest.Timestamp.AddSeconds(-config.Period);

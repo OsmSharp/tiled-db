@@ -52,18 +52,40 @@ namespace OsmSharp.Db.Tiled.Tests.Replication
 
             var result = await replicationConfig.LatestReplicationState();
             
-            Assert.AreEqual(2568, result.SequenceNumber);
+            Assert.AreEqual(2569, result.SequenceNumber);
         }
 
         [Test]
-        public async Task ReplicationConfig_DailyConfig_SequenceNumberAt_ShouldReturnSequenceNumberContainingDay()
+        public async Task ReplicationConfig_DailyConfig_GuessSequenceNumberAt_ShouldReturnSequenceNumberContainingDay()
         {
             IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
             var replicationConfig = new ReplicationConfig("https://planet.openstreetmap.org/replication/day/", 24 * 3600);
 
-            var result = await replicationConfig.SequenceNumberAt(new DateTime(2019, 08, 3, 8, 15, 0));
+            var result = await replicationConfig.GuessSequenceNumberAt(new DateTime(2019, 08, 3, 8, 15, 0));
             
             Assert.AreEqual(2517, result);
+        }
+
+        [Test]
+        public async Task ReplicationConfig_HourlyConfig_GuessSequenceNumberAt_ShouldReturnSequenceNumberContainingHour()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var replicationConfig = new ReplicationConfig("https://planet.openstreetmap.org/replication/hour/", 3600);
+
+            var result = await replicationConfig.GuessSequenceNumberAt(new DateTime(2019, 08, 3, 8, 15, 0));
+            
+            Assert.AreEqual(60386, result);
+        }
+
+        [Test]
+        public async Task ReplicationConfig_MinutelyConfig_GuessSequenceNumberAt_ShouldReturnSequenceNumberContainingMinute()
+        {
+            IO.Http.HttpHandler.Default = new ReplicationServerMockHttpHandler();
+            var replicationConfig = new ReplicationConfig("https://planet.openstreetmap.org/replication/minute/", 60);
+
+            var result = await replicationConfig.GuessSequenceNumberAt(new DateTime(2019, 08, 3, 8, 15, 0));
+            
+            Assert.AreEqual(3610524, result);
         }
 
         [Test]

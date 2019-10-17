@@ -131,8 +131,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 });
                 
                 // start catch up.
-                var enumerator = await Tiled.Replication.Replication.Hourly.GetDiffEnumerator(
-                    await Tiled.Replication.Replication.Hourly.SequenceNumberAt(latest));
+                var enumerator = await Tiled.Replication.Replication.Hourly.GetDiffEnumerator(latest);
                 while (await enumerator.MoveNext())
                 {
                     var diff = await enumerator.Diff();
