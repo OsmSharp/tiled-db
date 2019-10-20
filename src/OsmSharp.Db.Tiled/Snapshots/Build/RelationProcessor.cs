@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using OsmSharp.Db.Tiled.Indexes;
+using OsmSharp.Db.Tiled.Snapshots.IO;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
 using OsmSharp.Streams;
 using Serilog;
 
-namespace OsmSharp.Db.Tiled.Build
+namespace OsmSharp.Db.Tiled.Snapshots.Build
 {
     /// <summary>
     /// The relation processor.
@@ -24,11 +25,10 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="tile">The tile being split.</param>
         /// <param name="nodeIndex">The node index.</param>
         /// <param name="wayIndex">The way index.</param>
-        /// <param name="compressed">A flag to allow compression of target files.</param>
         /// <param name="saveLocally">Save the data locally when the mask is '0' and the object cannot be place in any tile.</param>
         /// <returns>The indexed node id's with a masked zoom.</returns>
-        public static Index Process(OsmStreamSource source, string path, uint maxZoom, Tile tile,
-            Index nodeIndex, Index wayIndex, bool compressed = false, bool saveLocally = false)
+        public static (Index index, DateTime timestamp) Process(OsmStreamSource source, string path, uint maxZoom, Tile tile,
+            Index nodeIndex, Index wayIndex, bool saveLocally = false)
         {
             // split relations.
             var subTiles = new Dictionary<ulong, Stream>();
@@ -41,6 +41,7 @@ namespace OsmSharp.Db.Tiled.Build
             var relations = !source.CanReset ? new List<Relation>() : null;
             var unstableSet = new Dictionary<long, long[]>();
             var stableSet = new Dictionary<long, int>();
+            var timestamp = DateTime.MinValue;
             do
             {
                 var current = source.Current();
@@ -51,6 +52,13 @@ namespace OsmSharp.Db.Tiled.Build
                         break;
                     }
                     continue;
+                }
+                
+                // update timestamp.
+                if (current.TimeStamp.HasValue &&
+                    current.TimeStamp > timestamp)
+                {
+                    timestamp = current.TimeStamp.Value;
                 }
 
                 // calculate tile.
@@ -141,7 +149,7 @@ namespace OsmSharp.Db.Tiled.Build
             var relationIndex = new Index();
             if (!source.MoveNext(true, true, false))
             {
-                return relationIndex;
+                return (relationIndex, timestamp);
             }
             do
             {
@@ -166,7 +174,7 @@ namespace OsmSharp.Db.Tiled.Build
 
                 if (saveLocally && mask == 0)
                 { // no place for object in sub tile, place locally if requested.
-                    using (var stream = DatabaseCommon.CreateLocalTileObject(path, tile, r, compressed))
+                    using (var stream = SnapshotDbOperations.CreateLocalTileObject(path, tile, r))
                     {
                         stream.Append(r);
                     }
@@ -185,7 +193,7 @@ namespace OsmSharp.Db.Tiled.Build
                     // initialize stream if needed.
                     if (stream == null)
                     {
-                        stream = DatabaseCommon.CreateTile(path, OsmGeoType.Relation, relationTile, compressed);
+                        stream = SnapshotDbOperations.CreateTile(path, OsmGeoType.Relation, relationTile);
                         subTiles[relationTile.LocalId] = stream;
                     }
 
@@ -205,7 +213,7 @@ namespace OsmSharp.Db.Tiled.Build
                 subTile.Value.Dispose();
             }
 
-            return relationIndex;
+            return (relationIndex, timestamp);
         }
 
         /// <summary>

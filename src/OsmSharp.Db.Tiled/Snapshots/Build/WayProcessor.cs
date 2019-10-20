@@ -1,12 +1,13 @@
+using System;
 using System.Collections.Generic;
 using OsmSharp.Db.Tiled.Indexes;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
 using OsmSharp.Streams;
-using OsmSharp.Db.Tiled.IO;
 using System.IO;
+using OsmSharp.Db.Tiled.Snapshots.IO;
 
-namespace OsmSharp.Db.Tiled.Build
+namespace OsmSharp.Db.Tiled.Snapshots.Build
 {
     /// <summary>
     /// The way processor.
@@ -21,10 +22,9 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="maxZoom">The maximum zoom.</param>
         /// <param name="tile">The tile being split.</param>
         /// <param name="nodeIndex">The node index.</param>
-        /// <param name="compressed">A flag to allow compression of target files.</param>
         /// <returns>The indexed node id's with a masked zoom.</returns>
-        public static Index Process(OsmStreamSource source, string path, uint maxZoom, Tile tile,
-            Index nodeIndex, out bool hasNext, bool compressed = false)
+        public static (Index index, bool hasNext, DateTime timestamp) Process(OsmStreamSource source, string path, uint maxZoom, Tile tile,
+            Index nodeIndex)
         { 
             // split ways.
             var subTiles = new Dictionary<ulong, Stream>();
@@ -35,7 +35,8 @@ namespace OsmSharp.Db.Tiled.Build
 
             // build the ways index.
             var wayIndex = new Index();
-            hasNext = false;
+            var hasNext = false;
+            var timestamp = DateTime.MinValue;
             do
             {
                 var current = source.Current();
@@ -44,11 +45,26 @@ namespace OsmSharp.Db.Tiled.Build
                     hasNext = true;
                     break;
                 }
+                
+                // update timestamp.
+                if (current.TimeStamp.HasValue &&
+                    current.TimeStamp > timestamp)
+                {
+                    timestamp = current.TimeStamp.Value;
+                }
 
                 // calculate tile.
-                var w = (current as Way);
+                if (!(current is Way w))
+                {
+                    throw new InvalidDataException($"A way was found with type way but not could not be cast to a {nameof(Way)}.");
+                }
+                if (!w.Id.HasValue)
+                {
+                    throw new InvalidDataException($"A way was found without an valid ID.");
+                }
                 if (w.Nodes == null)
                 {
+                    // TODO: log a warning or report somewhere on this way.
                     continue;
                 }
 
@@ -73,7 +89,7 @@ namespace OsmSharp.Db.Tiled.Build
                     // initialize stream if needed.
                     if (stream == null)
                     {
-                        stream = DatabaseCommon.CreateTile(path, OsmGeoType.Way, wayTile, compressed);
+                        stream = SnapshotDbOperations.CreateTile(path, OsmGeoType.Way, wayTile);
                         subTiles[wayTile.LocalId] = stream;
                     }
 
@@ -93,7 +109,7 @@ namespace OsmSharp.Db.Tiled.Build
                 subTile.Value.Dispose();
             }
 
-            return wayIndex;
+            return (wayIndex, hasNext, timestamp);
         }
     }
 }

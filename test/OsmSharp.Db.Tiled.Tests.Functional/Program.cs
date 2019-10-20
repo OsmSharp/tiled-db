@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OsmSharp.Changesets;
+using OsmSharp.Db.Tiled.Build;
 using OsmSharp.Db.Tiled.Ids;
 using OsmSharp.Db.Tiled.Replication;
 using OsmSharp.Db.Tiled.Tiles;
@@ -25,7 +26,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 args = new string[]
                 {
                     @"/data/work/data/OSM/wechel.osm.pbf",
-                    @"/media/xivk/2T-SSD-EXT/replication-tests/initial/",
+                    @"/media/xivk/2T-SSD-EXT/replication-tests/",
                     @"14"
                 };
             }
@@ -92,83 +93,37 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     return;
                 }
 
-                var ticks = DateTime.Now.Ticks;
-                var latest = DateTime.MinValue;
-                if (!File.Exists(Path.Combine(args[1], "0", "0", "0.nodes.idx")))
+                // try loading the db, if it doesn't exist build it.
+                if (!OsmDb.TryLoad(args[1], out var db))
                 {
-                    Log.Information("The tiled DB doesn't exist yet, rebuilding...");
+                    Log.Information("The DB doesn't exist yet, building...");
                     var source = new OsmSharp.Streams.PBFOsmStreamSource(
                         File.OpenRead(args[0]));
-                    
-                    // add a filter and keep the last date.
-                    var filtered = source.Select(x =>
-                    {
-                        if (x.TimeStamp != null)
-                        {
-                            if (latest < x.TimeStamp.Value) latest = x.TimeStamp.Value;
-                        }
-
-                        return x;
-                    });
-                    var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-                    progress.RegisterSource(filtered);
 
                     // splitting tiles and writing indexes.
-                    Build.Builder.Build(progress, args[1], zoom);
-                }
-                else
-                {
-                    //throw new Exception("Not rebuilding won't work, delete files.");
-                    latest = DateTime.Now;
-                }
-
-                // create a database object that can read individual objects.
-                Log.Information($"Loading database: {args[1]}");
-                IDatabaseView db = new DatabaseSnapshot(args[1], new DatabaseMeta()
-                {
-                    Base = null,
-                    Zoom = zoom
-                });
-                
-                // start catch up.
-                var enumerator = await Tiled.Replication.Replication.Hourly.GetDiffEnumerator(latest);
-                while (await enumerator.MoveNext())
-                {
-                    var diff = await enumerator.Diff();
-
-                    Log.Information($"Another diff {enumerator.State}: " +
-                                    $"{diff.Create?.Length ?? 0}cre, " +
-                                    $"{diff.Modify?.Length ?? 0}mod, " +
-                                    $"{diff.Delete?.Length ?? 0}del");
-                    Log.Information("Applying changes...");
-
-                    var directory = BuildPath($"/media/xivk/2T-SSD-EXT/replication-tests/", enumerator.State);
-                    if (!directory.Exists)
-                    {
-                        directory.Create();
-                    }
-                    
-                    db = db.ApplyChangeset(diff, directory.FullName);
-                    Log.Information($"Changes applied, new database: {db}");
+                    db = source.BuildDb(args[1], zoom);
                 }
                 
-//                var config = ReplicationConfig.Hourly;
-//                var enumerator = await config.GetDiffEnumerator(latest);
+//                // start catch up.
+//                var enumerator = new CatchupReplicationDiffEnumerator(latest);
 //                while (await enumerator.MoveNext())
 //                {
-//                    var diff = enumerator.Current;
+//                    var diff = await enumerator.Diff();
 //
 //                    Log.Information($"Another diff {enumerator.State}: " +
-//                                    $"{diff.Create?.Length ?? 0}cre,  {diff.Modify?.Length ?? 0}mod,  {diff.Delete?.Length ?? 0}del");
+//                                    $"{diff.Create?.Length ?? 0}cre, " +
+//                                    $"{diff.Modify?.Length ?? 0}mod, " +
+//                                    $"{diff.Delete?.Length ?? 0}del");
 //                    Log.Information("Applying changes...");
-//                    db = db.ApplyChangeset(diff, $"/media/xivk/2T-SSD-EXT/replication-tests/tilesdb-minutely-{enumerator.State.SequenceNumber}/");
-//                    Log.Information($"Changes applied, new database: {db}");
 //
-//                    if (enumerator.IsLatest)
+//                    var directory = BuildPath($"/media/xivk/2T-SSD-EXT/replication-tests/", enumerator.State);
+//                    if (!directory.Exists)
 //                    {
-//                        Log.Information($"Changes applied, new database: {db}");
-//                        break;
+//                        directory.Create();
 //                    }
+//                    
+//                    db = db.ApplyChangeset(diff, directory.FullName);
+//                    Log.Information($"Changes applied, new database: {db}");
 //                }
             }
             catch (Exception e)

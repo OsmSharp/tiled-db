@@ -2,51 +2,70 @@
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
-using System.IO.Compression;
+using Newtonsoft.Json;
 using Reminiscence.Arrays;
 
-namespace OsmSharp.Db.Tiled
+namespace OsmSharp.Db.Tiled.Snapshots.IO
 {
-    internal static class DatabaseCommon
+    /// <summary>
+    /// Contains common db operations.
+    /// </summary>
+    internal static class SnapshotDbOperations
     {
-        private static Stream CreateInflateStream(Stream stream)
+        /// <summary>
+        /// Writes db meta to disk.
+        /// </summary>
+        /// <param name="path">The db path.</param>
+        /// <param name="dbMeta">The meta-data to write.</param>
+        public static void SaveDbMeta(string path, SnapshotDbMeta dbMeta)
         {
-            //return new DeflateStream(stream, CompressionMode.Decompress);
-            return new GZipStream(stream, CompressionMode.Decompress);
+            var dbMetaPath = PathToMeta(path);
+            using (var stream = File.Open(dbMetaPath, FileMode.Create))
+            using (var streamWriter = new StreamWriter(stream))
+            {
+                JsonSerializer.CreateDefault().Serialize(streamWriter, dbMeta);
+            }
         }
 
-        private static Stream CreateDeflateStream(Stream stream)
+        /// <summary>
+        /// Loads db meta from disk.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <returns>The db meta.</returns>
+        public static SnapshotDbMeta LoadDbMeta(string path)
         {
-            //return new DeflateStream(stream, CompressionLevel.Fastest);
-            return new GZipStream(stream, CompressionLevel.Fastest);
+            var dbMetaPath = PathToMeta(path);
+            using (var stream = File.OpenRead(dbMetaPath))
+            using (var streamReader = new StreamReader(stream))
+            using (var jsonReader = new JsonTextReader(streamReader))
+            {
+                return JsonSerializer.CreateDefault().Deserialize<SnapshotDbMeta>(jsonReader);
+            }
         }
         
         /// <summary>
-        /// Loads one tile.
+        /// Get a stream to a tile at the given path.
         /// </summary>
-        public static Stream LoadTile(string path, OsmGeoType type, Tile tile, bool compressed = false)
+        public static Stream LoadTile(string path, OsmGeoType type, Tile tile)
         {
-            var location = DatabaseCommon.PathToTile(path, type, tile, compressed);
+            var location = PathToTile(path, type, tile);
 
             if (!FileSystemFacade.FileSystem.Exists(location))
             {
                 return null;
             }
 
-            if (compressed)
-            {
-                return CreateInflateStream(FileSystemFacade.FileSystem.OpenRead(location));
-            }
-
             return FileSystemFacade.FileSystem.OpenRead(location);
         }
         
         /// <summary>
-        /// Creates a tile.
+        /// Creates a new tile on disk at the given path and returns a stream.
+        ///
+        /// Overwrites any tile that happened to be already there.
         /// </summary>
-        public static Stream CreateTile(string path, OsmGeoType type, Tile tile, bool compressed = false)
+        public static Stream CreateTile(string path, OsmGeoType type, Tile tile)
         {
-            var location = DatabaseCommon.PathToTile(path, type, tile, compressed);
+            var location = PathToTile(path, type, tile);
 
             var fileDirectory = FileSystemFacade.FileSystem.DirectoryForFile(location);
             if (!FileSystemFacade.FileSystem.DirectoryExists(fileDirectory))
@@ -54,26 +73,21 @@ namespace OsmSharp.Db.Tiled
                 FileSystemFacade.FileSystem.CreateDirectory(fileDirectory);
             }
 
-            if (compressed)
-            {
-                return CreateDeflateStream(FileSystemFacade.FileSystem.Open(location, FileMode.Create));
-            }
-
             return FileSystemFacade.FileSystem.Open(location, FileMode.Create);
         }
 
         /// <summary>
-        /// Builds a path to the database meta file.
+        /// Gets the path to the meta-data for the db at the given path.
         /// </summary>
         public static string PathToMeta(string path)
         {
-            return FileSystemFacade.FileSystem.Combine(path, "meta.bin");
+            return FileSystemFacade.FileSystem.Combine(path, "meta.json");
         }
 
         /// <summary>
-        /// Builds a path to the given tile.
+        /// Gets the path to the given tile for the db at the given path.
         /// </summary>
-        public static string PathToTile(string path, OsmGeoType type, Tile tile, bool compressed = false)
+        public static string PathToTile(string path, OsmGeoType type, Tile tile)
         {
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString());
@@ -89,30 +103,21 @@ namespace OsmSharp.Db.Tiled
             {
                 location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".relations.osm.bin");
             }
-
-            if (compressed)
-            {
-                return location + ".zip";
-            }
+            
             return location;
         }
         
         /// <summary>
         /// Creates a local object.
         /// </summary>
-        public static Stream CreateLocalTileObject(string path, Tile tile, OsmGeo osmGeo, bool compressed = false)
+        public static Stream CreateLocalTileObject(string path, Tile tile, OsmGeo osmGeo)
         {
-            var location = DatabaseCommon.BuildPathToLocalTileObject(path, tile, osmGeo, compressed);
+            var location = BuildPathToLocalTileObject(path, tile, osmGeo);
 
             var fileDirectory = FileSystemFacade.FileSystem.DirectoryForFile(location);
             if (!FileSystemFacade.FileSystem.DirectoryExists(fileDirectory))
             {
                 FileSystemFacade.FileSystem.CreateDirectory(fileDirectory);
-            }
-
-            if (compressed)
-            {
-                return CreateDeflateStream(FileSystemFacade.FileSystem.Open(location, FileMode.Create));
             }
 
             return FileSystemFacade.FileSystem.Open(location, FileMode.Create);
@@ -171,7 +176,7 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Loads an index for the given tile from disk (if any).
         /// </summary>
-        public static Index LoadIndex(string path, Tile tile, OsmGeoType type, bool mapped = false)
+        public static Index LoadIndex(string path, Tile tile, OsmGeoType type)
         {
             var extension = ".nodes.idx";
             switch (type)
@@ -190,12 +195,7 @@ namespace OsmSharp.Db.Tiled
             {
                 return null;
             }
-
-            if (mapped)
-            {
-                var stream = FileSystemFacade.FileSystem.OpenRead(location);
-                return Index.Deserialize(stream, ArrayProfile.NoCache);
-            }
+            
             using (var stream = FileSystemFacade.FileSystem.OpenRead(location))
             {
                 return Index.Deserialize(stream);
@@ -236,7 +236,7 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         internal static DeletedIndex LoadDeletedIndex(string path, Tile tile, OsmGeoType type, bool mapped = false)
         {
-            var location = DatabaseCommon.PathToDeletedIndex(path, tile, type);
+            var location = PathToDeletedIndex(path, tile, type);
             if (!FileSystemFacade.FileSystem.Exists(location))
             {
                 return null;
@@ -258,7 +258,7 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         internal static void SaveDeletedIndex(string path, Tile tile, OsmGeoType type, DeletedIndex deletedIndex)
         {
-            var location = DatabaseCommon.PathToDeletedIndex(path, tile, type);
+            var location = PathToDeletedIndex(path, tile, type);
             var parentPath = FileSystemFacade.FileSystem.ParentDirectory(location);
             if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
             {
@@ -342,7 +342,7 @@ namespace OsmSharp.Db.Tiled
         /// <returns>The stream.</returns>
         internal static Stream OpenAppendStreamTile(string path, OsmGeoType type, Tile tile)
         {
-            var location = DatabaseCommon.PathToTile(path, type, tile, false);
+            var location = PathToTile(path, type, tile);
             var parentPath = FileSystemFacade.FileSystem.ParentDirectory(location);
             if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
             {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using OsmSharp.Db.Tiled.Build;
 using Serilog;
 
 namespace OsmSharp.Db.Tiled.Builder
@@ -44,7 +45,7 @@ namespace OsmSharp.Db.Tiled.Builder
 
             // building database.
             var ticks = DateTime.Now.Ticks;
-            Build.Builder.Build(progress, args[1], zoom);
+            var db = progress.BuildDb(args[1], zoom);
             var span = new TimeSpan(DateTime.Now.Ticks - ticks);
             Console.WriteLine("Splitting took {0}s", span);
         }

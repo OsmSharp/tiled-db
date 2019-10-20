@@ -1,12 +1,13 @@
+using System;
 using System.Collections.Generic;
 using OsmSharp.Db.Tiled.Indexes;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
 using OsmSharp.Streams;
-using OsmSharp.Db.Tiled.IO;
 using System.IO;
+using OsmSharp.Db.Tiled.Snapshots.IO;
 
-namespace OsmSharp.Db.Tiled.Build
+namespace OsmSharp.Db.Tiled.Snapshots.Build
 {
     /// <summary>
     /// The node processor.
@@ -20,12 +21,8 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="path">The based path of the db.</param>
         /// <param name="maxZoom">The maximum zoom.</param>
         /// <param name="tile">The tile being split.</param>
-        /// <param name="nonEmptyTiles">The sub tiles that have data in them.</param>
-        /// <param name="hasNext">A flag indicating if there is still more data.</param>
-        /// <param name="compressed">A flag to allow compression of target files.</param>
-        /// <returns>The indexed node id's with a masked zoom.</returns>
-        public static Index Process(OsmStreamSource source, string path, uint maxZoom, Tile tile,
-            out List<Tile> nonEmptyTiles, out bool hasNext, bool compressed = false)
+        /// <returns>The indexed node id's with a masked zoom, a list of non-empty tiles, a boolean to indicate next data and the latest timestamp.</returns>
+        public static (Index index, List<Tile> nonEmptyTiles, bool hasNext, DateTime timestamp) Process(OsmStreamSource source, string path, uint maxZoom, Tile tile)
         {            
             // build the set of possible sub tiles.
             var subTiles = new Dictionary<ulong, Stream>();
@@ -36,7 +33,8 @@ namespace OsmSharp.Db.Tiled.Build
 
             // go over all nodes.
             var nodeIndex = new Index();
-            hasNext = false;
+            var timestamp = DateTime.MinValue;
+            var hasNext = false;
             while (source.MoveNext())
             {
                 var current = source.Current();
@@ -44,6 +42,13 @@ namespace OsmSharp.Db.Tiled.Build
                 {
                     hasNext = true;
                     break;
+                }
+                
+                // update timestamp.
+                if (current.TimeStamp.HasValue &&
+                    current.TimeStamp > timestamp)
+                {
+                    timestamp = current.TimeStamp.Value;
                 }
 
                 // calculate tile.
@@ -59,7 +64,7 @@ namespace OsmSharp.Db.Tiled.Build
                 // initialize stream if needed.
                 if (stream == null)
                 {
-                    stream = DatabaseCommon.CreateTile(path, OsmGeoType.Node, nodeTile, compressed);
+                    stream = SnapshotDbOperations.CreateTile(path, OsmGeoType.Node, nodeTile);
                     subTiles[nodeTile.LocalId] = stream;
                 }
 
@@ -72,7 +77,7 @@ namespace OsmSharp.Db.Tiled.Build
 
             // flush/dispose all sub tile streams.
             // keep all non-empty tiles.
-            nonEmptyTiles = new List<Tile>();
+            var nonEmptyTiles = new List<Tile>();
             foreach (var subTile in subTiles)
             {
                 if (subTile.Value == null) continue;
@@ -85,7 +90,7 @@ namespace OsmSharp.Db.Tiled.Build
                 }
             }
 
-            return nodeIndex;
+            return (nodeIndex, nonEmptyTiles, hasNext, timestamp);
         }
     }
 }
