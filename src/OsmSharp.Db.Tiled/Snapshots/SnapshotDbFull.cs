@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using OsmSharp.Db.Tiled.Snapshots.IO;
 using OsmSharp.Db.Tiled.Tiles;
 
 namespace OsmSharp.Db.Tiled.Snapshots
@@ -26,7 +27,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <inheritdoc/>
         public override IEnumerable<OsmGeo> GetTile(Tile tile, OsmGeoType type)
         { // in a snapshot the local tiles contain all data.
-            return this.GetLocalTile(tile, type);
+            return SnapshotDbOperations.GetLocalTile(this.Path, this.Zoom, tile, type);
         }
     }
 }

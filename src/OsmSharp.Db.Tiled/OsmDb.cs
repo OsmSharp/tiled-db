@@ -1,6 +1,8 @@
 using System.IO;
+using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Snapshots;
+using OsmSharp.Db.Tiled.Snapshots.Build;
 
 namespace OsmSharp.Db.Tiled
 {
@@ -29,6 +31,23 @@ namespace OsmSharp.Db.Tiled
         /// Gets the latest snapshot db.
         /// </summary>
         public Snapshots.SnapshotDb Latest { get; private set; }
+
+        private object _diffSync = new object();
+
+        /// <summary>
+        /// Applies a diff to this OSM db.
+        /// </summary>
+        /// <remarks>
+        /// This does not update the latest snapshot but makes a new latest snapshot.
+        /// </remarks>
+        /// <param name="diff"></param>
+        public void ApplyDiff(OsmChange diff)
+        {
+            lock (_diffSync)
+            {
+                this.Latest = this.Latest.BuildDiff(_path, diff);
+            }
+        }
 
         /// <summary>
         /// Try to load an OSM db from the given path.

@@ -10,9 +10,9 @@ using OsmSharp.Db.Tiled.Snapshots.IO;
 namespace OsmSharp.Db.Tiled.Snapshots.Build
 {
     /// <summary>
-    /// Builds an osm db from an OSM stream.
+    /// Builds an OSM snapshot db from an OSM stream.
     /// </summary>
-    internal static class SnapshotFullBuilder
+    internal static class SnapshotDbFullBuilder
     {
         /// <summary>
         /// Builds a new database and write the structure to the given path.

@@ -1,4 +1,6 @@
-﻿using OsmSharp.Db.Tiled.Indexes;
+﻿using System;
+using System.Collections.Generic;
+using OsmSharp.Db.Tiled.Indexes;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
@@ -228,6 +230,23 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
             using (var stream = FileSystemFacade.FileSystem.Open(location, FileMode.Create))
             {
                 index.Serialize(stream);
+            }
+        }
+        
+        internal static IEnumerable<OsmGeo> GetLocalTile(string path, uint maxZoom, Tile tile, OsmGeoType type)
+        {
+            // TODO: dispose the returned streams, implement this in OSM stream source.
+            if (tile.Zoom != maxZoom) throw new ArgumentException("Tile doesn't have the correct zoom level.");
+
+            var dataTile = SnapshotDbOperations.LoadTile(path, type, tile);
+            if (dataTile == null) yield break;
+
+            using (dataTile)
+            {
+                foreach (var osmGeo in new Streams.BinaryOsmStreamSource(dataTile))
+                {
+                    yield return osmGeo;
+                }
             }
         }
         

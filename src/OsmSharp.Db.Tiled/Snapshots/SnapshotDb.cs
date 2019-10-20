@@ -31,6 +31,11 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <summary>
+        /// Gets the path.
+        /// </summary>
+        internal string Path => _path;
+
+        /// <summary>
         /// Gets the zoom.
         /// </summary>
         internal uint Zoom => _meta.Zoom;
@@ -160,28 +165,119 @@ namespace OsmSharp.Db.Tiled.Snapshots
 
             return null;
         }
-
+        
         /// <summary>
-        /// Returns an enumerable containing all objects of a given type for the given tile that are store locally.
+        /// Gets the tiles for the given objects.
         /// </summary>
-        /// <param name="tile">The tile.</param>
-        /// <param name="type">The type.</param>
-        /// <returns>An enumerable containing all objects of a given type for the given tile</returns>
-        protected IEnumerable<OsmGeo> GetLocalTile(Tile tile, OsmGeoType type)
+        /// <param name="objects">The objects.</param>
+        /// <returns>All tiles with the given object.</returns>
+        internal virtual IReadOnlyList<IEnumerable<(Tile tile, int mask)>> GetTilesFor(IEnumerable<(OsmGeoType type, long id)> objects)
         {
-            // TODO: dispose the returned streams, implement this in OSM stream source.
-            if (tile.Zoom != this.Zoom) throw new ArgumentException("Tile doesn't have the correct zoom level.");
-
-            var dataTile = SnapshotDbOperations.LoadTile(this._path, type, tile);
-            if (dataTile == null) yield break;
-
-            using (dataTile)
+            var tilesPerZoom = new List<IEnumerable<(Tile tile, int mask)>>();
+            
+            // do zoom level '0'.
+            var tile = new Tile(0, 0, 0);
+            var mask = 0;
+            Index nodeIndex = null;
+            Index wayIndex = null;
+            Index relationIndex = null;
+            foreach (var (type, id) in objects)
             {
-                foreach (var osmGeo in new Streams.BinaryOsmStreamSource(dataTile))
+                switch (type)
                 {
-                    yield return osmGeo;
+                    case OsmGeoType.Node:
+                        if (nodeIndex == null) nodeIndex = LoadIndex(tile, type);
+                        if (nodeIndex != null &&
+                            nodeIndex.TryGetMask(id, out var nodeMask))
+                        {
+                            mask |= nodeMask;
+                        }
+
+                        break;
+                    case OsmGeoType.Way:
+                        if (wayIndex == null) wayIndex = LoadIndex(tile, type);
+                        if (wayIndex != null &&
+                            wayIndex.TryGetMask(id, out var wayMask))
+                        {
+                            mask |= wayMask;
+                        }
+
+                        break;
+                    case OsmGeoType.Relation:
+                        if (relationIndex == null) relationIndex = LoadIndex(tile, type);
+                        if (relationIndex != null &&
+                            relationIndex.TryGetMask(id, out var relationMask))
+                        {
+                            mask |= relationMask;
+                        }
+
+                        break;
                 }
             }
+            
+            // add first tile.
+            tilesPerZoom.Add(new []{ (tile, mask)});
+
+            // split tiles per level.
+            uint zoom = 0;
+            while (zoom < this.Zoom)
+            {
+                // move one level down and collect all tiles and masks.
+                var tilesAtZoom = new List<(Tile tile, int mask)>();
+                foreach (var (tileAbove, maskAbove) in tilesPerZoom[tilesPerZoom.Count - 1])
+                { // go over all tiles in zoom.
+                    foreach (var currentTile in tileAbove.SubTilesForMask2(maskAbove))
+                    { // go over all tiles that have at least one object at zoom+2.
+                        
+                        // determine mask for the tile above over all objects.
+                        mask = 0;
+                        nodeIndex = null;
+                        wayIndex = null;
+                        relationIndex = null;
+                        foreach (var (type, id) in objects)
+                        {
+                            switch (type)
+                            {
+                                case OsmGeoType.Node:
+                                    if (nodeIndex == null) nodeIndex = LoadIndex(currentTile, type);
+                                    if (nodeIndex != null &&
+                                        nodeIndex.TryGetMask(id, out var nodeMask))
+                                    {
+                                        mask |= nodeMask;
+                                    }
+                                    break;
+                                case OsmGeoType.Way:
+                                    if (wayIndex == null) wayIndex = LoadIndex(currentTile, type);
+                                    if (wayIndex != null &&
+                                        wayIndex.TryGetMask(id, out var wayMask))
+                                    {
+                                        mask |= wayMask;
+                                    }
+                                    break;
+                                case OsmGeoType.Relation:
+                                    if (relationIndex == null) relationIndex = LoadIndex(currentTile, type);
+                                    if (relationIndex != null &&
+                                        relationIndex.TryGetMask(id, out var relationMask))
+                                    {
+                                        mask |= relationMask;
+                                    }
+                                    break;
+                            }
+                        }
+                        
+                        // log the current tile and its mask.
+                        tilesAtZoom.Add((currentTile, mask));
+                    }
+                }
+                
+                // keep what was collected.
+                tilesPerZoom.Add(tilesAtZoom);
+                
+                // move to the next level.
+                zoom += 2;
+            }
+
+            return tilesPerZoom;
         }
     }
 }
