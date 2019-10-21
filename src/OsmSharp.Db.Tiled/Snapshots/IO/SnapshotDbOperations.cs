@@ -22,7 +22,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
         public static void SaveDbMeta(string path, SnapshotDbMeta dbMeta)
         {
             var dbMetaPath = PathToMeta(path);
-            using (var stream = File.Open(dbMetaPath, FileMode.Create))
+            using (var stream = FileSystemFacade.FileSystem.Open(dbMetaPath, FileMode.Create))
             using (var streamWriter = new StreamWriter(stream))
             {
                 JsonSerializer.CreateDefault().Serialize(streamWriter, dbMeta);
@@ -37,7 +37,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
         public static SnapshotDbMeta LoadDbMeta(string path)
         {
             var dbMetaPath = PathToMeta(path);
-            using (var stream = File.OpenRead(dbMetaPath))
+            using (var stream = FileSystemFacade.FileSystem.OpenRead(dbMetaPath))
             using (var streamReader = new StreamReader(stream))
             using (var jsonReader = new JsonTextReader(streamReader))
             {

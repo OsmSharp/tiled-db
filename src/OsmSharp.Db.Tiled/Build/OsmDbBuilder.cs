@@ -17,11 +17,11 @@ namespace OsmSharp.Db.Tiled.Build
         /// </summary>
         public static OsmDb BuildDb(this OsmStreamSource source, string path, uint maxZoom = 12)
         {
-            if (!Directory.Exists(path)) throw new DirectoryNotFoundException(
+            if (!FileSystemFacade.FileSystem.DirectoryExists(path)) throw new DirectoryNotFoundException(
                 $"Cannot create OSM db: {path} not found.");
             
-            var snapshotDbPath = Path.Combine(path, InitialSnapshotDbPath);
-            if (!Directory.Exists(snapshotDbPath)) Directory.CreateDirectory(snapshotDbPath);
+            var snapshotDbPath = FileSystemFacade.FileSystem.Combine(path, InitialSnapshotDbPath);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(snapshotDbPath)) FileSystemFacade.FileSystem.CreateDirectory(snapshotDbPath);
 
             // build the snapshot db.
             SnapshotDbFullBuilder.Build(source, snapshotDbPath, maxZoom);

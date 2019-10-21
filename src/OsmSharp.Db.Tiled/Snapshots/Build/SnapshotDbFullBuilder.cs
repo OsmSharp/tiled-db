@@ -89,13 +89,17 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             }
 
             // write the indices to disk.
-            var actions = new List<Action>
-            {
-                () => nodeIndex.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Node, tile)),
-                () => wayIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Way, tile)),
-                () => relationIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Relation, tile))
-            };
-            System.Threading.Tasks.Parallel.ForEach(actions, (a) => a());
+            nodeIndex.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Node, tile));
+            wayIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Way, tile));
+            relationIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Relation, tile));
+            
+//            var actions = new List<Action>
+//            {
+//                () => nodeIndex.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Node, tile)),
+//                () => wayIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Way, tile)),
+//                () => relationIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Relation, tile))
+//            };
+//            System.Threading.Tasks.Parallel.ForEach(actions, (a) => a());
             
             return (nonEmptyTiles, timestamp);
         }
