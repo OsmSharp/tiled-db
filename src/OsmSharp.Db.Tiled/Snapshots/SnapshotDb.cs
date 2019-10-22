@@ -39,6 +39,11 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// Gets the zoom.
         /// </summary>
         internal uint Zoom => _meta.Zoom;
+
+        /// <summary>
+        /// Gets the timestamp.
+        /// </summary>
+        internal DateTime Timestamp => _meta.Timestamp;
         
         /// <summary>
         /// Gets the object with the given type and id.

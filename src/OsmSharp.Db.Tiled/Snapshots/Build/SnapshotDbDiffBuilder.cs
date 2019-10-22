@@ -39,6 +39,8 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             {
                 FileSystemFacade.FileSystem.CreateDirectory(path);
             }
+
+            var timestamp = snapshotDb.Timestamp;
             
             // execute the deletes.
             if (changeset.Delete != null &&
@@ -47,6 +49,8 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                 for (var d = 0; d < changeset.Delete.Length; d++)
                 {
                     var delete = changeset.Delete[d];
+                    if (delete.TimeStamp.HasValue && timestamp < delete.TimeStamp.Value)
+                        timestamp = delete.TimeStamp.Value;
                     Delete(path, snapshotDb.Zoom, snapshotDb, delete.Type, delete.Id.Value);
                     if (changeset.Create.Length > 1000 && d % 1000 == 0)
                     {
@@ -65,7 +69,10 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             {
                 for (var c = 0; c < changeset.Create.Length; c++)
                 {
-                    Create(path, snapshotDb.Zoom, snapshotDb, changeset.Create[c]);
+                    var create = changeset.Create[c];
+                    if (create.TimeStamp.HasValue && timestamp < create.TimeStamp.Value)
+                        timestamp = create.TimeStamp.Value;
+                    Create(path, snapshotDb.Zoom, snapshotDb, create);
                     if (changeset.Create.Length > 1000 && c % 1000 == 0)
                     {
                         Log.Information($"Created {c}/{changeset.Create.Length} objects.");
@@ -83,6 +90,9 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             {
                 for (var m = 0; m < changeset.Modify.Length; m++)
                 {
+                    var modify = changeset.Modify[m];
+                    if (modify.TimeStamp.HasValue && timestamp < modify.TimeStamp.Value)
+                        timestamp = modify.TimeStamp.Value;
                     Modify(path, snapshotDb.Zoom, snapshotDb, changeset.Modify[m]);
                     if (changeset.Modify.Length > 1000 && m % 1000 == 0)
                     {
@@ -96,7 +106,14 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             }
             
             // write meta data.
-            throw new NotImplementedException();
+            var dbMeta = new SnapshotDbMeta()
+            {
+                Base = snapshotDb.Path,
+                Type = SnapshotDbType.Diff,
+                Zoom = snapshotDb.Zoom,
+                Timestamp = timestamp
+            };
+            SnapshotDbOperations.SaveDbMeta(path, dbMeta);
 
             return new SnapshotDbDiff(path);
         }
@@ -154,6 +171,8 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     }
                     tiles = GetTilesFor(path, maxzoom, snapshotDb, members);
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
             
             // add the object to all the indexes/tiles.

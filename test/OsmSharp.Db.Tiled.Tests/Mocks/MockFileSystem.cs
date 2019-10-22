@@ -164,6 +164,12 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
                         });
                 }
             }
+
+            if (mode == FileMode.Append &&
+                !this.Exists(file))
+            {
+                return Open(file, FileMode.Create);
+            }
             return new MockStream(this.FindFile(file));
         }
 
