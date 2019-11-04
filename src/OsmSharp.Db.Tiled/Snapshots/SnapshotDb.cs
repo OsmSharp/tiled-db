@@ -21,10 +21,15 @@ namespace OsmSharp.Db.Tiled.Snapshots
         private readonly ConcurrentDictionary<uint, LRUCache<ulong, Index>> _wayIndexesCache;
 
         protected SnapshotDb(string path)
+            : this(path, SnapshotDbOperations.LoadDbMeta(path))
+        {
+            
+        }
+
+        protected SnapshotDb(string path, SnapshotDbMeta meta)
         {
             _path = path;
-
-            _meta = SnapshotDbOperations.LoadDbMeta(_path);
+            _meta = meta;
             
             _nodeIndexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, Index>>();
             _wayIndexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, Index>>();
@@ -44,7 +49,12 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// Gets the timestamp.
         /// </summary>
         internal DateTime Timestamp => _meta.Timestamp;
-        
+
+        /// <summary>
+        /// Gets the base.
+        /// </summary>
+        internal string Base => _meta.Base;
+
         /// <summary>
         /// Gets the object with the given type and id.
         /// </summary>

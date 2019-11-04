@@ -30,6 +30,25 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
         }
 
         /// <summary>
+        /// Loads db from meta.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <returns>The snapshot db.</returns>
+        public static SnapshotDb LoadDb(string path)
+        {
+            var meta = SnapshotDbOperations.LoadDbMeta(path);
+            switch (meta.Type)
+            {
+                case SnapshotDbType.Diff:
+                    return new SnapshotDbDiff(path, meta);
+                case SnapshotDbType.Full:
+                    return new SnapshotDbFull(path, meta);
+            }
+            
+            throw new Exception("Could not determine db type from meta.");
+        }
+
+        /// <summary>
         /// Loads db meta from disk.
         /// </summary>
         /// <param name="path">The path.</param>
@@ -232,24 +251,28 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
                 index.Serialize(stream);
             }
         }
-        
+
         internal static IEnumerable<OsmGeo> GetLocalTile(string path, uint maxZoom, Tile tile, OsmGeoType type)
         {
             // TODO: dispose the returned streams, implement this in OSM stream source.
             if (tile.Zoom != maxZoom) throw new ArgumentException("Tile doesn't have the correct zoom level.");
 
             var dataTile = SnapshotDbOperations.LoadTile(path, type, tile);
-            if (dataTile == null) yield break;
+            if (dataTile == null) return null;
+            return GetTileData(dataTile);
+        }
 
-            using (dataTile)
+        private static IEnumerable<OsmGeo> GetTileData(Stream stream)
+        {
+            using (stream)
             {
-                foreach (var osmGeo in new Streams.BinaryOsmStreamSource(dataTile))
+                foreach (var osmGeo in new Streams.BinaryOsmStreamSource(stream))
                 {
                     yield return osmGeo;
                 }
             }
         }
-        
+
         /// <summary>
         /// Loads a deleted index for the given tile from disk (if any).
         /// </summary>

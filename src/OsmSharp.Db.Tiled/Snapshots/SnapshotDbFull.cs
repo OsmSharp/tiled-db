@@ -17,6 +17,13 @@ namespace OsmSharp.Db.Tiled.Snapshots
         {
             
         }
+
+        internal SnapshotDbFull(string path, SnapshotDbMeta meta)
+            : base(path, meta)
+        {
+            
+        }
+
         
         /// <inheritdoc/>
         public override OsmGeo Get(OsmGeoType type, long id)

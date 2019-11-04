@@ -52,7 +52,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     if (delete.TimeStamp.HasValue && timestamp < delete.TimeStamp.Value)
                         timestamp = delete.TimeStamp.Value;
                     Delete(path, snapshotDb.Zoom, snapshotDb, delete.Type, delete.Id.Value);
-                    if (changeset.Create.Length > 1000 && d % 1000 == 0)
+                    if (changeset.Delete.Length > 1000 && d % 1000 == 0)
                     {
                         Log.Information($"Deleted {d+1}/{changeset.Delete.Length} objects.");
                     }
@@ -118,12 +118,12 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             return new SnapshotDbDiff(path);
         }
         
-        private static void Delete(string path, uint maxzoom, SnapshotDb snapshotDb, OsmGeoType type, long id)
+        private static void Delete(string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeoType type, long id)
         {
             //Log.Information($"Deleting: {type} - {id}");
             // TODO: deletions could cause another object to be removed from tiles.
             
-            var tiles = GetTilesFor(path, maxzoom, snapshotDb, new[] {(type, id)});
+            var tiles = GetTilesFor(path, maxZoom, snapshotDb, new[] {(type, id)});
             var dataTiles = tiles[tiles.Count - 1];
 
             // update the deleted index for each tile.
@@ -140,7 +140,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             }
         }
         
-        private static void Create(string path, uint maxzoom, SnapshotDb snapshotDb, OsmGeo osmGeo)
+        private static void Create(string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeo osmGeo)
         {
             //Log.Information($"Creating: {osmGeo}");
             // TODO: creating relations could cause loops in the relations and change tile membership.
@@ -151,7 +151,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             {
                 case OsmGeoType.Node:
                     var node = osmGeo as Node;
-                    tiles = GetTilesFor(path, maxzoom, node.Longitude.Value, node.Latitude.Value);
+                    tiles = GetTilesFor(path, maxZoom, node.Longitude.Value, node.Latitude.Value);
                     break;
                 case OsmGeoType.Way:
                     var way = osmGeo as Way;
@@ -160,7 +160,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     {
                         nodes.Add((OsmGeoType.Node, n));
                     }
-                    tiles = GetTilesFor(path, maxzoom, snapshotDb, nodes);
+                    tiles = GetTilesFor(path, maxZoom, snapshotDb, nodes);
                     break;
                 case OsmGeoType.Relation:
                     var relation = osmGeo as Relation;
@@ -169,7 +169,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     {
                         members.Add((m.Type, m.Id));
                     }
-                    tiles = GetTilesFor(path, maxzoom, snapshotDb, members);
+                    tiles = GetTilesFor(path, maxZoom, snapshotDb, members);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -209,9 +209,13 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
 
         private static void Modify(string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeo osmGeo)
         {
-            //Log.Information($"Modifying: {osmGeo}");
+            // TODO: we are testing this, modification in our model is creation.
+            Create(path, maxZoom, snapshotDb, osmGeo);
+            return;
             
-            var recreate = new Dictionary<OsmGeoKey, OsmGeo>();
+            //Log.Information($"Modifying: {osmGeo}");
+
+            /*var recreate = new Dictionary<OsmGeoKey, OsmGeo>();
             
             if (osmGeo.Type == OsmGeoType.Node)
             {
@@ -374,7 +378,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             foreach (var create in recreate.Values)
             {
                 Create(path, maxZoom, snapshotDb, create);
-            }
+            }*/
         }
         
         private static IReadOnlyList<IEnumerable<(Tile tile, int mask)>> GetTilesFor(string path, uint maxZoom, double longitude, double latitude)

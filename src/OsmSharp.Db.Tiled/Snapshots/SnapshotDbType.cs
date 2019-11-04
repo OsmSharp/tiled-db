@@ -8,11 +8,11 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <summary>
         /// A full snapshot.
         /// </summary>
-        public static string Full = "Full";
+        public const string Full = "Full";
         
         /// <summary>
         /// A diff snapshot.
         /// </summary>
-        public static string Diff = "Diff";
+        public const string Diff = "Diff";
     }
 }
