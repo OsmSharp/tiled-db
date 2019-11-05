@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Reminiscence.Arrays;
 
 namespace OsmSharp.Db.Tiled
@@ -75,6 +76,64 @@ namespace OsmSharp.Db.Tiled
             for (long i = oldSize; i < size; i++)
             {
                 array[i] = fillValueIfNeeded;
+            }
+        }
+        
+        internal static IEnumerable<OsmGeo> Merge(this IEnumerable<OsmGeo> baseData,
+            IEnumerable<OsmGeo> newData)
+        {
+            using (var baseDataEnumerator = baseData.GetEnumerator())
+            using (var newDataEnumerator = newData.GetEnumerator())
+            {
+                var baseHasNext = baseDataEnumerator.MoveNext();
+                var newHasNext = newDataEnumerator.MoveNext();
+                
+                while (true)
+                {
+                    // return one of the two.
+                    var c = 0;
+                    if (baseHasNext && newHasNext)
+                    {
+                        // data in both, compare.
+                        c = baseDataEnumerator.Current.CompareByIdAndType(
+                            newDataEnumerator.Current);
+                    }
+                    else if (baseHasNext)
+                    {
+                        // on data in base.
+                        c = -1;
+                    }
+                    else if (newHasNext)
+                    {
+                        // only data in next.
+                        c = 1;
+                    }
+                    else
+                    {
+                        // no more data!
+                        yield break;
+                    }
+
+                    if (c == 0)
+                    {
+                        // oeps, confict.
+                        yield return newDataEnumerator.Current;
+                        newHasNext = newDataEnumerator.MoveNext();
+                        baseHasNext = baseDataEnumerator.MoveNext();
+                    }
+                    else if (c == -1)
+                    {
+                        // return from base.
+                        yield return baseDataEnumerator.Current;
+                        baseHasNext = baseDataEnumerator.MoveNext();
+                    }
+                    else
+                    {
+                        // return from new.
+                        yield return newDataEnumerator.Current;
+                        newHasNext = newDataEnumerator.MoveNext();
+                    }
+                }
             }
         }
     }

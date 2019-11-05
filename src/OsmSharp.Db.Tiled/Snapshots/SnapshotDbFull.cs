@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using OsmSharp.Db.Tiled.Snapshots.IO;
 using OsmSharp.Db.Tiled.Tiles;
@@ -26,9 +27,9 @@ namespace OsmSharp.Db.Tiled.Snapshots
 
         
         /// <inheritdoc/>
-        public override OsmGeo Get(OsmGeoType type, long id)
+        internal override OsmGeo Get(OsmGeoType type, long id, Func<Tile, bool> isDeleted)
         { // in a snapshot the local tiles contain all data.
-            return this.GetLocal(type, id);
+            return this.GetLocal(type, id, isDeleted).osmGeo;
         }
 
         /// <inheritdoc/>

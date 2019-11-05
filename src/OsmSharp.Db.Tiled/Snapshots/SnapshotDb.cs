@@ -61,7 +61,12 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <param name="type">The type.</param>
         /// <param name="id">The id.</param>
         /// <returns>The object.</returns>
-        public abstract OsmGeo Get(OsmGeoType type, long id);
+        public virtual OsmGeo Get(OsmGeoType type, long id)
+        {
+            return this.Get(type, id, null);
+        }
+
+        internal abstract OsmGeo Get(OsmGeoType type, long id, Func<Tile, bool> isDeleted);
         
         /// <summary>
         /// Gets the data in the given tile.
@@ -134,13 +139,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
             }
         }
         
-        /// <summary>
-        /// Gets a local tile, returns null if non found.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        protected OsmGeo GetLocal(OsmGeoType type, long id)
+        protected (OsmGeo osmGeo, bool deleted) GetLocal(OsmGeoType type, long id, Func<Tile, bool> isDeleted = null)
         {
             var tile = new Tile(0, 0, 0);
             var index = LoadIndex(tile, type);
@@ -153,11 +152,13 @@ namespace OsmSharp.Db.Tiled.Snapshots
 
                 if (subTile.Zoom == _meta.Zoom)
                 { // load data and find object.
+                    if (isDeleted != null && isDeleted(subTile)) return (null, true);
+                    
                     var stream = SnapshotDbOperations.LoadTile(_path, type, subTile);
                     if (stream == null)
                     {
                         Log.Warning($"Could not find sub tile, it should be there: {subTile}");
-                        return null;
+                        return (null, false);
                     }
                     using (stream)
                     {
@@ -168,7 +169,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
 
                             if (current.Id == id)
                             {
-                                return current;
+                                return (current, false);
                             }
                         }
                     }
@@ -178,7 +179,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
                 index = LoadIndex(tile, type);
             }
 
-            return null;
+            return (null, false);
         }
         
         /// <summary>
