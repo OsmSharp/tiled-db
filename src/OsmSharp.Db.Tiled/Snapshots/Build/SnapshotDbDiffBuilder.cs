@@ -30,7 +30,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             if (string.IsNullOrWhiteSpace(path))
             {
                 var epochs = DateTime.Now.ToUnixTime();
-                path = FileSystemFacade.FileSystem.Combine(FileSystemFacade.FileSystem.ParentDirectory(path),
+                path = FileSystemFacade.FileSystem.Combine(FileSystemFacade.FileSystem.ParentDirectory(snapshotDb.Path),
                     $"diff-{epochs}");
             }
             

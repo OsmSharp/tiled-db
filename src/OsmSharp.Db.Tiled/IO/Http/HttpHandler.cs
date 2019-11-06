@@ -13,9 +13,9 @@ namespace OsmSharp.Db.Tiled.IO.Http
         internal static readonly Lazy<IHttpHandler> LazyHttpHandler = 
             new Lazy<IHttpHandler>(() => new HttpHandler());
         
-        public Task<Stream> TryGetStreamAsync(string requestUri)
+        public async Task<Stream> TryGetStreamAsync(string requestUri)
         {
-            throw new System.NotImplementedException();
+            return await ThreadLocalClient.Value.GetStreamAsync(requestUri);
         }
 
         private static IHttpHandler _defaultHandler;

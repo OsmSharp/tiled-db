@@ -104,27 +104,21 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     db = source.BuildDb(args[1], zoom);
                 }
                 
-//                // start catch up.
-//                var enumerator = new CatchupReplicationDiffEnumerator(latest);
-//                while (await enumerator.MoveNext())
-//                {
-//                    var diff = await enumerator.Diff();
-//
-//                    Log.Information($"Another diff {enumerator.State}: " +
-//                                    $"{diff.Create?.Length ?? 0}cre, " +
-//                                    $"{diff.Modify?.Length ?? 0}mod, " +
-//                                    $"{diff.Delete?.Length ?? 0}del");
-//                    Log.Information("Applying changes...");
-//
-//                    var directory = BuildPath($"/media/xivk/2T-SSD-EXT/replication-tests/", enumerator.State);
-//                    if (!directory.Exists)
-//                    {
-//                        directory.Create();
-//                    }
-//                    
-//                    db = db.ApplyChangeset(diff, directory.FullName);
-//                    Log.Information($"Changes applied, new database: {db}");
-//                }
+                // start catch up.
+                var enumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp);
+                while (await enumerator.MoveNext())
+                {
+                    var diff = await enumerator.Diff();
+
+                    Log.Information($"Another diff {enumerator.State}: " +
+                                    $"{diff.Create?.Length ?? 0}cre, " +
+                                    $"{diff.Modify?.Length ?? 0}mod, " +
+                                    $"{diff.Delete?.Length ?? 0}del");
+                    Log.Information("Applying changes...");
+                    
+                    db.ApplyDiff(diff);
+                    Log.Information($"Changes applied, new database: {db}");
+                }
             }
             catch (Exception e)
             {

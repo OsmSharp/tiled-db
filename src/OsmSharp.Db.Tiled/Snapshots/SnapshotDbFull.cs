@@ -24,7 +24,6 @@ namespace OsmSharp.Db.Tiled.Snapshots
         {
             
         }
-
         
         /// <inheritdoc/>
         internal override OsmGeo Get(OsmGeoType type, long id, Func<Tile, bool> isDeleted)

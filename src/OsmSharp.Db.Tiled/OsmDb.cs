@@ -45,7 +45,7 @@ namespace OsmSharp.Db.Tiled
         {
             lock (_diffSync)
             {
-                this.Latest = this.Latest.BuildDiff(_path, diff);
+                this.Latest = this.Latest.BuildDiff(string.Empty, diff);
             }
         }
 
@@ -65,6 +65,12 @@ namespace OsmSharp.Db.Tiled
 
             osmDb = null;
             return false;
+        }
+
+        /// <inheritdoc/>
+        public override string ToString()
+        {
+            return $"{_path}: {this.Latest.Path}@{this.Latest.Timestamp}";
         }
     }
 }

@@ -6,7 +6,6 @@ using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.Indexes;
 using OsmSharp.Db.Tiled.Snapshots.IO;
 using OsmSharp.Db.Tiled.Tiles;
-using Serilog;
 
 namespace OsmSharp.Db.Tiled.Snapshots
 {
