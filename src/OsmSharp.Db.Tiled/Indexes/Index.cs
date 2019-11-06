@@ -10,7 +10,7 @@ namespace OsmSharp.Db.Tiled.Indexes
     /// <summary>
     /// Represents an index matching ids to one or more subtiles.
     /// </summary>
-    public class Index : IDisposable
+    public class Index : IDisposable, IIndex
     {
         private readonly ArrayBase<ulong> _data;
         private readonly bool _mapped = false;
@@ -206,6 +206,24 @@ namespace OsmSharp.Db.Tiled.Indexes
                 id48 = id48 | ((ulong)1 << 47);
             }
             data = id48 | masked;
+        }
+
+        /// <summary>
+        /// Gets the number of elements in this index.
+        /// </summary>
+        public long Count => _pointer;
+
+        /// <summary>
+        /// Gets id/mask pair at the given index.
+        /// </summary>
+        /// <param name="i">The index.</param>
+        public (long id, int mask) this[int i]
+        {
+            get
+            {
+                Decode(_data[i], out var currentId, out var mask);
+                return (currentId, mask);
+            }
         }
 
         private long Search(long id, out int mask)

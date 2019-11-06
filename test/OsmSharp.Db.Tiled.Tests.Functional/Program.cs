@@ -27,7 +27,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 {
                     @"/data/work/data/OSM/wechel.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests/",
-                    @"14"
+                    @"12"
                 };
             }
 //#endif

@@ -45,7 +45,7 @@ namespace OsmSharp.Db.Tiled
         {
             lock (_diffSync)
             {
-                this.Latest = this.Latest.BuildDiff(string.Empty, diff);
+                this.Latest = this.Latest.BuildDiff(diff);
             }
         }
 

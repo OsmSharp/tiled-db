@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Indexes;
+using OsmSharp.Db.Tiled.Indexes.Cache;
+using OsmSharp.Db.Tiled.Indexes.InMemory;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Snapshots.IO;
 using OsmSharp.Db.Tiled.Tiles;
@@ -20,10 +22,10 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
         /// <summary>
         /// Builds a snapshot diff db.
         /// </summary>
-        /// <param name="snapshotDb"></param>
-        /// <param name="path"></param>
-        /// <param name="changeset"></param>
-        public static SnapshotDbDiff BuildDiff(this SnapshotDb snapshotDb, string path, OsmChange changeset)
+        /// <param name="snapshotDb">The snapshot db.</param>
+        /// <param name="changeset">The changeset.</param>
+        /// <param name="path">The path to store the db at, if not given one will be generated at the same level as the given db.</param>
+        public static SnapshotDbDiff BuildDiff(this SnapshotDb snapshotDb, OsmChange changeset, string path = null)
         {
             // creates a new database diff representing the given changes.
             // create a target directory if one wasn't specified.
@@ -41,6 +43,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             }
 
             var timestamp = snapshotDb.Timestamp;
+            var indexCache = new MemoryIndexCache();
             
             // execute the deletes.
             if (changeset.Delete != null &&
@@ -51,58 +54,71 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     var delete = changeset.Delete[d];
                     if (delete.TimeStamp.HasValue && timestamp < delete.TimeStamp.Value)
                         timestamp = delete.TimeStamp.Value;
-                    Delete(path, snapshotDb.Zoom, snapshotDb, delete.Type, delete.Id.Value);
+                    Delete(indexCache, path, snapshotDb.Zoom, snapshotDb, delete.Type, delete.Id.Value);
                     if (changeset.Delete.Length > 1000 && d % 1000 == 0)
                     {
                         Log.Information($"Deleted {d+1}/{changeset.Delete.Length} objects.");
                     }
                 }
-                if (changeset.Delete.Length > 1000)
-                {
-                    Log.Information($"Deleted {changeset.Delete.Length}/{changeset.Delete.Length} objects.");
-                }
             }
             
             // execute the creations.
+            var progress = 5000;
             if (changeset.Create != null &&
                 changeset.Create.Length > 0)
             {
+                // update timestamp.
                 for (var c = 0; c < changeset.Create.Length; c++)
                 {
                     var create = changeset.Create[c];
                     if (create.TimeStamp.HasValue && timestamp < create.TimeStamp.Value)
                         timestamp = create.TimeStamp.Value;
-                    Create(path, snapshotDb.Zoom, snapshotDb, create);
-                    if (changeset.Create.Length > 1000 && c % 1000 == 0)
+                }
+
+                var last = 0;
+                for (var c = 0; c < changeset.Create.Length;)
+                {
+                    var count = Create(indexCache, path, snapshotDb.Zoom, snapshotDb, changeset.Create, c);
+                    c += count;
+                    if (c - last > progress)
                     {
                         Log.Information($"Created {c}/{changeset.Create.Length} objects.");
+                        last = c;
                     }
                 }
-                if (changeset.Create.Length > 1000)
-                {
-                    Log.Information($"Created {changeset.Create.Length}/{changeset.Create.Length} objects.");
-                }
             }
-            
-            // execute the modifications.
+
+            // execute the creations.
             if (changeset.Modify != null &&
                 changeset.Modify.Length > 0)
             {
-                for (var m = 0; m < changeset.Modify.Length; m++)
+                // update timestamp.
+                for (var c = 0; c < changeset.Modify.Length; c++)
                 {
-                    var modify = changeset.Modify[m];
-                    if (modify.TimeStamp.HasValue && timestamp < modify.TimeStamp.Value)
-                        timestamp = modify.TimeStamp.Value;
-                    Modify(path, snapshotDb.Zoom, snapshotDb, changeset.Modify[m]);
-                    if (changeset.Modify.Length > 1000 && m % 1000 == 0)
+                    var modification = changeset.Modify[c];
+                    if (modification.TimeStamp.HasValue && timestamp < modification.TimeStamp.Value)
+                        timestamp = modification.TimeStamp.Value;
+                }
+
+                var last = 0;
+                for (var c = 0; c < changeset.Modify.Length; )
+                {
+                    var count = Create(indexCache, path, snapshotDb.Zoom, snapshotDb, changeset.Modify, c);
+                    c += count;
+                    if (c - last > progress)
                     {
-                        Log.Information($"Modified {m}/{changeset.Modify.Length} objects.");
+                        Log.Information($"Modified {c}/{changeset.Modify.Length} objects.");
+                        last = c;
                     }
                 }
-                if (changeset.Modify.Length > 1000)
-                {
-                    Log.Information($"Modified {changeset.Modify.Length}/{changeset.Modify.Length} objects.");
-                }
+            }
+            
+            // save all indexes.
+            foreach (var index in indexCache.GetAll())
+            {
+                if (index.index == null) continue;
+                
+                SnapshotDbOperations.SaveIndex(path, index.tile, index.type, index.index.ToIndex());
             }
             
             // write meta data.
@@ -118,12 +134,11 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             return new SnapshotDbDiff(path);
         }
         
-        private static void Delete(string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeoType type, long id)
+        private static void Delete(MemoryIndexCache indexCache, string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeoType type, long id)
         {
-            //Log.Information($"Deleting: {type} - {id}");
             // TODO: deletions could cause another object to be removed from tiles.
             
-            var tiles = GetTilesFor(path, maxZoom, snapshotDb, new[] {(type, id)});
+            var tiles = GetTilesFor(indexCache, path, maxZoom, snapshotDb, new[] {(type, id)});
             var dataTiles = tiles[tiles.Count - 1];
 
             // update the deleted index for each tile.
@@ -139,10 +154,78 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                 SnapshotDbOperations.SaveDeletedIndex(path, dataTile.tile, type, deletedIndex);
             }
         }
-        
-        private static void Create(string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeo osmGeo)
+
+        private static int Create(MemoryIndexCache indexCache,string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeo[] osmGeos, int i)
         {
-            //Log.Information($"Creating: {osmGeo}");
+            var osmGeo = osmGeos[i];
+            if (osmGeo.Type == OsmGeoType.Node)
+            {
+                // attempt to create multiple nodes at a time.
+                var node = osmGeo as Node;
+                var tile = Tile.WorldToTileIndex(node.Latitude.Value, node.Longitude.Value, maxZoom);
+                var nodes = new List<Node> {node};
+                var start = i;
+                while (true)
+                {
+                    i++;
+                    if (i >= osmGeos.Length) break;
+                    osmGeo = osmGeos[i];
+
+                    if (osmGeo.Type != OsmGeoType.Node) break;
+                    node = osmGeo as Node;
+                    
+                    var nextTile = Tile.WorldToTileIndex(node.Latitude.Value, node.Longitude.Value, maxZoom);
+                    if (nextTile.LocalId != tile.LocalId) break;
+
+                    nodes.Add(node);
+                }
+
+                // update all at once.
+                Create(indexCache, path, maxZoom, snapshotDb, nodes);
+
+                return i - start;
+            }
+
+            // create one at a time.
+            // TODO: figure out if we can also update this.
+            Create(indexCache, path, maxZoom, snapshotDb, osmGeo);
+            return 1;
+        }
+
+        private static void Create(MemoryIndexCache indexCache,string path, uint maxZoom, SnapshotDb snapshotDb, List<Node> nodes)
+        {
+            // determine the tile for this new object.
+            var tiles = GetTilesFor(indexCache, path, maxZoom, nodes[0].Longitude.Value, nodes[0].Latitude.Value);
+            
+            // add the object to all the indexes/tiles.
+            for (var l = 0; l < tiles.Count - 1; l++)
+            {
+                foreach (var (tile, mask) in tiles[l])
+                {
+                    var index = LoadIndex(indexCache, path, tile, OsmGeoType.Node, true);
+                    foreach (var node in nodes)
+                    {
+                        index.Add(node.Id.Value, mask);
+                    }
+                    //SnapshotDbOperations.SaveIndex(path, tile, OsmGeoType.Node, index);
+                }
+            }
+            
+            // add the object to all the data tiles.
+            foreach (var (tile, _) in tiles[tiles.Count - 1])
+            {
+                using (var stream = SnapshotDbOperations.OpenAppendStreamTile(path, OsmGeoType.Node, tile))
+                {
+                    foreach (var node in nodes)
+                    {
+                        stream.Append(node);
+                    }
+                }
+            }
+        }
+
+        private static void Create(MemoryIndexCache indexCache,string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeo osmGeo)
+        {
             // TODO: creating relations could cause loops in the relations and change tile membership.
             
             // determine the tile for this new object.
@@ -151,7 +234,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             {
                 case OsmGeoType.Node:
                     var node = osmGeo as Node;
-                    tiles = GetTilesFor(path, maxZoom, node.Longitude.Value, node.Latitude.Value);
+                    tiles = GetTilesFor(indexCache, path, maxZoom, node.Longitude.Value, node.Latitude.Value);
                     break;
                 case OsmGeoType.Way:
                     var way = osmGeo as Way;
@@ -160,7 +243,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     {
                         nodes.Add((OsmGeoType.Node, n));
                     }
-                    tiles = GetTilesFor(path, maxZoom, snapshotDb, nodes);
+                    tiles = GetTilesFor(indexCache, path, maxZoom, snapshotDb, nodes);
                     break;
                 case OsmGeoType.Relation:
                     var relation = osmGeo as Relation;
@@ -169,7 +252,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     {
                         members.Add((m.Type, m.Id));
                     }
-                    tiles = GetTilesFor(path, maxZoom, snapshotDb, members);
+                    tiles = GetTilesFor(indexCache, path, maxZoom, snapshotDb, members);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -180,9 +263,9 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             {
                 foreach (var (tile, mask) in tiles[l])
                 {
-                    var index = LoadIndex(path, tile, osmGeo.Type, true);
+                    var index = LoadIndex(indexCache, path, tile, osmGeo.Type, true);
                     index.Add(osmGeo.Id.Value, mask);
-                    SnapshotDbOperations.SaveIndex(path, tile, osmGeo.Type, index);
+                    //SnapshotDbOperations.SaveIndex(path, tile, osmGeo.Type, index);
                 }
             }
             
@@ -207,181 +290,181 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             }
         }
 
-        private static void Modify(string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeo osmGeo)
-        {
-            // TODO: we are testing this, modification in our model is creation.
-            Create(path, maxZoom, snapshotDb, osmGeo);
-            return;
-            
-            //Log.Information($"Modifying: {osmGeo}");
-
-            /*var recreate = new Dictionary<OsmGeoKey, OsmGeo>();
-            
-            if (osmGeo.Type == OsmGeoType.Node)
-            {
-                var oldTiles = GetTilesFor(path, maxZoom, snapshotDb, new[] {(osmGeo.Type, osmGeo.Id.Value)});
-
-                if (!oldTiles[oldTiles.Count - 1].Any())
-                { // no old tiles found, object didn't exist yet, this is possible with extracts.
-                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
-                    Create(path, maxZoom, snapshotDb, osmGeo);
-                    return;
-                }
-
-                var oldTile = oldTiles[oldTiles.Count - 1].First();
-                var node = osmGeo as Node;
-                var newTiles = GetTilesFor(path, maxZoom, node.Longitude.Value, node.Latitude.Value);
-                var newTile = newTiles[newTiles.Count - 1].First();
-
-                if (newTile.tile.LocalId != oldTile.tile.LocalId)
-                { // node is NOT in the same tile, just recreate the node, it will be moved.
-                    // trigger move of dependent objects.
-                    foreach (var parent in GetParentsIn(path, maxZoom, snapshotDb, oldTile.tile, osmGeo.Type, osmGeo.Id.Value))
-                    {
-                        recreate[new OsmGeoKey(parent)] = parent;
-                    }
-                    
-                    // recreate the node.
-                    Create(path, maxZoom, snapshotDb, node);
-                }
-                else
-                { // node is in the same tile, just add it to the local data tile, it will be used instead of base.
-                    // add the node to the data tile.
-                    using (var stream = SnapshotDbOperations.OpenAppendStreamTile(path, osmGeo.Type, newTile.tile))
-                    {
-                        stream.Append(osmGeo as Node);
-                    }
-                }
-            }
-            else if (osmGeo.Type == OsmGeoType.Way)
-            {
-                var way = osmGeo as Way;
-                
-                // build set of old tiles.
-                var oldTiles = GetTilesFor(path, maxZoom, snapshotDb, new[] {(osmGeo.Type, osmGeo.Id.Value)});
-                
-                if (!oldTiles[oldTiles.Count - 1].Any())
-                { // no old tiles found, object didn't exist yet, this is possible with extracts.
-                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
-                    Create(path, maxZoom, snapshotDb, osmGeo);
-                    return;
-                }
-                
-                var oldTileSet = new HashSet<ulong>();
-                foreach (var oldTile in oldTiles[oldTiles.Count - 1])
-                {
-                    oldTileSet.Add(oldTile.tile.LocalId);
-                }
-                
-                // get new tiles and build set.
-                var nodes = new List<(OsmGeoType type, long id)>();
-                foreach (var n in way.Nodes)
-                {
-                    nodes.Add((OsmGeoType.Node, n));
-                }
-                var newTiles = GetTilesFor(path, maxZoom, snapshotDb, nodes);
-                var newTileSet = new HashSet<ulong>();
-                foreach (var newTile in newTiles[newTiles.Count - 1])
-                {
-                    newTileSet.Add(newTile.tile.LocalId);
-                }
-                
-                // compare sets.
-                if (!newTileSet.SetEquals(oldTileSet))
-                { // way NOT in the same tiles
-                    // trigger move of dependent objects.
-                    foreach (var oldTile in oldTiles[oldTiles.Count - 1])
-                    {
-                        foreach (var parent in GetParentsIn(path, maxZoom, snapshotDb, oldTile.tile, osmGeo.Type, osmGeo.Id.Value))
-                        {
-                            recreate[new OsmGeoKey(parent)] = parent;
-                        }
-                    }
-                    
-                    // recreate the way.
-                    Create(path, maxZoom, snapshotDb, way);
-                }
-                else
-                { // way is exactly the same tiles, just write it to all of them.
-                    foreach (var newTile in newTiles[newTiles.Count - 1])
-                    {
-                        // add the node to the data tile.
-                        using (var stream = SnapshotDbOperations.OpenAppendStreamTile(path, osmGeo.Type, newTile.tile))
-                        {
-                            stream.Append(way);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                 var relation = osmGeo as Relation;
-                
-                // build set of old tiles.
-                var oldTiles = GetTilesFor(path, maxZoom, snapshotDb, new[] {(osmGeo.Type, osmGeo.Id.Value)});
-                
-                if (!oldTiles[oldTiles.Count - 1].Any())
-                { // no old tiles found, object didn't exist yet, this is possible with extracts.
-                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
-                    Create(path, maxZoom, snapshotDb, osmGeo);
-                    return;
-                }
-                
-                var oldTileSet = new HashSet<ulong>();
-                foreach (var oldTile in oldTiles[oldTiles.Count - 1])
-                {
-                    oldTileSet.Add(oldTile.tile.LocalId);
-                }
-                
-                // get new tiles and build set.
-                var members = new List<(OsmGeoType type, long id)>();
-                foreach (var m in relation.Members)
-                {
-                    members.Add((m.Type, m.Id));
-                }
-                var newTiles = GetTilesFor(path, maxZoom, snapshotDb, members);
-                var newTileSet = new HashSet<ulong>();
-                foreach (var newTile in newTiles[newTiles.Count - 1])
-                {
-                    newTileSet.Add(newTile.tile.LocalId);
-                }
-                
-                // compare sets.
-                if (!newTileSet.SetEquals(oldTileSet))
-                { // relation NOT in the same tiles
-                    // trigger move of dependent objects.
-                    foreach (var oldTile in oldTiles[oldTiles.Count - 1])
-                    {
-                        foreach (var parent in GetParentsIn(path, maxZoom, snapshotDb, oldTile.tile, osmGeo.Type, osmGeo.Id.Value))
-                        {
-                            recreate[new OsmGeoKey(parent)] = parent;
-                        }
-                    }
-                    
-                    // recreate the way.
-                    Create(path, maxZoom, snapshotDb, relation);
-                }
-                else
-                { // relation is exactly the same tiles, just write it to all of them.
-                    foreach (var newTile in newTiles[newTiles.Count - 1])
-                    {
-                        // add the node to the data tile.
-                        using (var stream = SnapshotDbOperations.OpenAppendStreamTile(path, osmGeo.Type, newTile.tile))
-                        {
-                            stream.Append(relation);
-                        }
-                    }
-                }
-            }
-
-            // recreate all objects that could have been moved.
-            foreach (var create in recreate.Values)
-            {
-                Create(path, maxZoom, snapshotDb, create);
-            }*/
-        }
+//        private static void Modify(string path, uint maxZoom, SnapshotDb snapshotDb, OsmGeo osmGeo)
+//        {
+//            // TODO: we are testing this, modification in our model is creation.
+//            Create(path, maxZoom, snapshotDb, osmGeo);
+//            return;
+//            
+//            //Log.Information($"Modifying: {osmGeo}");
+//
+//            /*var recreate = new Dictionary<OsmGeoKey, OsmGeo>();
+//            
+//            if (osmGeo.Type == OsmGeoType.Node)
+//            {
+//                var oldTiles = GetTilesFor(path, maxZoom, snapshotDb, new[] {(osmGeo.Type, osmGeo.Id.Value)});
+//
+//                if (!oldTiles[oldTiles.Count - 1].Any())
+//                { // no old tiles found, object didn't exist yet, this is possible with extracts.
+//                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
+//                    Create(path, maxZoom, snapshotDb, osmGeo);
+//                    return;
+//                }
+//
+//                var oldTile = oldTiles[oldTiles.Count - 1].First();
+//                var node = osmGeo as Node;
+//                var newTiles = GetTilesFor(path, maxZoom, node.Longitude.Value, node.Latitude.Value);
+//                var newTile = newTiles[newTiles.Count - 1].First();
+//
+//                if (newTile.tile.LocalId != oldTile.tile.LocalId)
+//                { // node is NOT in the same tile, just recreate the node, it will be moved.
+//                    // trigger move of dependent objects.
+//                    foreach (var parent in GetParentsIn(path, maxZoom, snapshotDb, oldTile.tile, osmGeo.Type, osmGeo.Id.Value))
+//                    {
+//                        recreate[new OsmGeoKey(parent)] = parent;
+//                    }
+//                    
+//                    // recreate the node.
+//                    Create(path, maxZoom, snapshotDb, node);
+//                }
+//                else
+//                { // node is in the same tile, just add it to the local data tile, it will be used instead of base.
+//                    // add the node to the data tile.
+//                    using (var stream = SnapshotDbOperations.OpenAppendStreamTile(path, osmGeo.Type, newTile.tile))
+//                    {
+//                        stream.Append(osmGeo as Node);
+//                    }
+//                }
+//            }
+//            else if (osmGeo.Type == OsmGeoType.Way)
+//            {
+//                var way = osmGeo as Way;
+//                
+//                // build set of old tiles.
+//                var oldTiles = GetTilesFor(path, maxZoom, snapshotDb, new[] {(osmGeo.Type, osmGeo.Id.Value)});
+//                
+//                if (!oldTiles[oldTiles.Count - 1].Any())
+//                { // no old tiles found, object didn't exist yet, this is possible with extracts.
+//                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
+//                    Create(path, maxZoom, snapshotDb, osmGeo);
+//                    return;
+//                }
+//                
+//                var oldTileSet = new HashSet<ulong>();
+//                foreach (var oldTile in oldTiles[oldTiles.Count - 1])
+//                {
+//                    oldTileSet.Add(oldTile.tile.LocalId);
+//                }
+//                
+//                // get new tiles and build set.
+//                var nodes = new List<(OsmGeoType type, long id)>();
+//                foreach (var n in way.Nodes)
+//                {
+//                    nodes.Add((OsmGeoType.Node, n));
+//                }
+//                var newTiles = GetTilesFor(path, maxZoom, snapshotDb, nodes);
+//                var newTileSet = new HashSet<ulong>();
+//                foreach (var newTile in newTiles[newTiles.Count - 1])
+//                {
+//                    newTileSet.Add(newTile.tile.LocalId);
+//                }
+//                
+//                // compare sets.
+//                if (!newTileSet.SetEquals(oldTileSet))
+//                { // way NOT in the same tiles
+//                    // trigger move of dependent objects.
+//                    foreach (var oldTile in oldTiles[oldTiles.Count - 1])
+//                    {
+//                        foreach (var parent in GetParentsIn(path, maxZoom, snapshotDb, oldTile.tile, osmGeo.Type, osmGeo.Id.Value))
+//                        {
+//                            recreate[new OsmGeoKey(parent)] = parent;
+//                        }
+//                    }
+//                    
+//                    // recreate the way.
+//                    Create(path, maxZoom, snapshotDb, way);
+//                }
+//                else
+//                { // way is exactly the same tiles, just write it to all of them.
+//                    foreach (var newTile in newTiles[newTiles.Count - 1])
+//                    {
+//                        // add the node to the data tile.
+//                        using (var stream = SnapshotDbOperations.OpenAppendStreamTile(path, osmGeo.Type, newTile.tile))
+//                        {
+//                            stream.Append(way);
+//                        }
+//                    }
+//                }
+//            }
+//            else
+//            {
+//                 var relation = osmGeo as Relation;
+//                
+//                // build set of old tiles.
+//                var oldTiles = GetTilesFor(path, maxZoom, snapshotDb, new[] {(osmGeo.Type, osmGeo.Id.Value)});
+//                
+//                if (!oldTiles[oldTiles.Count - 1].Any())
+//                { // no old tiles found, object didn't exist yet, this is possible with extracts.
+//                    //Log.Warning($"Modification converted into create: {osmGeo} not found");
+//                    Create(path, maxZoom, snapshotDb, osmGeo);
+//                    return;
+//                }
+//                
+//                var oldTileSet = new HashSet<ulong>();
+//                foreach (var oldTile in oldTiles[oldTiles.Count - 1])
+//                {
+//                    oldTileSet.Add(oldTile.tile.LocalId);
+//                }
+//                
+//                // get new tiles and build set.
+//                var members = new List<(OsmGeoType type, long id)>();
+//                foreach (var m in relation.Members)
+//                {
+//                    members.Add((m.Type, m.Id));
+//                }
+//                var newTiles = GetTilesFor(path, maxZoom, snapshotDb, members);
+//                var newTileSet = new HashSet<ulong>();
+//                foreach (var newTile in newTiles[newTiles.Count - 1])
+//                {
+//                    newTileSet.Add(newTile.tile.LocalId);
+//                }
+//                
+//                // compare sets.
+//                if (!newTileSet.SetEquals(oldTileSet))
+//                { // relation NOT in the same tiles
+//                    // trigger move of dependent objects.
+//                    foreach (var oldTile in oldTiles[oldTiles.Count - 1])
+//                    {
+//                        foreach (var parent in GetParentsIn(path, maxZoom, snapshotDb, oldTile.tile, osmGeo.Type, osmGeo.Id.Value))
+//                        {
+//                            recreate[new OsmGeoKey(parent)] = parent;
+//                        }
+//                    }
+//                    
+//                    // recreate the way.
+//                    Create(path, maxZoom, snapshotDb, relation);
+//                }
+//                else
+//                { // relation is exactly the same tiles, just write it to all of them.
+//                    foreach (var newTile in newTiles[newTiles.Count - 1])
+//                    {
+//                        // add the node to the data tile.
+//                        using (var stream = SnapshotDbOperations.OpenAppendStreamTile(path, osmGeo.Type, newTile.tile))
+//                        {
+//                            stream.Append(relation);
+//                        }
+//                    }
+//                }
+//            }
+//
+//            // recreate all objects that could have been moved.
+//            foreach (var create in recreate.Values)
+//            {
+//                Create(path, maxZoom, snapshotDb, create);
+//            }*/
+//        }
         
-        private static IReadOnlyList<IEnumerable<(Tile tile, int mask)>> GetTilesFor(string path, uint maxZoom, double longitude, double latitude)
+        private static IReadOnlyList<IEnumerable<(Tile tile, int mask)>> GetTilesFor(MemoryIndexCache indexCache, string path, uint maxZoom, double longitude, double latitude)
         {
             var tilesPerZoom = new List<IEnumerable<(Tile tile, int mask)>>();
             var tile = new Tile(0, 0, 0);
@@ -406,7 +489,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             return tilesPerZoom;
         }
         
-        private static IReadOnlyList<IEnumerable<(Tile tile, int mask)>> GetTilesFor(string path, uint maxZoom,
+        private static IReadOnlyList<IEnumerable<(Tile tile, int mask)>> GetTilesFor(MemoryIndexCache indexCache, string path, uint maxZoom,
             SnapshotDb snapshotDb, IEnumerable<(OsmGeoType type, long id)> objects)
         {
             var tilesPerZoom = new List<IEnumerable<(Tile tile, int mask)>>();
@@ -414,15 +497,15 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             // do zoom level '0'.
             var tile = new Tile(0, 0, 0);
             var mask = 0;
-            Index nodeIndex = null;
-            Index wayIndex = null;
-            Index relationIndex = null;
+            MemoryIndex nodeIndex = null;
+            MemoryIndex wayIndex = null;
+            MemoryIndex relationIndex = null;
             foreach (var (type, id) in objects)
             {
                 switch (type)
                 {
                     case OsmGeoType.Node:
-                        if (nodeIndex == null) nodeIndex = LoadIndex(path, tile, type);
+                        if (nodeIndex == null) nodeIndex = LoadIndex(indexCache, path, tile, type);
                         if (nodeIndex != null &&
                             nodeIndex.TryGetMask(id, out var nodeMask))
                         {
@@ -431,7 +514,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
 
                         break;
                     case OsmGeoType.Way:
-                        if (wayIndex == null) wayIndex = LoadIndex(path, tile, type);
+                        if (wayIndex == null) wayIndex = LoadIndex(indexCache, path, tile, type);
                         if (wayIndex != null &&
                             wayIndex.TryGetMask(id, out var wayMask))
                         {
@@ -440,7 +523,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
 
                         break;
                     case OsmGeoType.Relation:
-                        if (relationIndex == null) relationIndex = LoadIndex(path, tile, type);
+                        if (relationIndex == null) relationIndex = LoadIndex(indexCache, path, tile, type);
                         if (relationIndex != null &&
                             relationIndex.TryGetMask(id, out var relationMask))
                         {
@@ -480,7 +563,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                             switch (type)
                             {
                                 case OsmGeoType.Node:
-                                    if (nodeIndex == null) nodeIndex = LoadIndex(path, currentTile, type);
+                                    if (nodeIndex == null) nodeIndex = LoadIndex(indexCache, path, currentTile, type);
                                     if (nodeIndex != null &&
                                         nodeIndex.TryGetMask(id, out var nodeMask))
                                     {
@@ -488,7 +571,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                                     }
                                     break;
                                 case OsmGeoType.Way:
-                                    if (wayIndex == null) wayIndex = LoadIndex(path, currentTile, type);
+                                    if (wayIndex == null) wayIndex = LoadIndex(indexCache, path, currentTile, type);
                                     if (wayIndex != null &&
                                         wayIndex.TryGetMask(id, out var wayMask))
                                     {
@@ -496,7 +579,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                                     }
                                     break;
                                 case OsmGeoType.Relation:
-                                    if (relationIndex == null) relationIndex = LoadIndex(path, currentTile, type);
+                                    if (relationIndex == null) relationIndex = LoadIndex(indexCache, path, currentTile, type);
                                     if (relationIndex != null &&
                                         relationIndex.TryGetMask(id, out var relationMask))
                                     {
@@ -520,29 +603,31 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
 
             return tilesPerZoom;
         }
-        
-        private static Index LoadIndex(string path, Tile tile, OsmGeoType type, bool create = false)
+
+        private static MemoryIndex LoadIndex(MemoryIndexCache indexCache, string path, Tile tile, OsmGeoType type,
+            bool create = false)
         {
-            if (type == OsmGeoType.Node)
+            if (indexCache.TryGet(tile, type, out var index))
             {
-                var index = SnapshotDbOperations.LoadIndex(path, tile, type);
-                if (create && index == null)
-                {
-                    index = new Index();
-                }
-                return index;
+                if (index != null) return index;
+                if (!create) return null;
             }
-            else
+
+            var loadedIndex = SnapshotDbOperations.LoadIndex(path, tile, type);
+            if (loadedIndex != null)
             {
-                var index = SnapshotDbOperations.LoadIndex(path, tile, type);
-                if (create && index == null)
-                {
-                    index = new Index();
-                }
-                return index;
+                index = MemoryIndex.FromIndex(loadedIndex);
             }
-        }  
-        
+            if (create && index == null)
+            {
+                index = new MemoryIndex();
+            }
+
+            indexCache.AddOrUpdate(tile, type, index);
+            
+            return index;
+        }
+
         private static IEnumerable<OsmGeo> GetParentsIn(string path, uint maxZoom, SnapshotDb snapshotDb, Tile tile, OsmGeoType type, long id)
         {
             if (type == OsmGeoType.Node)

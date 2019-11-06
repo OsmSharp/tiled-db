@@ -14,5 +14,10 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// A diff snapshot.
         /// </summary>
         public const string Diff = "Diff";
+        
+        /// <summary>
+        /// A snapshot snapshot.
+        /// </summary>
+        public const string Snapshot = "Snapshot";
     }
 }

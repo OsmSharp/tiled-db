@@ -17,7 +17,10 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
         /// <summary>
         /// Builds a new database and write the structure to the given path.
         /// </summary>
-        public static SnapshotDbFull Build(OsmStreamSource source, string path, uint maxZoom = 12)
+        /// <param name="source">The source stream.</param>
+        /// <param name="path">The path to store the db at.</param>
+        /// <param name="maxZoom">The maximum zoom.</param>
+        public static SnapshotDbFull Build(this OsmStreamSource source, string path, uint maxZoom = 12)
         {
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
             if (path == null) { throw new ArgumentNullException(nameof(path)); }
@@ -104,10 +107,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             return (nonEmptyTiles, timestamp);
         }
         
-        /// <summary>
-        /// Builds the database and writes the structure to the given by by splitting the given zoom level.
-        /// </summary>
-        private static List<Tile> Build(string path, uint maxZoom, Tile tile)
+        private static IEnumerable<Tile> Build(string path, uint maxZoom, Tile tile)
         {
             // split nodes and return index and non-empty tiles.
             List<Tile> nonEmptyTiles = null;

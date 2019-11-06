@@ -61,7 +61,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-create", change);
+            var diff = db.BuildDiff(change,"/data-create");
             
             // check if the node are there.
             var node = diff.Get(OsmGeoType.Node, 0);
@@ -134,7 +134,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-modify", change);
+            var diff = db.BuildDiff(change, "/data-modify");
             
             // check if the node is still there but it should be the new version.
             var node = diff.Get(OsmGeoType.Node, 0);
@@ -200,7 +200,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-delete", change);
+            var diff = db.BuildDiff(change, "/data-delete");
             
             // check if the node is still there but it should be the new version.
             var node = diff.Get(OsmGeoType.Node, 0);
@@ -286,7 +286,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-create-way", change);
+            var diff = db.BuildDiff(change, "/data-create-way");
             
             // check if the nodes are there.
             var node = diff.Get(OsmGeoType.Node, 0);
@@ -318,10 +318,10 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             var tileList = tile.ToList();
             way = tileList[0] as Way;
             Assert.NotNull(way);
-            Assert.AreEqual(0, way.Id);
+            Assert.AreEqual(0,way.Id);
             way = tileList[1] as Way;
             Assert.NotNull(way);
-            Assert.AreEqual(1, way.Id);
+            Assert.AreEqual(1,way.Id);
         }
                 
         [Test]
@@ -397,7 +397,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-modify-way", change);
+            var diff = db.BuildDiff(change,"/data-modify-way");
             
             // check if the nodes are there.
             var node = diff.Get(OsmGeoType.Node, 0);
@@ -499,7 +499,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-delete-way", change);
+            var diff = db.BuildDiff(change,"/data-delete-way");
             
             // check if the node is still there but it should be the new version.
             var node = diff.Get(OsmGeoType.Way, 0);
@@ -601,7 +601,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-modify-relation", change);
+            var diff = db.BuildDiff(change, "/data-modify-relation");
             
             // check if the ways are there.
             var relation = diff.Get(OsmGeoType.Relation, 0) as Relation;
@@ -712,7 +712,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-modify-way", change);
+            var diff = db.BuildDiff(change, "/data-modify-way");
             
             // check if the nodes are there.
             var node = diff.Get(OsmGeoType.Node, 0);
@@ -830,7 +830,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                 }
             };
 
-            var diff = db.BuildDiff("/data-delete-way", change);
+            var diff = db.BuildDiff(change, "/data-delete-way");
             
             // check if the node is still there but it should be the new version.
             var node = diff.Get(OsmGeoType.Relation, 0);
