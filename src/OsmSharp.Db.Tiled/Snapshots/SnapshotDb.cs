@@ -83,7 +83,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <param name="type">The type.</param>
         /// <param name="create">Flag to create when index doesn't exist.</param>
         /// <returns>The index.</returns>
-        protected Index LoadIndex(Tile tile, OsmGeoType type, bool create = false)
+        internal Index LoadIndex(Tile tile, OsmGeoType type, bool create = false)
         {
             if (type == OsmGeoType.Node)
             {

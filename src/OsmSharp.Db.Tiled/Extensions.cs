@@ -7,7 +7,7 @@ namespace OsmSharp.Db.Tiled
     /// <summary>
     /// Contains extension methods.
     /// </summary>
-    public static class Extensions
+    internal static class Extensions
     {
         /// <summary>
         /// Ensures that this <see cref="ArrayBase{T}"/> has room for at least

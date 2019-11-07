@@ -12,7 +12,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
     /// <summary>
     /// The node processor.
     /// </summary>
-    static class NodeProcessor
+    internal static class NodeProcessor
     {
         /// <summary>
         /// Processes the nodes in the given stream until the first on-node object is reached.

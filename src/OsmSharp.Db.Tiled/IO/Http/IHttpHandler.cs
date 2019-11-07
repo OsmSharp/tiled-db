@@ -6,7 +6,7 @@ namespace OsmSharp.Db.Tiled.IO.Http
     /// <summary>
     /// Abstract representation of an http handler.
     /// </summary>
-    public interface IHttpHandler
+    internal interface IHttpHandler
     {
         /// <summary>
         /// Gets a stream representing the data at the given url.

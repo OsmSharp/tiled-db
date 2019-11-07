@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace OsmSharp.Db.Tiled.IO.Http
 {
-    public class HttpHandler : IHttpHandler
+    internal class HttpHandler : IHttpHandler
     {
         internal static readonly ThreadLocal<HttpClient> ThreadLocalClient =
             new ThreadLocal<HttpClient>(() => new HttpClient());

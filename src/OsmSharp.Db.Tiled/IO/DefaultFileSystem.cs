@@ -5,7 +5,7 @@ using System.Text;
 
 namespace OsmSharp.Db.Tiled.IO
 {
-    class DefaultFileSystem : IFileSystem
+    internal class DefaultFileSystem : IFileSystem
     {
         public string Combine(params string[] paths)
         {

@@ -10,7 +10,7 @@ namespace OsmSharp.Db.Tiled.Indexes
     /// <summary>
     /// Represents an index matching ids to one or more subtiles.
     /// </summary>
-    public class Index : IDisposable, IIndex
+    internal class Index : IDisposable, IIndex
     {
         private readonly ArrayBase<ulong> _data;
         private readonly bool _mapped = false;

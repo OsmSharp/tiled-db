@@ -1,18 +1,11 @@
 ﻿using System;
 using System.IO;
 using Serilog;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
-using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Build;
-using OsmSharp.Db.Tiled.Ids;
 using OsmSharp.Db.Tiled.Replication;
-using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Logging;
 using OsmSharp.Streams;
-using OsmSharp.Tags;
 
 namespace OsmSharp.Db.Tiled.Tests.Functional
 {
@@ -34,7 +27,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             // TODO: implement a functional test handling a 404 on a missing sequence.
             
             // enable logging.
-            OsmSharp.Logging.Logger.LogAction = (origin, level, message, parameters) =>
+            Logger.LogAction = (origin, level, message, parameters) =>
             {
                 var formattedMessage = $"{origin} - {message}";
                 switch (level)
@@ -97,7 +90,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 if (!OsmDb.TryLoad(args[1], out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
-                    var source = new OsmSharp.Streams.PBFOsmStreamSource(
+                    var source = new PBFOsmStreamSource(
                         File.OpenRead(args[0]));
 
                     // splitting tiles and writing indexes.
@@ -105,19 +98,17 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 }
                 
                 // start catch up.
-                var enumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp);
+                var enumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1));
+                var count = 0;
                 while (await enumerator.MoveNext())
                 {
-                    var diff = await enumerator.Diff();
-
-                    Log.Information($"Another diff {enumerator.State}: " +
-                                    $"{diff.Create?.Length ?? 0}cre, " +
-                                    $"{diff.Modify?.Length ?? 0}mod, " +
-                                    $"{diff.Delete?.Length ?? 0}del");
-                    Log.Information("Applying changes...");
-                    
-                    db.ApplyDiff(diff);
+                    Log.Information($"Applying changes: {enumerator.State}");
+                    await enumerator.ApplyCurrent(db);
                     Log.Information($"Changes applied, new database: {db}");
+
+                    count++;
+
+                    if (count == 100) break;
                 }
             }
             catch (Exception e)

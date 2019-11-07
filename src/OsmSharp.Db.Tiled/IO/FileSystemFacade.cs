@@ -7,7 +7,7 @@ namespace OsmSharp.Db.Tiled.IO
     /// <summary>
     /// Defines a facade for the file system.
     /// </summary>
-    public static class FileSystemFacade
+    internal static class FileSystemFacade
     {
         /// <summary>
         /// The default file system.

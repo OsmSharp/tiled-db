@@ -10,7 +10,7 @@ namespace OsmSharp.Db.Tiled.Indexes
     /// <summary>
     /// An index to store deleted objects.
     /// </summary>
-    public class DeletedIndex : IDisposable
+    internal class DeletedIndex : IDisposable
     {
         private readonly ArrayBase<long> _data;
         private readonly bool _mapped = false;

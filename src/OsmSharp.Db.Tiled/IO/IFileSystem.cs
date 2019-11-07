@@ -6,7 +6,7 @@ namespace OsmSharp.Db.Tiled.IO
     /// <summary>
     /// An abstract file system.
     /// </summary>
-    public interface IFileSystem
+    internal interface IFileSystem
     {
         /// <summary>
         /// Returns true if the given file exists.

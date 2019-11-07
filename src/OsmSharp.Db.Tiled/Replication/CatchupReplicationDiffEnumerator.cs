@@ -6,7 +6,7 @@ namespace OsmSharp.Db.Tiled.Replication
     /// <summary>
     /// A replication enumerator to enumerate the minimum number of changeset to get updates since the given date time.
     /// </summary>
-    internal class CatchupReplicationDiffEnumerator : IReplicationDiffEnumerator
+    public class CatchupReplicationDiffEnumerator : IReplicationDiffEnumerator
     {
         /// <summary>
         /// Creates a new catch up replication changeset enumerator.

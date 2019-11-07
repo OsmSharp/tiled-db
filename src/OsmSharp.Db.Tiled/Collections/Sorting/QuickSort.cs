@@ -5,7 +5,7 @@ namespace OsmSharp.Db.Tiled.Collections.Sorting
     /// <summary>
     /// An implementation of the quick sort algorithm.
     /// </summary>
-    public static class QuickSort
+    internal static class QuickSort
     {
         /// <summary>
         /// Executes a quick sort algorithm given the value and swap methods.

@@ -6,7 +6,7 @@ namespace OsmSharp.Db.Tiled.Tiles
     /// <summary>
     /// Contains extension methods for the tile class.
     /// </summary>
-    public static class TileExtensions
+    internal static class TileExtensions
     {
         /// <summary>
         /// Builds a mask for the given tile relative to a tile at a zoom level - 2.

@@ -1,8 +1,10 @@
+using System;
 using System.IO;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Snapshots;
 using OsmSharp.Db.Tiled.Snapshots.Build;
+using OsmSharp.Db.Tiled.Snapshots.IO;
 
 namespace OsmSharp.Db.Tiled
 {
@@ -12,7 +14,7 @@ namespace OsmSharp.Db.Tiled
     public class OsmDb
     {
         private readonly string _path;
-        private readonly OsmDbMeta _meta;
+        private OsmDbMeta _meta;
 
         /// <summary>
         /// Creates a new OSM db.
@@ -24,7 +26,7 @@ namespace OsmSharp.Db.Tiled
 
             _meta = OsmDbOperations.LoadDbMeta(_path);
             
-            this.Latest = new SnapshotDbFull(_meta.Latest);
+            this.Latest = SnapshotDbOperations.LoadDb(_meta.Latest);
         }
 
         /// <summary>
@@ -32,7 +34,7 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         public Snapshots.SnapshotDb Latest { get; private set; }
 
-        private object _diffSync = new object();
+        private readonly object _diffSync = new object();
 
         /// <summary>
         /// Applies a diff to this OSM db.
@@ -40,12 +42,21 @@ namespace OsmSharp.Db.Tiled
         /// <remarks>
         /// This does not update the latest snapshot but makes a new latest snapshot.
         /// </remarks>
-        /// <param name="diff"></param>
-        public void ApplyDiff(OsmChange diff)
+        /// <param name="diff">The changeset.</param>
+        /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
+        public void ApplyDiff(OsmChange diff, DateTime? timeStamp = null)
         {
             lock (_diffSync)
             {
-                this.Latest = this.Latest.BuildDiff(diff);
+                // update data.
+                this.Latest = this.Latest.BuildDiff(diff, timeStamp);
+                
+                // update meta data.
+                _meta = new OsmDbMeta()
+                {
+                    Latest = this.Latest.Path
+                };
+                OsmDbOperations.SaveDbMeta(_path, _meta);
             }
         }
 
