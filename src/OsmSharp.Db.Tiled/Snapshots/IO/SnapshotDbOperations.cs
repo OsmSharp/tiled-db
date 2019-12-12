@@ -4,6 +4,7 @@ using OsmSharp.Db.Tiled.Indexes;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Reminiscence.Arrays;
 
@@ -53,7 +54,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
         /// </summary>
         /// <param name="path">The path.</param>
         /// <returns>The db meta.</returns>
-        public static SnapshotDbMeta LoadDbMeta(string path)
+        internal static SnapshotDbMeta LoadDbMeta(string path)
         {
             var dbMetaPath = PathToMeta(path);
             using (var stream = FileSystemFacade.FileSystem.OpenRead(dbMetaPath))
@@ -61,6 +62,82 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
             using (var jsonReader = new JsonTextReader(streamReader))
             {
                 return JsonSerializer.CreateDefault().Deserialize<SnapshotDbMeta>(jsonReader);
+            }
+        }
+        
+        /// <summary>
+        /// Gets all the relevant tiles.
+        /// </summary>
+        internal static IEnumerable<Tile> GetTiles(string path, uint maxZoom)
+        {
+            var basePath = FileSystemFacade.FileSystem.Combine(path, maxZoom.ToInvariantString());
+            if (!FileSystemFacade.FileSystem.DirectoryExists(basePath))
+            {
+                yield break;
+            }
+            
+            var mask = "*.nodes.osm.bin";
+            foreach(var xDir in FileSystemFacade.FileSystem.EnumerateDirectories(
+                basePath))
+            {
+                var xDirName = FileSystemFacade.FileSystem.DirectoryName(xDir);
+                if (!uint.TryParse(xDirName, out var x))
+                {
+                    continue;
+                }
+
+                foreach (var tile in FileSystemFacade.FileSystem.EnumerateFiles(xDir, mask))
+                {
+                    var tileName = FileSystemFacade.FileSystem.FileName(tile);
+
+                    if (!uint.TryParse(tileName.Substring(0,
+                        tileName.IndexOf('.')), out var y))
+                    {
+                        continue;
+                    }
+
+                    yield return new Tile(x, y, maxZoom);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Gets all the relevant tiles in sorted order to enable possible merging.
+        /// </summary>
+        internal static IEnumerable<Tile> GetIndexTiles(string path, uint zoom)
+        {
+            var basePath = FileSystemFacade.FileSystem.Combine(path, zoom.ToInvariantString());
+            if (!FileSystemFacade.FileSystem.DirectoryExists(basePath))
+            {
+                yield break;
+            }
+            
+            var mask = "*.nodes.idx";
+            var xDirs = FileSystemFacade.FileSystem.EnumerateDirectories(
+                basePath).ToList();
+            xDirs.Sort();
+            foreach(var xDir in xDirs)
+            {
+                var xDirName = FileSystemFacade.FileSystem.DirectoryName(xDir);
+                if (!uint.TryParse(xDirName, out var x))
+                {
+                    continue;
+                }
+
+                var yDirs = FileSystemFacade.FileSystem.EnumerateFiles(xDir, mask).ToList();
+                yDirs.Sort();
+                foreach (var tile in yDirs)
+                {
+                    var tileName = FileSystemFacade.FileSystem.FileName(tile);
+
+                    if (!uint.TryParse(tileName.Substring(0,
+                        tileName.IndexOf('.')), out var y))
+                    {
+                        continue;
+                    }
+
+                    yield return new Tile(x, y, zoom);
+                }
             }
         }
         
@@ -334,46 +411,6 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
             }
             return location;
         }
-        
-//        /// <summary>
-//        /// Opens a stream to append to a deleted index. Creates the index if it doesn't exist yet.
-//        /// </summary>
-//        /// <param name="path">The path.</param>
-//        /// <param name="type">The object type.</param>
-//        /// <param name="tile">The tile.</param>
-//        /// <returns>The stream.</returns>
-//        internal static Stream OpenAppendStreamDeletedIndex(string path, OsmGeoType type, Tile tile)
-//        {
-//            var indexPath = DatabaseCommon.PathToDeletedIndex(path, type, tile);
-//
-//            var parentPath = FileSystemFacade.FileSystem.ParentDirectory(indexPath);
-//            if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
-//            {
-//                FileSystemFacade.FileSystem.CreateDirectory(parentPath);
-//            }
-//            
-//            return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Append);
-//        }
-        
-//        /// <summary>
-//        /// Opens a stream to append to an index. Creates the index if it doesn't exist yet.
-//        /// </summary>
-//        /// <param name="path">The path.</param>
-//        /// <param name="type">The object type.</param>
-//        /// <param name="tile">The tile.</param>
-//        /// <returns>The stream.</returns>
-//        internal static Stream OpenAppendStreamIndex(string path, OsmGeoType type, Tile tile)
-//        {
-//            var indexPath = DatabaseCommon.PathToIndex(path, type, tile);
-//            if (!FileSystemFacade.FileSystem.Exists(indexPath))
-//            {
-//                return FileSystemFacade.FileSystem.Open(indexPath, FileMode.Create);
-//            }
-//
-//            var stream = FileSystemFacade.FileSystem.OpenWrite(indexPath);
-//            stream.Seek(stream.Length, SeekOrigin.End);
-//            return stream;
-//        }
 
         /// <summary>
         /// Opens a stream to append to a data tile. Creates the tile if it doesn't exist yet.

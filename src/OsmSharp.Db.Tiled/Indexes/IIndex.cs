@@ -1,9 +1,11 @@
+using System.Collections.Generic;
+
 namespace OsmSharp.Db.Tiled.Indexes
 {
     /// <summary>
     /// Abstract version of an index.
     /// </summary>
-    internal interface IIndex
+    internal interface IIndex : IEnumerable<(long id, int mask)>
     {
         /// <summary>
         /// Adds a new entry in this index.

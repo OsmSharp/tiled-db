@@ -23,14 +23,14 @@ namespace OsmSharp.Db.Tiled.Snapshots
         protected SnapshotDb(string path)
             : this(path, SnapshotDbOperations.LoadDbMeta(path))
         {
-            
+
         }
 
         protected SnapshotDb(string path, SnapshotDbMeta meta)
         {
             _path = path;
             _meta = meta;
-            
+
             _nodeIndexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, Index>>();
             _wayIndexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, Index>>();
         }
@@ -66,8 +66,13 @@ namespace OsmSharp.Db.Tiled.Snapshots
             return this.Get(type, id, null);
         }
 
+        protected SnapshotDb GetBaseDb()
+        {
+            return SnapshotDbOperations.LoadDb(this.Base);
+        }
+
         internal abstract OsmGeo Get(OsmGeoType type, long id, Func<Tile, bool> isDeleted);
-        
+
         /// <summary>
         /// Gets the data in the given tile.
         /// </summary>
@@ -75,7 +80,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <param name="type">The type to get the data for.</param>
         /// <returns>The data in the given tile.</returns>
         public abstract IEnumerable<OsmGeo> GetTile(Tile tile, OsmGeoType type);
-        
+
         /// <summary>
         /// Loads an index for the given type and tile and optionally creates it.
         /// </summary>
@@ -100,6 +105,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
                         index = new Index();
                         cached.Add(tile.LocalId, index);
                     }
+
                     return index;
                 }
 
@@ -108,6 +114,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
                 {
                     index = new Index();
                 }
+
                 cached.Add(tile.LocalId, index);
                 return index;
             }
@@ -126,6 +133,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
                         index = new Index();
                         cached.Add(tile.LocalId, index);
                     }
+
                     return index;
                 }
 
@@ -134,11 +142,12 @@ namespace OsmSharp.Db.Tiled.Snapshots
                 {
                     index = new Index();
                 }
+
                 cached.Add(tile.LocalId, index);
                 return index;
             }
         }
-        
+
         protected (OsmGeo osmGeo, bool deleted) GetLocal(OsmGeoType type, long id, Func<Tile, bool> isDeleted = null)
         {
             var tile = new Tile(0, 0, 0);
@@ -151,15 +160,17 @@ namespace OsmSharp.Db.Tiled.Snapshots
                 var subTile = subTiles.First();
 
                 if (subTile.Zoom == _meta.Zoom)
-                { // load data and find object.
+                {
+                    // load data and find object.
                     if (isDeleted != null && isDeleted(subTile)) return (null, true);
-                    
+
                     var stream = SnapshotDbOperations.LoadTile(_path, type, subTile);
                     if (stream == null)
                     {
                         Log.Warning($"Could not find sub tile, it should be there: {subTile}");
                         return (null, false);
                     }
+
                     using (stream)
                     {
                         var source = new OsmSharp.Streams.BinaryOsmStreamSource(stream);
@@ -181,16 +192,17 @@ namespace OsmSharp.Db.Tiled.Snapshots
 
             return (null, false);
         }
-        
+
         /// <summary>
         /// Gets the tiles for the given objects.
         /// </summary>
         /// <param name="objects">The objects.</param>
         /// <returns>All tiles with the given object.</returns>
-        internal virtual IReadOnlyList<IEnumerable<(Tile tile, int mask)>> GetTilesFor(IEnumerable<(OsmGeoType type, long id)> objects)
+        internal virtual IReadOnlyList<IEnumerable<(Tile tile, int mask)>> GetTilesFor(
+            IEnumerable<(OsmGeoType type, long id)> objects)
         {
             var tilesPerZoom = new List<IEnumerable<(Tile tile, int mask)>>();
-            
+
             // do zoom level '0'.
             var tile = new Tile(0, 0, 0);
             var mask = 0;
@@ -230,9 +242,9 @@ namespace OsmSharp.Db.Tiled.Snapshots
                         break;
                 }
             }
-            
+
             // add first tile.
-            tilesPerZoom.Add(new []{ (tile, mask)});
+            tilesPerZoom.Add(new[] {(tile, mask)});
 
             // split tiles per level.
             uint zoom = 0;
@@ -241,10 +253,12 @@ namespace OsmSharp.Db.Tiled.Snapshots
                 // move one level down and collect all tiles and masks.
                 var tilesAtZoom = new List<(Tile tile, int mask)>();
                 foreach (var (tileAbove, maskAbove) in tilesPerZoom[tilesPerZoom.Count - 1])
-                { // go over all tiles in zoom.
+                {
+                    // go over all tiles in zoom.
                     foreach (var currentTile in tileAbove.SubTilesForMask2(maskAbove))
-                    { // go over all tiles that have at least one object at zoom+2.
-                        
+                    {
+                        // go over all tiles that have at least one object at zoom+2.
+
                         // determine mask for the tile above over all objects.
                         mask = 0;
                         nodeIndex = null;
@@ -261,6 +275,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
                                     {
                                         mask |= nodeMask;
                                     }
+
                                     break;
                                 case OsmGeoType.Way:
                                     if (wayIndex == null) wayIndex = LoadIndex(currentTile, type);
@@ -269,6 +284,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
                                     {
                                         mask |= wayMask;
                                     }
+
                                     break;
                                 case OsmGeoType.Relation:
                                     if (relationIndex == null) relationIndex = LoadIndex(currentTile, type);
@@ -277,23 +293,51 @@ namespace OsmSharp.Db.Tiled.Snapshots
                                     {
                                         mask |= relationMask;
                                     }
+
                                     break;
                             }
                         }
-                        
+
                         // log the current tile and its mask.
                         tilesAtZoom.Add((currentTile, mask));
                     }
                 }
-                
+
                 // keep what was collected.
                 tilesPerZoom.Add(tilesAtZoom);
-                
+
                 // move to the next level.
                 zoom += 2;
             }
 
             return tilesPerZoom;
         }
+
+        /// <summary>
+        /// Gets the changed tiles since the latest non-diff.
+        /// </summary>
+        /// <returns>All modified tiles.</returns>
+        internal abstract IEnumerable<Tile> GetChangedTiles();
+
+        /// <summary>
+        /// Gets all the tiles with non-empty indexes for the given zoom level. 
+        /// </summary>
+        /// <param name="zoom">The zoom level.</param>
+        /// <returns>All tiles with non-empty indexes.</returns>
+        internal abstract IEnumerable<Tile> GetIndexesForZoom(uint zoom);
+
+        /// <summary>
+        /// Gets all masks for all the ids for the given index tile.
+        /// </summary>
+        /// <param name="tile">The tile.</param>
+        /// <param name="type">The type.</param>
+        /// <returns>All the masks in the indexes.</returns>
+        internal abstract IEnumerable<(long id, int mask)> GetSortedIndexData(Tile tile, OsmGeoType type);
+
+        /// <summary>
+        /// Gets the latest non-diff.
+        /// </summary>
+        /// <returns>The latest snapshot db that is not a diff.</returns>
+        internal abstract SnapshotDb GetLatestNonDiff();
     }
 }

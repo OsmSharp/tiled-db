@@ -42,7 +42,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
             if (local.osmGeo != null) return local.osmGeo;
 
             // move to base.
-            var b = SnapshotDbOperations.LoadDb(this.Base);
+            var b = this.GetBaseDb();
             
             // get from base but take into account deleted objects.
             return b.Get(type, id,(tile) =>
@@ -140,7 +140,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
             var localData = SnapshotDbOperations.GetLocalTile(this.Path, this.Zoom, tile, type);
 
             // get base data.
-            var b = SnapshotDbOperations.LoadDb(this.Base);
+            var b = this.GetBaseDb();
             var baseData = b.GetTile(tile, type);
 
             // merge or return.
@@ -153,6 +153,60 @@ namespace OsmSharp.Db.Tiled.Snapshots
                 return baseData;
             }
             return localData;
+        }
+
+        /// <inheritdoc/>
+        internal override IEnumerable<Tile> GetChangedTiles()
+        {
+            // get base data.
+            var b = this.GetBaseDb();
+            var baseTiles = b.GetChangedTiles();
+            
+            // gets the local tiles.
+            var localTiles = SnapshotDbOperations.GetTiles(this.Path, this.Zoom);
+            
+            var tiles = new HashSet<Tile>();
+
+            foreach (var tile in baseTiles)
+            {
+                tiles.Add(tile);
+            }
+
+            foreach (var tile in localTiles)
+            {
+                tiles.Add(tile);
+            }
+
+            return tiles;
+        }
+
+        /// <inheritdoc/>
+        internal override IEnumerable<Tile> GetIndexesForZoom(uint zoom)
+        {            
+            // get base data.
+            var b = this.GetBaseDb();
+            var baseTiles = b.GetIndexesForZoom(zoom);
+            
+            // gets the local tiles.
+            var localTiles = SnapshotDbOperations.GetIndexTiles(this.Path, zoom);
+            
+            return baseTiles.Merge(localTiles);
+        }
+
+        /// <inheritdoc/>
+        internal override IEnumerable<(long id, int mask)> GetSortedIndexData(Tile tile, OsmGeoType type)
+        {
+            var index = this.LoadIndex(tile, type);
+
+            var baseIndex = this.GetBaseDb().LoadIndex(tile, type);
+
+            return baseIndex.Merge(index, (t1, t2) => t1.id.CompareTo(t2.id));
+        }
+
+        /// <inheritdoc/>
+        internal override SnapshotDb GetLatestNonDiff()
+        {
+            return this.GetBaseDb().GetLatestNonDiff();
         }
     }
 }

@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using OsmSharp.Db.Tiled.Collections.Sorting;
 using Reminiscence.Arrays;
@@ -198,7 +200,7 @@ namespace OsmSharp.Db.Tiled.Indexes
             var masked = (ulong)mask << (64 - Subtiles);
             // right 48-bits are signed id.
             // copy 47 left bits (leave 48 for sign).
-            ulong idmask = 0x0000ffffffffffff;
+            const ulong idmask = 0x0000ffffffffffff;
             var id48 = unsignedId & idmask;
             // set sign.
             if (id < 0)
@@ -286,6 +288,24 @@ namespace OsmSharp.Db.Tiled.Indexes
         public void Dispose()
         {
             _data?.Dispose();
+        }
+
+        public IEnumerator<(long id, int mask)> GetEnumerator()
+        {
+            IEnumerable<(long id, int mask)> enumerable()
+            {
+                for (var i = 0; i < this.Count; i++)
+                {
+                    yield return this[i];
+                }
+            }
+
+            return enumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }

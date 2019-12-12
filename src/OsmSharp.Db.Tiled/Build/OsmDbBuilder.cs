@@ -24,7 +24,7 @@ namespace OsmSharp.Db.Tiled.Build
             if (!FileSystemFacade.FileSystem.DirectoryExists(snapshotDbPath)) FileSystemFacade.FileSystem.CreateDirectory(snapshotDbPath);
 
             // build the snapshot db.
-            SnapshotDbFullBuilder.Build(source, snapshotDbPath, maxZoom);
+            source.Build(snapshotDbPath, maxZoom);
             
             // generate and write the path.
             var osmDbMeta = new OsmDbMeta()

@@ -56,7 +56,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             }
 
             // save the meta-data.
-            var dbMeta = new SnapshotDbMeta()
+            var dbMeta = new SnapshotDbMeta
             {
                 Base = null, // this is a full db.
                 Type = SnapshotDbType.Full,

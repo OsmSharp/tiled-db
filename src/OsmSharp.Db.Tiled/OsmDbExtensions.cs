@@ -27,5 +27,15 @@ namespace OsmSharp.Db.Tiled
         {
             await osmDb.ApplyDiff(enumerator);
         }
+            
+        /// <summary>
+        /// Applies the current diff to the osmDb.
+        /// </summary>
+        /// <param name="osmDb">The osmDb.</param>
+        /// <param name="enumerator">The enumerator.</param>
+        public static async Task ApplyDiff(this OsmDb osmDb, ReplicationDiffEnumerator enumerator)
+        {
+            osmDb.ApplyDiff(await enumerator.Diff(), enumerator.State.Timestamp);
+        }
     }
 }

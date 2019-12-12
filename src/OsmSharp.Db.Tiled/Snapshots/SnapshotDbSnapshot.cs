@@ -7,20 +7,20 @@ using OsmSharp.Db.Tiled.Tiles;
 namespace OsmSharp.Db.Tiled.Snapshots
 {
     /// <summary> 
-    /// Represents a snapshot of OSM data at a given point in time represented by a full copy of the data.
+    /// Represents a snapshot of OSM data at a given point in time represented by a copy of the data with materialized full tiles.
     /// </summary>
-    public class SnapshotDbFull : SnapshotDb
+    public class SnapshotDbSnapshot : SnapshotDb
     {
         /// <summary>
         /// Creates a new db using the data at the given path.
         /// </summary>
-        public SnapshotDbFull(string path)
+        public SnapshotDbSnapshot(string path)
             : base(path)
         {
             
         }
 
-        internal SnapshotDbFull(string path, SnapshotDbMeta meta)
+        internal SnapshotDbSnapshot(string path, SnapshotDbMeta meta)
             : base(path, meta)
         {
             

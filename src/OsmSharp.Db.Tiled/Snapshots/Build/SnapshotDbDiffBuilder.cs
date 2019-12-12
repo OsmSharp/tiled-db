@@ -31,9 +31,8 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             // create a target directory if one wasn't specified.
             if (string.IsNullOrWhiteSpace(path))
             {
-                var epochs = DateTime.Now.ToUnixTime();
                 path = FileSystemFacade.FileSystem.Combine(FileSystemFacade.FileSystem.ParentDirectory(snapshotDb.Path),
-                    $"diff-{epochs}");
+                    $"diff-{DateTime.Now.ToTimestampPath()}");
             }
             
             // make sure path exists.
@@ -128,7 +127,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             }
             
             // write meta data.
-            var dbMeta = new SnapshotDbMeta()
+            var dbMeta = new SnapshotDbMeta
             {
                 Base = snapshotDb.Path,
                 Type = SnapshotDbType.Diff,

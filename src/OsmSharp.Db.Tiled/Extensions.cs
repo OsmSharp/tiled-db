@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using OsmSharp.Db.Tiled.Tiles;
 using Reminiscence.Arrays;
 
 namespace OsmSharp.Db.Tiled
@@ -55,6 +56,11 @@ namespace OsmSharp.Db.Tiled
             }
         }
 
+        internal static string ToTimestampPath(this DateTime dateTime)
+        {
+            return dateTime.ToString("yyyy-MM-dd-HH-mm-ss");
+        }
+
         private static void IncreaseMinimumSize<T>(ArrayBase<T> array, long minimumSize, bool fillEnd, T fillValueIfNeeded)
         {
             long oldSize = array.Length;
@@ -82,8 +88,42 @@ namespace OsmSharp.Db.Tiled
         internal static IEnumerable<OsmGeo> Merge(this IEnumerable<OsmGeo> baseData,
             IEnumerable<OsmGeo> newData)
         {
-            using (var baseDataEnumerator = baseData.GetEnumerator())
-            using (var newDataEnumerator = newData.GetEnumerator())
+            return baseData.Merge(newData, (o1, o2) => o1.CompareByIdAndType(o2));
+        }
+
+        internal static IEnumerable<Tile> Merge(this IEnumerable<Tile> tiles1, IEnumerable<Tile> tiles2)
+        {
+            return tiles1.Merge(tiles2, (t1, t2) => t1.LocalId.CompareTo(t2.LocalId));
+        }
+
+        internal static IEnumerable<T> Merge<T>(this IEnumerable<T> tiles1, IEnumerable<T> tiles2,
+            Func<T, T, int> compare)
+        {
+            switch (tiles1)
+            {
+                case null when tiles2 == null:
+                    yield break;
+                case null:
+                {
+                    foreach (var tile in tiles2)
+                    {
+                        yield return tile;
+                    }
+                    yield break;
+                }
+            }
+
+            if (tiles2 == null)
+            {
+                foreach (var tile in tiles1)
+                {
+                    yield return tile;
+                }
+                yield break;
+            }
+            
+            using (var baseDataEnumerator = tiles1.GetEnumerator())
+            using (var newDataEnumerator = tiles2.GetEnumerator())
             {
                 var baseHasNext = baseDataEnumerator.MoveNext();
                 var newHasNext = newDataEnumerator.MoveNext();
@@ -95,7 +135,7 @@ namespace OsmSharp.Db.Tiled
                     if (baseHasNext && newHasNext)
                     {
                         // data in both, compare.
-                        c = baseDataEnumerator.Current.CompareByIdAndType(
+                        c = compare(baseDataEnumerator.Current, 
                             newDataEnumerator.Current);
                     }
                     else if (baseHasNext)

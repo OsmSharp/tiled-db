@@ -59,6 +59,25 @@ namespace OsmSharp.Db.Tiled
                 OsmDbOperations.SaveDbMeta(_path, _meta);
             }
         }
+        
+        /// <summary>
+        /// Take the last db and convert it into a snapshot.
+        /// </summary>
+        public void TakeSnapshot()
+        {
+            lock (_diffSync)
+            {
+                // update data.
+                this.Latest = this.Latest.Build();
+                
+                // update meta data.
+                _meta = new OsmDbMeta()
+                {
+                    Latest = this.Latest.Path
+                };
+                OsmDbOperations.SaveDbMeta(_path, _meta);
+            }
+        }
 
         /// <summary>
         /// Try to load an OSM db from the given path.

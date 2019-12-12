@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 
 namespace OsmSharp.Db.Tiled.Indexes.InMemory
@@ -44,6 +45,19 @@ namespace OsmSharp.Db.Tiled.Indexes.InMemory
             }
 
             return memoryIndex;
+        }
+
+        public IEnumerator<(long id, int mask)> GetEnumerator()
+        {
+            foreach (var pair in _data)
+            {
+                yield return (pair.Key, pair.Value);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }

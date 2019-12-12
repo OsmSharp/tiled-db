@@ -1,9 +1,12 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using Serilog;
 using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.Build;
 using OsmSharp.Db.Tiled.Replication;
+using OsmSharp.Db.Tiled.Snapshots;
+using OsmSharp.Db.Tiled.Snapshots.Build;
 using OsmSharp.Logging;
 using OsmSharp.Streams;
 
@@ -18,7 +21,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/wechel.osm.pbf",
+                    @"/data/work/data/OSM/luxembourg-latest.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests/",
                     @"12"
                 };
@@ -97,18 +100,51 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     db = source.BuildDb(args[1], zoom);
                 }
                 
-                // start catch up.
-                var enumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1));
-                var count = 0;
-                while (await enumerator.MoveNext())
+                // start catch up until we reach hours/days.
+                var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1));
+                ReplicationState latestState = null;
+                while (await catchupEnumerator.MoveNext())
                 {
-                    Log.Information($"Applying changes: {enumerator.State}");
-                    await enumerator.ApplyCurrent(db);
+                    if (catchupEnumerator.State.Config.IsHourly ||
+                        catchupEnumerator.State.Config.IsDaily)
+                    {
+                        break;
+                    }
+                    
+                    Log.Information($"Applying changes: {catchupEnumerator.State}");
+                    await catchupEnumerator.ApplyCurrent(db);
                     Log.Information($"Changes applied, new database: {db}");
 
-                    count++;
+                    latestState = catchupEnumerator.State;
+                }
+                
+                // start enumerator that follows.
+                var enumerator = new ReplicationDiffEnumerator(Tiled.Replication.Replication.Hourly);
+                var lastDay = db.Latest.Timestamp.Date;
+                while (true)
+                {
+                    if (await enumerator.MoveTo(db.Latest.Timestamp))
+                    {
+                        Log.Information($"Applying changes: {enumerator.State}");
+                        await db.ApplyDiff(enumerator);
+                        Log.Information($"Changes applied, new database: {db}");
 
-                    if (count == 100) break;
+                        while (await enumerator.MoveNext())
+                        {
+                            if (lastDay != db.Latest.Timestamp.Date)
+                            {
+                                Log.Information($"A new day, taking snapshot.");
+                                db.TakeSnapshot();
+                                lastDay = db.Latest.Timestamp.Date;
+                            }
+                            
+                            Log.Information($"Applying changes: {enumerator.State}");
+                            await db.ApplyDiff(enumerator);
+                            Log.Information($"Changes applied, new database: {db}");
+                        }
+                    }
+                    
+                    Thread.Sleep(10000);
                 }
             }
             catch (Exception e)
@@ -116,22 +152,6 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 Log.Fatal(e, "Unhandled exception.");
                 throw;
             }
-        }
-
-        internal static DirectoryInfo BuildPath(string path, ReplicationState state)
-        {
-            var year = ("0000" + state.Timestamp.Year);
-            year = year.Substring(year.Length - 4, 4);
-            var month = ("00" + state.Timestamp.Month);
-            month = month.Substring(month.Length - 2, 2);
-            var day = ("00" + state.Timestamp.Day);
-            day = day.Substring(day.Length - 2, 2);
-            var hour = ("00" + state.Timestamp.Hour);
-            hour = hour.Substring(hour.Length - 2, 2);
-            var minute = ("00" + state.Timestamp.Minute);
-            minute = minute.Substring(minute.Length - 2, 2);
-            
-            return new DirectoryInfo(Path.Combine(path, year, month, day, hour, minute));
         }
     }
 }
