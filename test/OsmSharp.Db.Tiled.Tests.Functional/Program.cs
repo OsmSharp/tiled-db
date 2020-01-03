@@ -102,7 +102,6 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 
                 // start catch up until we reach hours/days.
                 var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1));
-                ReplicationState latestState = null;
                 while (await catchupEnumerator.MoveNext())
                 {
                     if (catchupEnumerator.State.Config.IsHourly ||
@@ -114,8 +113,6 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     Log.Information($"Applying changes: {catchupEnumerator.State}");
                     await catchupEnumerator.ApplyCurrent(db);
                     Log.Information($"Changes applied, new database: {db}");
-
-                    latestState = catchupEnumerator.State;
                 }
                 
                 // start enumerator that follows.
