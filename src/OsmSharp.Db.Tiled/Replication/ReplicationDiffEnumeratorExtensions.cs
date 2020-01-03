@@ -62,7 +62,7 @@ namespace OsmSharp.Db.Tiled.Replication
                 }
                 else
                 {
-                    if (enumerator.IsLatest)
+                    if (enumerator.CurrentIsLatest)
                     { // don't keep searching if the latest was hit
                       // the timestamp cannot be found in this case.
                         return false;

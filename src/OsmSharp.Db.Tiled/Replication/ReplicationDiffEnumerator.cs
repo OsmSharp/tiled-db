@@ -11,6 +11,9 @@ namespace OsmSharp.Db.Tiled.Replication
     /// <summary>
     /// A replication changeset enumerator.
     /// </summary>
+    /// <remarks>
+    /// Enumerates all diff until it reaches the latest diff. When this MoveNext is called when the replication at the latest false is returned.
+    /// </remarks>
     public class ReplicationDiffEnumerator : IReplicationDiffEnumerator
     {
         internal ReplicationDiffEnumerator(ReplicationConfig config)
@@ -32,8 +35,20 @@ namespace OsmSharp.Db.Tiled.Replication
             var state = await Config.GetReplicationState(sequenceNumber);
             if (state == null) return false;
             
+            if (_highestLatest < 0 || 
+                _lastReturned == _highestLatest ||
+                state.SequenceNumber >= _highestLatest)
+            {
+                // make sure the latest is up to date.
+                var latest = await Config.LatestReplicationState();
+                _highestLatest = latest.SequenceNumber;
+            }
+            
             _lastReturned = sequenceNumber;
-            State = state;
+            State = state;            
+            
+ 
+            CurrentIsLatest = (_lastReturned == _highestLatest);
 
             return true;
         }
@@ -41,11 +56,13 @@ namespace OsmSharp.Db.Tiled.Replication
         /// <summary>
         /// Moves to the next diff, returns true when it's available.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True when there is new data, false when latest was reached before.</returns>
         public async Task<bool> MoveNext()
         {
-            if (_highestLatest < 0)
+            if (_highestLatest < 0 || 
+                _lastReturned == _highestLatest)
             {
+                // make sure the latest is up to date.
                 var latest = await Config.LatestReplicationState();
                 _highestLatest = latest.SequenceNumber;
             }
@@ -59,11 +76,9 @@ namespace OsmSharp.Db.Tiled.Replication
                 // there is a sequence number, try to increase.
                 var next = _lastReturned + 1;
 
-                while (next > _highestLatest)
-                { // keep waiting until next is latest.
-                    await Task.Delay(Math.Min(60 * 1000, Config.Period * 1000 / 10));
-                    var latest = await Config.LatestReplicationState();
-                    _highestLatest = latest.SequenceNumber;
+                if (next > _highestLatest)
+                {
+                    return false; // next is higher, latest has been reached.
                 }
 
                 _lastReturned = next;
@@ -71,7 +86,7 @@ namespace OsmSharp.Db.Tiled.Replication
             
             // download all the things.
             State = await Config.GetReplicationState(_lastReturned);
-            IsLatest = (_lastReturned == _highestLatest);
+            CurrentIsLatest = (_lastReturned == _highestLatest);
             return true;
         }
 
@@ -88,6 +103,9 @@ namespace OsmSharp.Db.Tiled.Replication
         /// <summary>
         /// Returns true if the current state is the latest.
         /// </summary>
-        public bool IsLatest { get; private set; }
+        /// <remarks>
+        /// This reflects the state at the time of move to or move next, not at the time this property is accessed.
+        /// </remarks>
+        public bool CurrentIsLatest { get; private set; }
     }
 }

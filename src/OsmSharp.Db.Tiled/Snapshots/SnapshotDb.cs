@@ -48,7 +48,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <summary>
         /// Gets the timestamp.
         /// </summary>
-        internal DateTime Timestamp => _meta.Timestamp;
+        public DateTime Timestamp => _meta.Timestamp;
 
         /// <summary>
         /// Gets the base.
