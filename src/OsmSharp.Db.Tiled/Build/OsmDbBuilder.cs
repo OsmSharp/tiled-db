@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Snapshots.Build;
@@ -17,6 +18,8 @@ namespace OsmSharp.Db.Tiled.Build
         /// </summary>
         public static OsmDb BuildDb(this OsmStreamSource source, string path, uint maxZoom = 12)
         {
+            if (maxZoom % 2 != 0) throw new ArgumentException($"{nameof(maxZoom)} max zoom has to be a multiple of 2."); 
+            
             if (!FileSystemFacade.FileSystem.DirectoryExists(path)) throw new DirectoryNotFoundException(
                 $"Cannot create OSM db: {path} not found.");
             

@@ -36,7 +36,6 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                 FileSystemFacade.FileSystem.CreateDirectory(path);
             }
 
-
             // loop over all tiles and consolidate all the tiles that have been modified.
             foreach (var tile in snapshotDb.GetChangedTiles())
             {

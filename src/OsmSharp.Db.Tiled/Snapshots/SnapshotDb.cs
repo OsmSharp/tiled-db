@@ -66,9 +66,11 @@ namespace OsmSharp.Db.Tiled.Snapshots
             return this.Get(type, id, null);
         }
 
+        private SnapshotDb _baseDb = null;
+        
         protected SnapshotDb GetBaseDb()
         {
-            return SnapshotDbOperations.LoadDb(this.Base);
+            return _baseDb ??= SnapshotDbOperations.LoadDb(this.Base);
         }
 
         internal abstract OsmGeo Get(OsmGeoType type, long id, Func<Tile, bool> isDeleted);

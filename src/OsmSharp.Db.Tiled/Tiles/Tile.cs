@@ -156,7 +156,7 @@ namespace OsmSharp.Db.Tiled.Tiles
 
         public override string ToString()
         {
-            return string.Format("{0}/{1}/{2}", this.Zoom, this.X, this.Y);
+            return $"{this.Zoom}/{this.X}/{this.Y}";
         }
 
         public override int GetHashCode()

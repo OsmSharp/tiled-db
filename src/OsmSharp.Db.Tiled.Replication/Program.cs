@@ -55,7 +55,7 @@ namespace OsmSharp.Db.Tiled.Replication
 
             var planetFile = config["planet"];
             var dbPath = config["db"];
-            var zoom = 13U;
+            var zoom = 12U;
             var replicationLevel = Replication.Daily;
             
             // try loading the db, if it doesn't exist build it.
