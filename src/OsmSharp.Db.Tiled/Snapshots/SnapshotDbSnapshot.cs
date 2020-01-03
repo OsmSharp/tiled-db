@@ -33,9 +33,9 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<OsmGeo> GetTile(Tile tile, OsmGeoType type)
+        public override IEnumerable<OsmGeo> GetTile(uint x, uint y, OsmGeoType type)
         { // in a snapshot the local tiles contain all data.
-            return SnapshotDbOperations.GetLocalTile(this.Path, this.Zoom, tile, type);
+            return SnapshotDbOperations.GetLocalTile(this.Path, this.Zoom, new Tile(x, y, this.Zoom), type);
         }
 
         /// <inheritdoc/>

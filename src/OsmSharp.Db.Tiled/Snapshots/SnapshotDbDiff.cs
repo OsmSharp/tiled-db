@@ -116,8 +116,9 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<OsmGeo> GetTile(Tile tile, OsmGeoType type)
+        public override IEnumerable<OsmGeo> GetTile(uint x, uint y, OsmGeoType type)
         {
+            var tile = new Tile(x, y, this.Zoom);
             var updateTile = this.GetCreatedOrModifiedTile(tile, type);
 
             return updateTile?.Where(geo =>
@@ -141,7 +142,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
 
             // get base data.
             var b = this.GetBaseDb();
-            var baseData = b.GetTile(tile, type);
+            var baseData = b.GetTile(tile.X, tile.Y, type);
 
             // merge or return.
             if (localData != null && baseData != null)

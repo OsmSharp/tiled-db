@@ -668,7 +668,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
 
             // enumerate all data in tile.
             using (var localData = SnapshotDbOperations.GetLocalTile(path, maxZoom, tile, type).GetEnumerator())
-            using (var baseData = snapshotDb.GetTile(tile, type).GetEnumerator())
+            using (var baseData = snapshotDb.GetTile(tile.X, tile.Y, type).GetEnumerator())
             {
                 var localHasData = localData.MoveNext();
                 var baseHasData = baseData.MoveNext();

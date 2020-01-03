@@ -43,7 +43,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <summary>
         /// Gets the zoom.
         /// </summary>
-        internal uint Zoom => _meta.Zoom;
+        public uint Zoom => _meta.Zoom;
 
         /// <summary>
         /// Gets the timestamp.
@@ -76,10 +76,11 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <summary>
         /// Gets the data in the given tile.
         /// </summary>
-        /// <param name="tile">The tile to get the data for.</param>
+        /// <param name="x">The x coordinate of the tile to get the data for.</param>
+        /// <param name="y">The y coordinate of the tile to get the data for.</param>
         /// <param name="type">The type to get the data for.</param>
         /// <returns>The data in the given tile.</returns>
-        public abstract IEnumerable<OsmGeo> GetTile(Tile tile, OsmGeoType type);
+        public abstract IEnumerable<OsmGeo> GetTile(uint x, uint y, OsmGeoType type);
 
         /// <summary>
         /// Loads an index for the given type and tile and optionally creates it.

@@ -40,7 +40,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             // loop over all tiles and consolidate all the tiles that have been modified.
             foreach (var tile in snapshotDb.GetChangedTiles())
             {
-                var tileData = snapshotDb.GetTile(tile, OsmGeoType.Node);
+                var tileData = snapshotDb.GetTile(tile.X, tile.Y, OsmGeoType.Node);
                 using (var tileStream = SnapshotDbOperations.CreateTile(path, OsmGeoType.Node, tile))
                 {
                     foreach (var osmGeo in tileData)
@@ -49,7 +49,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     }
                 }
                 
-                tileData = snapshotDb.GetTile(tile, OsmGeoType.Way);
+                tileData = snapshotDb.GetTile(tile.X, tile.Y, OsmGeoType.Way);
                 if (tileData != null)
                 {
                     using (var tileStream = SnapshotDbOperations.CreateTile(path, OsmGeoType.Way, tile))
@@ -61,7 +61,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                     }
                 }
 
-                tileData = snapshotDb.GetTile(tile, OsmGeoType.Relation);
+                tileData = snapshotDb.GetTile(tile.X, tile.Y, OsmGeoType.Relation);
                 if (tileData != null)
                 {
                     using (var tileStream = SnapshotDbOperations.CreateTile(path, OsmGeoType.Relation, tile))

@@ -38,8 +38,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     Version = 1
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-               new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -72,7 +71,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.AreEqual(1, node.Id);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Node);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Node);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             Assert.AreEqual(1, tileList.Count);
@@ -80,7 +79,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.NotNull(node);
             Assert.AreEqual(0, node.Id);
             
-            tile = diff.GetTile(new Tile(8419, 5484, 14), OsmGeoType.Node);
+            tile = diff.GetTile(8419, 5484, OsmGeoType.Node);
             Assert.NotNull(tile);
             tileList = tile.ToList();
             Assert.AreEqual(1, tileList.Count);
@@ -111,8 +110,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     Version = 1
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-               new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -144,7 +142,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.AreEqual(2, node.Version);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Node);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Node);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             Assert.AreEqual(1, tileList.Count);
@@ -177,8 +175,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     Version = 1
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-               new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -207,7 +204,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.Null(node);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Node);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Node);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             Assert.AreEqual(0, tileList.Count);
@@ -246,7 +243,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     TimeStamp = DateTime.Now,
                     Version = 1
                 },
-                new Way()
+                new Way
                 {
                     Id = 0,
                     ChangeSetId = 1,
@@ -261,8 +258,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     }
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-               new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -313,7 +309,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.AreEqual(0, way.Nodes[1]);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Way);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Way);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             way = tileList[0] as Way;
@@ -372,8 +368,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     }
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-               new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -417,7 +412,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.AreEqual(0, way.Nodes[1]);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Way);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Way);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             Assert.AreEqual(1, tileList.Count);
@@ -474,8 +469,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     }
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-                new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -506,7 +500,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.Null(node);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Way);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Way);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             Assert.AreEqual(0, tileList.Count);
@@ -575,8 +569,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     }
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-               new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -615,7 +608,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.AreEqual("none", relation.Members[1].Role);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Relation);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Relation);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             Assert.AreEqual(1, tileList.Count);
@@ -671,7 +664,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                         0, 1
                     }
                 },
-                new Relation()
+                new Relation
                 {
                     Id = 0,
                     ChangeSetId = 1,
@@ -687,8 +680,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     }
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-               new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -732,7 +724,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.AreEqual(0, way.Nodes[1]);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Way);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Way);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             Assert.AreEqual(1, tileList.Count);
@@ -804,8 +796,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
                     }
                 }
             };
-            var db = SnapshotDbFullBuilder.Build(
-                new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+            var db = new OsmEnumerableStreamSource(osmGeos).Build(@"/data", 14);
             
             // build the diff.
             var change = new OsmChange
@@ -837,7 +828,7 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
             Assert.Null(node);
             
             // check if the tiles are there.
-            var tile = diff.GetTile(new Tile(8374, 5556, 14), OsmGeoType.Way);
+            var tile = diff.GetTile(8374, 5556, OsmGeoType.Way);
             Assert.NotNull(tile);
             var tileList = tile.ToList();
             Assert.AreEqual(0, tileList.Count);
