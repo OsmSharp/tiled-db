@@ -69,19 +69,19 @@ namespace OsmSharp.Db.Tiled.Replication
                 db = source.BuildDb(dbPath, zoom);
             }
             
-            // start catch up until we reach hours/days.
-            var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1), moveDown:false);
-            while (await catchupEnumerator.MoveNext())
-            {
-                if (catchupEnumerator.State.Config.Period >= replicationLevel.Period)
-                { // replication level reached.
-                    break;
-                }
-                    
-                Log.Information($"Applying changes: {catchupEnumerator.State}");
-                await catchupEnumerator.ApplyCurrent(db);
-                Log.Information($"Changes applied, new database: {db}");
-            }
+//            // start catch up until we reach hours/days.
+//            var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1), moveDown:false);
+//            while (await catchupEnumerator.MoveNext())
+//            {
+//                if (catchupEnumerator.State.Config.Period >= replicationLevel.Period)
+//                { // replication level reached.
+//                    break;
+//                }
+//                    
+//                Log.Information($"Applying changes: {catchupEnumerator.State}");
+//                await catchupEnumerator.ApplyCurrent(db);
+//                Log.Information($"Changes applied, new database: {db}");
+//            }
         }
     }
 }
