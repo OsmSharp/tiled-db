@@ -8,7 +8,6 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
     <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
-    <PackageVersion>0.0.1-alpha</PackageVersion>
     <Authors>ANYWAYS BV</Authors>
   </PropertyGroup>
 
