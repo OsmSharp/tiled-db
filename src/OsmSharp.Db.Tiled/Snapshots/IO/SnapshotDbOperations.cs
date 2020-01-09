@@ -4,6 +4,7 @@ using OsmSharp.Db.Tiled.Indexes;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using Newtonsoft.Json;
 using Reminiscence.Arrays;
@@ -153,7 +154,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
                 return null;
             }
 
-            return FileSystemFacade.FileSystem.OpenRead(location);
+            return new GZipStream(FileSystemFacade.FileSystem.OpenRead(location), CompressionMode.Decompress);
         }
         
         /// <summary>
@@ -171,7 +172,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
                 FileSystemFacade.FileSystem.CreateDirectory(fileDirectory);
             }
 
-            return FileSystemFacade.FileSystem.Open(location, FileMode.Create);
+            return new GZipStream(FileSystemFacade.FileSystem.Open(location, FileMode.Create), CompressionLevel.Fastest);
         }
 
         /// <summary>
@@ -224,7 +225,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
         /// <summary>
         /// Builds a path to a local object in the given tile.
         /// </summary>
-        public static string BuildPathToLocalTileObject(string path, Tile tile, OsmGeo osmGeo, bool compressed = false)
+        public static string BuildPathToLocalTileObject(string path, Tile tile, OsmGeo osmGeo)
         {
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString(), tile.Y.ToInvariantString());
@@ -241,11 +242,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
                     location = FileSystemFacade.FileSystem.Combine(location, $"{osmGeo.Id.Value}.relation.osm.bin");
                     break;
             }
-
-            if (compressed)
-            {
-                return location + ".zip";
-            }
+            
             return location;
         }
         
@@ -410,24 +407,6 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
                     break;
             }
             return location;
-        }
-
-        /// <summary>
-        /// Opens a stream to append to a data tile. Creates the tile if it doesn't exist yet.
-        /// </summary>
-        /// <param name="path">The path.</param>
-        /// <param name="type">The object type.</param>
-        /// <param name="tile">The tile.</param>
-        /// <returns>The stream.</returns>
-        internal static Stream OpenAppendStreamTile(string path, OsmGeoType type, Tile tile)
-        {
-            var location = PathToTile(path, type, tile);
-            var parentPath = FileSystemFacade.FileSystem.ParentDirectory(location);
-            if (!FileSystemFacade.FileSystem.DirectoryExists(parentPath))
-            {
-                FileSystemFacade.FileSystem.CreateDirectory(parentPath);
-            }
-            return FileSystemFacade.FileSystem.Open(location, FileMode.Append);
         }
     }
 }
