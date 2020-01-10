@@ -230,6 +230,12 @@ namespace OsmSharp.Db.Tiled.Indexes
 
         private long Search(long id, out int mask)
         {
+            if (this.Count == 0)
+            {
+                mask = -1;
+                return -1;
+            }
+            
             if (!_sorted)
             { // unsorted, just try all data.
                 for (var i = 0; i < _pointer; i++)

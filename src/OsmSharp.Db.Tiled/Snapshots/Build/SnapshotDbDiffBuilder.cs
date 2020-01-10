@@ -9,7 +9,6 @@ using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Snapshots.IO;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
-using OsmSharp.IO.PBF;
 using Serilog;
 
 namespace OsmSharp.Db.Tiled.Snapshots.Build
