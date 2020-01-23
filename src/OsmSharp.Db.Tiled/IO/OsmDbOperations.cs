@@ -31,12 +31,11 @@ namespace OsmSharp.Db.Tiled.IO
         public static OsmDbMeta LoadDbMeta(string path)
         {
             var dbMetaPath = PathToMeta(path);
-            using (var stream = FileSystemFacade.FileSystem.OpenRead(dbMetaPath))
-            using (var streamReader = new StreamReader(stream))
-            using (var jsonReader = new JsonTextReader(streamReader))
-            {
-                return JsonSerializer.CreateDefault().Deserialize<OsmDbMeta>(jsonReader);
-            }
+            using var stream = FileSystemFacade.FileSystem.OpenRead(dbMetaPath);
+            using var streamReader = new StreamReader(stream);
+            using var jsonReader = new JsonTextReader(streamReader);
+            
+            return JsonSerializer.CreateDefault().Deserialize<OsmDbMeta>(jsonReader);
         }
 
         /// <summary>

@@ -27,6 +27,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{720FA021-2
 ProjectSection(SolutionItems) = preProject
 	README.md = README.md
 	.gitignore = .gitignore
+	SharedAssemblyVersion.cs = SharedAssemblyVersion.cs
 EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsmSharp.Db.Tiled.Replication", "src\OsmSharp.Db.Tiled.Replication\OsmSharp.Db.Tiled.Replication.csproj", "{5F74C73C-33B2-4A14-ACA3-3E84D731CE21}"

@@ -97,6 +97,35 @@ namespace OsmSharp.Db.Tiled
             return false;
         }
 
+        /// <summary>
+        /// Tries to reload the database.
+        /// </summary>
+        /// <returns>True if the database was modified.</returns>
+        public bool TryReload()
+        {
+            try
+            {
+                var meta = OsmDbOperations.LoadDbMeta(_path);
+                lock (_diffSync)
+                {
+                    if (meta.Latest != _meta.Latest)
+                    {
+                        var latest = SnapshotDbOperations.LoadDb(meta.Latest);
+
+                        this.Latest = latest;
+                        _meta = meta;
+                        return true;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+
+            return false;
+        }
+
         /// <inheritdoc/>
         public override string ToString()
         {
