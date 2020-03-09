@@ -16,7 +16,7 @@ ADD docker-crontab /
 RUN crontab /docker-crontab
 
 COPY ./bin/release/netcoreapp3.1/publish /var/app
-COPY config.Docker.json /var/app/config.json
+COPY appsettings.Docker.json /var/app/appsettings.json
 
 # couple data folder data volume.
 VOLUME ["/var/app/source"]
