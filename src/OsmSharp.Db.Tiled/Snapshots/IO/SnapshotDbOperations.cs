@@ -154,7 +154,8 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
                 return null;
             }
 
-            return new GZipStream(FileSystemFacade.FileSystem.OpenRead(location), CompressionMode.Decompress);
+            // return new GZipStream(FileSystemFacade.FileSystem.OpenRead(location), CompressionMode.Decompress);           
+            return FileSystemFacade.FileSystem.OpenRead(location);
         }
         
         /// <summary>
@@ -172,7 +173,8 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
                 FileSystemFacade.FileSystem.CreateDirectory(fileDirectory);
             }
 
-            return new GZipStream(FileSystemFacade.FileSystem.Open(location, FileMode.Create), CompressionLevel.Fastest);
+            // return new GZipStream(FileSystemFacade.FileSystem.Open(location, FileMode.Create), CompressionLevel.Fastest);
+            return FileSystemFacade.FileSystem.Open(location, FileMode.Create);
         }
 
         /// <summary>

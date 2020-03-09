@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using OsmSharp.Db.Tiled.Build;
@@ -57,17 +58,27 @@ namespace OsmSharp.Db.Tiled.Replication
             var dbPath = config["db"];
             var zoom = 12U;
             var replicationLevel = Replication.Daily;
-            
-            // try loading the db, if it doesn't exist build it.
-            if (!OsmDb.TryLoad(dbPath, out var db))
+                
+            var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
+            if (LockHelper.IsLocked(lockFile.FullName))
             {
-                Log.Information("The DB doesn't exist yet, building...");
-                var source = new PBFOsmStreamSource(
-                    File.OpenRead(planetFile));
-
-                // splitting tiles and writing indexes.
-                db = source.BuildDb(dbPath, zoom);
+                return;
             }
+            
+            try
+            {
+                LockHelper.WriteLock(lockFile.FullName);
+            
+                // try loading the db, if it doesn't exist build it.
+                if (!OsmDb.TryLoad(dbPath, out var db))
+                {
+                    Log.Information("The DB doesn't exist yet, building...");
+                    var source = new PBFOsmStreamSource(
+                        File.OpenRead(planetFile));
+
+                    // splitting tiles and writing indexes.
+                    db = source.BuildDb(dbPath, zoom);
+                }
             
 //            // start catch up until we reach hours/days.
 //            var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1), moveDown:false);
@@ -82,6 +93,15 @@ namespace OsmSharp.Db.Tiled.Replication
 //                await catchupEnumerator.ApplyCurrent(db);
 //                Log.Information($"Changes applied, new database: {db}");
 //            }
+            }
+            catch (Exception e)
+            {
+                Log.Fatal(e, "Unhandled exception during processing.");
+            }
+            finally
+            {
+                File.Delete(lockFile.FullName);
+            }
         }
     }
 }
