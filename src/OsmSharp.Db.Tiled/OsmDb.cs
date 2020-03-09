@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Snapshots;
@@ -87,7 +86,7 @@ namespace OsmSharp.Db.Tiled
         /// <returns>True if a db was loaded, false otherwise.</returns>
         public static bool TryLoad(string path, out OsmDb osmDb)
         {
-            if (File.Exists(OsmDbOperations.PathToMeta(path)))
+            if (FileSystemFacade.FileSystem.Exists(OsmDbOperations.PathToMeta(path)))
             {
                 osmDb = new OsmDb(path);
                 return true;
