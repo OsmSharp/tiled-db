@@ -37,7 +37,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             }
 
             // loop over all tiles and consolidate all the tiles that have been modified.
-            foreach (var tile in snapshotDb.GetChangedTiles())
+            foreach (var tile in snapshotDb.GetChangedTilesSinceLatestDiff())
             {
                 var tileData = snapshotDb.GetTile(tile.X, tile.Y, OsmGeoType.Node);
                 using (var tileStream = SnapshotDbOperations.CreateTile(path, OsmGeoType.Node, tile))

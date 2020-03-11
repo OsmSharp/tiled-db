@@ -157,11 +157,17 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <inheritdoc/>
-        internal override IEnumerable<Tile> GetChangedTiles()
+        public override IEnumerable<Tile> GetChangedTiles()
+        {
+            return SnapshotDbOperations.GetTiles(this.Path, this.Zoom);
+        }
+
+        /// <inheritdoc/>
+        internal override IEnumerable<Tile> GetChangedTilesSinceLatestDiff()
         {
             // get base data.
             var b = this.GetBaseDb();
-            var baseTiles = b.GetChangedTiles();
+            var baseTiles = b.GetChangedTilesSinceLatestDiff();
             
             // gets the local tiles.
             var localTiles = SnapshotDbOperations.GetTiles(this.Path, this.Zoom);

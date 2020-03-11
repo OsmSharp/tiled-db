@@ -321,10 +321,16 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <summary>
+        /// Gets the changed tiles in this snapshot.
+        /// </summary>
+        /// <returns>All modified tiles.</returns>
+        public abstract IEnumerable<Tile> GetChangedTiles();
+
+        /// <summary>
         /// Gets the changed tiles since the latest non-diff.
         /// </summary>
         /// <returns>All modified tiles.</returns>
-        internal abstract IEnumerable<Tile> GetChangedTiles();
+        internal abstract IEnumerable<Tile> GetChangedTilesSinceLatestDiff();
 
         /// <summary>
         /// Gets all the tiles with non-empty indexes for the given zoom level. 

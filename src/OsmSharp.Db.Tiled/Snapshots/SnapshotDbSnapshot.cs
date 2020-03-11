@@ -39,7 +39,14 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <inheritdoc/>
-        internal override IEnumerable<Tile> GetChangedTiles()
+        public override IEnumerable<Tile> GetChangedTiles()
+        {
+            // TODO: how do store this list or get it?
+            return Enumerable.Empty<Tile>();
+        }
+
+        /// <inheritdoc/>
+        internal override IEnumerable<Tile> GetChangedTilesSinceLatestDiff()
         {
             return Enumerable.Empty<Tile>();
         }
