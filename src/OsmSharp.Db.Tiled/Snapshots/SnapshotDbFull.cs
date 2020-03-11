@@ -57,6 +57,12 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <inheritdoc/>
+        internal override SnapshotDb GetBaseDb()
+        {
+            return null;
+        }
+
+        /// <inheritdoc/>
         internal override SnapshotDb GetLatestNonDiff()
         {
             return this;

@@ -68,7 +68,11 @@ namespace OsmSharp.Db.Tiled.Snapshots
 
         private SnapshotDb _baseDb = null;
         
-        protected SnapshotDb GetBaseDb()
+        /// <summary>
+        /// Gets the database this one is based on, if any.
+        /// </summary>
+        /// <returns></returns>
+        internal virtual SnapshotDb GetBaseDb()
         {
             return _baseDb ??= SnapshotDbOperations.LoadDb(this.Base);
         }
