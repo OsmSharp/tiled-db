@@ -91,18 +91,9 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                 if (localTimestamp > timestamp) timestamp = localTimestamp;
             }
 
-            // write the indices to disk.
-            nodeIndex.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Node, tile));
-            wayIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Way, tile));
-            relationIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Relation, tile));
-            
-//            var actions = new List<Action>
-//            {
-//                () => nodeIndex.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Node, tile)),
-//                () => wayIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Way, tile)),
-//                () => relationIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Relation, tile))
-//            };
-//            System.Threading.Tasks.Parallel.ForEach(actions, (a) => a());
+            // write the index to disk.
+            var osmGeoIndex = new OsmGeoKeyIndex(nodeIndex, wayIndex, relationIndex);
+            osmGeoIndex.Write(SnapshotDbOperations.PathToIndex(path, tile));
             
             return (nonEmptyTiles, timestamp);
         }
@@ -158,14 +149,9 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
                 }
             }
 
-            // write the indexes to disk.
-            var actions = new List<Action>
-            {
-                () => nodeIndex.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Node, tile)),
-                () => wayIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Way, tile)),
-                () => relationIndex?.Write(SnapshotDbOperations.PathToIndex(path, OsmGeoType.Relation, tile))
-            };
-            System.Threading.Tasks.Parallel.ForEach(actions, (a) => a());
+            // write the index to disk.
+            var osmGeoIndex = new OsmGeoKeyIndex(nodeIndex, wayIndex, relationIndex);
+            osmGeoIndex.Write(SnapshotDbOperations.PathToIndex(path, tile));
 
             if (FileSystemFacade.FileSystem.Exists(nodeFile))
             {

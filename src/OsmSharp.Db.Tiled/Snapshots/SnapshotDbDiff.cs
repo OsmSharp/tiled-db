@@ -201,11 +201,11 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <inheritdoc/>
-        internal override IEnumerable<(long id, int mask)> GetSortedIndexData(Tile tile, OsmGeoType type)
+        internal override IEnumerable<(OsmGeoType type, long id, int mask)> GetSortedIndexData(Tile tile)
         {
-            var index = this.LoadIndex(tile, type);
+            var index = this.LoadIndex(tile);
 
-            var baseIndex = this.GetBaseDb().LoadIndex(tile, type);
+            var baseIndex = this.GetBaseDb().LoadIndex(tile);
 
             return baseIndex.Merge(index, (t1, t2) => t1.id.CompareTo(t2.id));
         }

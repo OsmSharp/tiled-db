@@ -45,5 +45,17 @@ namespace OsmSharp.Db.Tiled.IO
 
             return System.Text.Encoding.Unicode.GetString(data, 0, data.Length);
         }
+
+        /// <summary>
+        /// Reads an int64 for the given stream.
+        /// </summary>
+        /// <param name="stream">The stream.</param>
+        /// <returns>The result.</returns>
+        public static long ReadInt64(this Stream stream)
+        {
+            var longBytes = new byte[8];
+            stream.Read(longBytes, 0, 8);
+            return BitConverter.ToInt64(longBytes, 0);
+        }
     }
 }

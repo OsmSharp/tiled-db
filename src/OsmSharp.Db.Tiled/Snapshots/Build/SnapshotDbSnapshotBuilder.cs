@@ -3,7 +3,6 @@ using OsmSharp.Db.Tiled.Indexes;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Snapshots.IO;
 using OsmSharp.IO.Binary;
-using OsmSharp.IO.PBF;
 
 namespace OsmSharp.Db.Tiled.Snapshots.Build
 {
@@ -82,38 +81,14 @@ namespace OsmSharp.Db.Tiled.Snapshots.Build
             {
                 foreach (var tile in snapshotDb.GetIndexesForZoom(zoom))
                 {
-                    var nodeIndexData = snapshotDb.GetSortedIndexData(tile, OsmGeoType.Node);
-                    var nodeIndex = new Index();
-                    foreach (var mask in nodeIndexData)
+                    var index = new OsmGeoKeyIndex();
+                    var indexData = snapshotDb.GetSortedIndexData(tile);
+                    foreach (var (type, id, mask) in indexData)
                     {
-                        nodeIndex.Add(mask.id, mask.mask);
+                        index.Add(type, id, mask);
                     }
                     
-                    SnapshotDbOperations.SaveIndex(path, tile, OsmGeoType.Node, nodeIndex);
-                    
-                    var wayIndexData = snapshotDb.GetSortedIndexData(tile, OsmGeoType.Way);
-                    var wayIndex = new Index();
-                    foreach (var mask in wayIndexData)
-                    {
-                        wayIndex.Add(mask.id, mask.mask);
-                    }
-
-                    if (wayIndex.Count > 0)
-                    {
-                        SnapshotDbOperations.SaveIndex(path, tile, OsmGeoType.Way, wayIndex);
-                    }
-
-                    var relationIndexData = snapshotDb.GetSortedIndexData(tile, OsmGeoType.Relation);
-                    var relationIndex = new Index();
-                    foreach (var mask in relationIndexData)
-                    {
-                        relationIndex.Add(mask.id, mask.mask);
-                    }
-
-                    if (relationIndex.Count > 0)
-                    {
-                        SnapshotDbOperations.SaveIndex(path, tile, OsmGeoType.Relation, relationIndex);
-                    }
+                    SnapshotDbOperations.SaveIndex(path, tile, index);
                 }
             }
 

@@ -17,8 +17,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
     {
         private readonly string _path;
         private readonly SnapshotDbMeta _meta;
-        private readonly ConcurrentDictionary<uint, LRUCache<ulong, Index>> _nodeIndexesCache;
-        private readonly ConcurrentDictionary<uint, LRUCache<ulong, Index>> _wayIndexesCache;
+        private readonly ConcurrentDictionary<uint, LRUCache<ulong, OsmGeoKeyIndex>> _indexesCache;
 
         protected SnapshotDb(string path)
             : this(path, SnapshotDbOperations.LoadDbMeta(path))
@@ -31,8 +30,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
             _path = path;
             _meta = meta;
 
-            _nodeIndexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, Index>>();
-            _wayIndexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, Index>>();
+            _indexesCache = new ConcurrentDictionary<uint, LRUCache<ulong, OsmGeoKeyIndex>>();
         }
 
         /// <summary>
@@ -92,76 +90,44 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// Loads an index for the given type and tile and optionally creates it.
         /// </summary>
         /// <param name="tile">The tile.</param>
-        /// <param name="type">The type.</param>
         /// <param name="create">Flag to create when index doesn't exist.</param>
         /// <returns>The index.</returns>
-        internal Index LoadIndex(Tile tile, OsmGeoType type, bool create = false)
+        internal OsmGeoKeyIndex LoadIndex(Tile tile, bool create = false)
         {
-            if (type == OsmGeoType.Node)
+            if (!_indexesCache.TryGetValue(tile.Zoom, out var cached))
             {
-                if (!_nodeIndexesCache.TryGetValue(tile.Zoom, out var cached))
+                cached = new LRUCache<ulong, OsmGeoKeyIndex>(10);
+                _indexesCache[tile.Zoom] = cached;
+            }
+
+            if (cached.TryGetValue(tile.LocalId, out var index))
+            {
+                if (index == null && create)
                 {
-                    cached = new LRUCache<ulong, Index>(10);
-                    _nodeIndexesCache[tile.Zoom] = cached;
+                    index = new OsmGeoKeyIndex();
+                    cached.Add(tile.LocalId, index);
                 }
 
-                if (cached.TryGetValue(tile.LocalId, out var index))
-                {
-                    if (index == null && create)
-                    {
-                        index = new Index();
-                        cached.Add(tile.LocalId, index);
-                    }
-
-                    return index;
-                }
-
-                index = SnapshotDbOperations.LoadIndex(_path, tile, type);
-                if (create && index == null)
-                {
-                    index = new Index();
-                }
-
-                cached.Add(tile.LocalId, index);
                 return index;
             }
-            else
+
+            index = SnapshotDbOperations.LoadIndex(_path, tile);
+            if (create && index == null)
             {
-                if (!_wayIndexesCache.TryGetValue(tile.Zoom, out var cached))
-                {
-                    cached = new LRUCache<ulong, Index>(10);
-                    _wayIndexesCache[tile.Zoom] = cached;
-                }
-
-                if (cached.TryGetValue(tile.LocalId, out var index))
-                {
-                    if (index == null && create)
-                    {
-                        index = new Index();
-                        cached.Add(tile.LocalId, index);
-                    }
-
-                    return index;
-                }
-
-                index = SnapshotDbOperations.LoadIndex(_path, tile, type);
-                if (create && index == null)
-                {
-                    index = new Index();
-                }
-
-                cached.Add(tile.LocalId, index);
-                return index;
+                index = new OsmGeoKeyIndex();
             }
+
+            cached.Add(tile.LocalId, index);
+            return index;
         }
 
         protected (OsmGeo osmGeo, bool deleted) GetLocal(OsmGeoType type, long id, Func<Tile, bool> isDeleted = null)
         {
             var tile = new Tile(0, 0, 0);
-            var index = LoadIndex(tile, type);
+            var index = LoadIndex(tile);
 
             while (index != null &&
-                   index.TryGetMask(id, out var mask))
+                   index.TryGetMask(type, id, out var mask))
             {
                 var subTiles = tile.SubTilesForMask2(mask);
                 var subTile = subTiles.First();
@@ -194,7 +160,7 @@ namespace OsmSharp.Db.Tiled.Snapshots
                 }
 
                 tile = subTile;
-                index = LoadIndex(tile, type);
+                index = LoadIndex(tile);
             }
 
             return (null, false);
@@ -213,35 +179,31 @@ namespace OsmSharp.Db.Tiled.Snapshots
             // do zoom level '0'.
             var tile = new Tile(0, 0, 0);
             var mask = 0;
-            Index nodeIndex = null;
-            Index wayIndex = null;
-            Index relationIndex = null;
             foreach (var (type, id) in objects)
             {
+                var index = LoadIndex(tile);
+                
                 switch (type)
                 {
                     case OsmGeoType.Node:
-                        if (nodeIndex == null) nodeIndex = LoadIndex(tile, type);
-                        if (nodeIndex != null &&
-                            nodeIndex.TryGetMask(id, out var nodeMask))
+                        if (index != null &&
+                            index.TryGetMask(type, id, out var nodeMask))
                         {
                             mask |= nodeMask;
                         }
 
                         break;
                     case OsmGeoType.Way:
-                        if (wayIndex == null) wayIndex = LoadIndex(tile, type);
-                        if (wayIndex != null &&
-                            wayIndex.TryGetMask(id, out var wayMask))
+                        if (index != null &&
+                            index.TryGetMask(type, id, out var wayMask))
                         {
                             mask |= wayMask;
                         }
 
                         break;
                     case OsmGeoType.Relation:
-                        if (relationIndex == null) relationIndex = LoadIndex(tile, type);
-                        if (relationIndex != null &&
-                            relationIndex.TryGetMask(id, out var relationMask))
+                        if (index != null &&
+                            index.TryGetMask(type, id, out var relationMask))
                         {
                             mask |= relationMask;
                         }
@@ -268,35 +230,31 @@ namespace OsmSharp.Db.Tiled.Snapshots
 
                         // determine mask for the tile above over all objects.
                         mask = 0;
-                        nodeIndex = null;
-                        wayIndex = null;
-                        relationIndex = null;
                         foreach (var (type, id) in objects)
                         {
+                            var index = LoadIndex(tile);
+                            
                             switch (type)
                             {
                                 case OsmGeoType.Node:
-                                    if (nodeIndex == null) nodeIndex = LoadIndex(currentTile, type);
-                                    if (nodeIndex != null &&
-                                        nodeIndex.TryGetMask(id, out var nodeMask))
+                                    if (index != null &&
+                                        index.TryGetMask(type, id, out var nodeMask))
                                     {
                                         mask |= nodeMask;
                                     }
 
                                     break;
                                 case OsmGeoType.Way:
-                                    if (wayIndex == null) wayIndex = LoadIndex(currentTile, type);
-                                    if (wayIndex != null &&
-                                        wayIndex.TryGetMask(id, out var wayMask))
+                                    if (index != null &&
+                                        index.TryGetMask(type, id, out var wayMask))
                                     {
                                         mask |= wayMask;
                                     }
 
                                     break;
                                 case OsmGeoType.Relation:
-                                    if (relationIndex == null) relationIndex = LoadIndex(currentTile, type);
-                                    if (relationIndex != null &&
-                                        relationIndex.TryGetMask(id, out var relationMask))
+                                    if (index != null &&
+                                        index.TryGetMask(type, id, out var relationMask))
                                     {
                                         mask |= relationMask;
                                     }
@@ -342,10 +300,9 @@ namespace OsmSharp.Db.Tiled.Snapshots
         /// <summary>
         /// Gets all masks for all the ids for the given index tile.
         /// </summary>
-        /// <param name="tile">The tile.</param>
-        /// <param name="type">The type.</param>
+        /// <param name="tile">The tile.</param
         /// <returns>All the masks in the indexes.</returns>
-        internal abstract IEnumerable<(long id, int mask)> GetSortedIndexData(Tile tile, OsmGeoType type);
+        internal abstract IEnumerable<(OsmGeoType type, long id, int mask)> GetSortedIndexData(Tile tile);
 
         /// <summary>
         /// Gets the latest non-diff.

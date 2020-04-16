@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace OsmSharp.Db.Tiled.Indexes.InMemory
 {
-    internal class MemoryIndex : IIndex
+    internal class MemoryIndex : IEnumerable<(long id, int mask)>// : IIndex
     {
         private readonly Dictionary<long, int> _data;
 

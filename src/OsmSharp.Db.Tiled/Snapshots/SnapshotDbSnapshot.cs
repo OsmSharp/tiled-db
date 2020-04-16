@@ -58,9 +58,9 @@ namespace OsmSharp.Db.Tiled.Snapshots
         }
 
         /// <inheritdoc/>
-        internal override IEnumerable<(long id, int mask)> GetSortedIndexData(Tile tile, OsmGeoType type)
+        internal override IEnumerable<(OsmGeoType type, long id, int mask)> GetSortedIndexData(Tile tile)
         {
-            return this.LoadIndex(tile, type);
+            return this.LoadIndex(tile);
         }
 
         /// <inheritdoc/>

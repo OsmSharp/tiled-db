@@ -251,40 +251,20 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
         /// <summary>
         /// Creates a tile.
         /// </summary>
-        public static string PathToIndex(string path, OsmGeoType type, Tile tile)
+        public static string PathToIndex(string path, Tile tile)
         {
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString());
-            switch (type)
-            {
-                case OsmGeoType.Node:
-                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".nodes.idx");
-                    break;
-                case OsmGeoType.Way:
-                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".ways.idx");
-                    break;
-                default:
-                    location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".relations.idx");
-                    break;
-            }
-            return location;
+            
+            return location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".idx");
         }
         
         /// <summary>
         /// Loads an index for the given tile from disk (if any).
         /// </summary>
-        public static Index LoadIndex(string path, Tile tile, OsmGeoType type)
+        public static OsmGeoKeyIndex LoadIndex(string path, Tile tile)
         {
-            var extension = ".nodes.idx";
-            switch (type)
-            {
-                case OsmGeoType.Way:
-                    extension = ".ways.idx";
-                    break;
-                case OsmGeoType.Relation:
-                    extension = ".relations.idx";
-                    break;
-            }
+            var extension = ".idx";
 
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString(), tile.Y.ToInvariantString() + extension);
@@ -292,28 +272,17 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
             {
                 return null;
             }
-            
-            using (var stream = FileSystemFacade.FileSystem.OpenRead(location))
-            {
-                return Index.Deserialize(stream);
-            }
+
+            using var stream = FileSystemFacade.FileSystem.OpenRead(location);
+            return OsmGeoKeyIndex.Deserialize(stream);
         }
         
         /// <summary>
         /// Saves an index for the given tile to disk.
         /// </summary>
-        public static void SaveIndex(string path, Tile tile, OsmGeoType type, Index index)
+        public static void SaveIndex(string path, Tile tile, OsmGeoKeyIndex index)
         {
-            var extension = ".nodes.idx";
-            switch (type)
-            {
-                case OsmGeoType.Way:
-                    extension = ".ways.idx";
-                    break;
-                case OsmGeoType.Relation:
-                    extension = ".relations.idx";
-                    break;
-            }
+            var extension = ".idx";
 
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString(), tile.Y.ToInvariantString() + extension);
@@ -322,10 +291,9 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
             {
                 FileSystemFacade.FileSystem.CreateDirectory(parentPath);
             }
-            using (var stream = FileSystemFacade.FileSystem.Open(location, FileMode.Create))
-            {
-                index.Serialize(stream);
-            }
+
+            using var stream = FileSystemFacade.FileSystem.Open(location, FileMode.Create);
+            index.Serialize(stream);
         }
 
         internal static IEnumerable<OsmGeo> GetLocalTile(string path, uint maxZoom, Tile tile, OsmGeoType type)

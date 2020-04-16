@@ -12,7 +12,7 @@ namespace OsmSharp.Db.Tiled.Indexes
     /// <summary>
     /// Represents an index matching ids to one or more subtiles.
     /// </summary>
-    internal class Index : IDisposable, IIndex
+    internal class Index : IDisposable, IEnumerable<(long id, int mask)> //, IIndex
     {
         private readonly ArrayBase<ulong> _data;
         private readonly bool _mapped = false;
@@ -23,7 +23,7 @@ namespace OsmSharp.Db.Tiled.Indexes
         /// </summary>
         public Index()
         {
-            _data = new MemoryArray<ulong>(1024);
+            _data = new MemoryArray<ulong>(0);
 
             this.IsDirty = false;
         }
