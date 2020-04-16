@@ -256,7 +256,7 @@ namespace OsmSharp.Db.Tiled.Snapshots.IO
             var location = FileSystemFacade.FileSystem.Combine(path, tile.Zoom.ToInvariantString(),
                 tile.X.ToInvariantString());
             
-            return location = FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".idx");
+            return FileSystemFacade.FileSystem.Combine(location, tile.Y.ToInvariantString() + ".idx");
         }
         
         /// <summary>

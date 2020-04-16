@@ -13,7 +13,18 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
     public class MockFileSystemTests
     {
         [Test]
-        public void Test()
+        public void MockFileSystem_Linux_CreateNewDirectory_DirectoryShouldExist()
+        {
+            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
+
+            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+
+            Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));
+            Assert.False(FileSystemFacade.FileSystem.DirectoryExists(@"/data1"));
+        }
+        
+        [Test]
+        public void MockFileSystem_Windows_CreateNewDirectory_DirectoryShouldExist()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"C:\");
 

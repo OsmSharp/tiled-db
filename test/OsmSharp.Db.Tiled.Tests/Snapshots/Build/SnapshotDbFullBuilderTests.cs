@@ -54,19 +54,19 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
 
             // check per level for the proper files.
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/0/0"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/0/0/0.nodes.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/0/0/0.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/2/2"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/2/2/1.nodes.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/2/2/1.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/4/8"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/4/8/5.nodes.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/4/8/5.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/6/32"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/6/32/21.nodes.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/6/32/21.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/8/130"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/8/130/86.nodes.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/8/130/86.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/10/523"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/10/523/347.nodes.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/10/523/347.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/12/2093"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/12/2093/1389.nodes.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/12/2093/1389.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/14/8374"));
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/14/8374/5556.nodes.osm.bin"));
         }
@@ -140,26 +140,19 @@ namespace OsmSharp.Db.Tiled.Tests.Snapshots.Build
 
             // check per level for the proper files.
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/0/0"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/0/0/0.nodes.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/0/0/0.ways.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/0/0/0.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/2/2"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/2/2/1.nodes.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/2/2/1.ways.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/2/2/1.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/4/8"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/4/8/5.nodes.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/4/8/5.ways.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/4/8/5.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/6/32"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/6/32/21.nodes.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/6/32/21.ways.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/6/32/21.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/8/130"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/8/130/86.nodes.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/8/130/86.ways.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/8/130/86.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/10/523"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/10/523/347.nodes.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/10/523/347.ways.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/10/523/347.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/12/2093"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/12/2093/1389.nodes.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/12/2093/1389.ways.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/12/2093/1389.idx"));
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/14/8374"));
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/14/8374/5556.nodes.osm.bin"));
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/14/8374/5556.ways.osm.bin"));
