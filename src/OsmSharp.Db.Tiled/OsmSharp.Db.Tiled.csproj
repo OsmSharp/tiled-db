@@ -24,9 +24,5 @@
       <Link>SharedAssemblyVersion.cs</Link>
     </Compile>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Data" />
-  </ItemGroup>
   
 </Project>

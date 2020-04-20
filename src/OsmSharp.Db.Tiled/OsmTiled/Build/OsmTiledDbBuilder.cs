@@ -13,9 +13,9 @@ using OsmSharp.IO.Binary;
 namespace OsmSharp.Db.Tiled.OsmTiled.Build
 {
     /// <summary>
-    /// Builds an OSM snapshot db from an OSM stream.
+    /// Builds an OSM tiled db from an OSM stream.
     /// </summary>
-    internal static class SnapshotDbFullBuilder
+    internal static class OsmTiledDbBuilder
     {
         /// <summary>
         /// Builds a new database and write the structure to the given path.
