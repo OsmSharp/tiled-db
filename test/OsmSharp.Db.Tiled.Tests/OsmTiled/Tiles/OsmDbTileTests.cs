@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using OsmSharp.Db.Tiled.OsmTiled.Tiles;
@@ -321,6 +322,94 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Tiles
             
             var osmDbTile = await OsmDbTile.BuildFromOsmBinaryStream(data);
 
+            for (var i = 0; i < 100; i++)
+            {
+                var id = 451746 + (i * 100) + 5;
+                var osmGeo = osmDbTile.Get(OsmGeoType.Node, id);
+                
+                Assert.Null(osmGeo);
+            }
+            for (var i = 0; i < 100; i++)
+            {
+                var id = 61127 + (i * 100) + 11;
+                var osmGeo = osmDbTile.Get(OsmGeoType.Way, id);
+                
+                Assert.Null(osmGeo);
+            }
+            for (var i = 0; i < 100; i++)
+            {
+                var id = 1132 + (i * 100) + 89;
+                var osmGeo = osmDbTile.Get(OsmGeoType.Relation, id);
+                
+                Assert.Null(osmGeo);
+            }
+        }
+        
+        [Test]
+        public async Task OsmDbTile_300OsmGeos_Serialize_Deserialize_ShouldBeCopy()
+        {
+            var osmGeos = new List<OsmGeo>();
+            for (var i = 0; i < 100; i++)
+            {
+                osmGeos.Add(new Node()
+                {
+                    Id = 451746 + (i * 100),
+                    Latitude = 45.336701909968134,
+                    Longitude = 8.085937
+                });
+            }
+            for (var i = 0; i < 100; i++)
+            {
+                osmGeos.Add(new Way()
+                {
+                    Id = 61127 + (i * 100)
+                });
+            }
+            for (var i = 0; i < 100; i++)
+            {
+                osmGeos.Add(new Relation()
+                {
+                    Id = 1132 + (i * 100)
+                });
+            }
+            
+            var data = BinaryStreamHelper.Create(osmGeos);
+
+            var osmDbTileOriginal = await OsmDbTile.BuildFromOsmBinaryStream(data);
+            
+            var stream = new MemoryStream();
+            await osmDbTileOriginal.Serialize(stream);
+            stream.Seek(0, SeekOrigin.Begin);
+            
+            var osmDbTile = await OsmDbTile.Deserialize(stream);
+
+            for (var i = 0; i < 100; i++)
+            {
+                var id = 451746 + (i * 100);
+                var osmGeo = osmDbTile.Get(OsmGeoType.Node, id);
+                
+                Assert.NotNull(osmGeo);
+                Assert.IsInstanceOf<Node>(osmGeo);
+                Assert.AreEqual(id, osmGeo.Id);
+            }
+            for (var i = 0; i < 100; i++)
+            {
+                var id = 61127 + (i * 100);
+                var osmGeo = osmDbTile.Get(OsmGeoType.Way, id);
+                
+                Assert.NotNull(osmGeo);
+                Assert.IsInstanceOf<Way>(osmGeo);
+                Assert.AreEqual(id, osmGeo.Id);
+            }
+            for (var i = 0; i < 100; i++)
+            {
+                var id = 1132 + (i * 100);
+                var osmGeo = osmDbTile.Get(OsmGeoType.Relation, id);
+                
+                Assert.NotNull(osmGeo);
+                Assert.IsInstanceOf<Relation>(osmGeo);
+                Assert.AreEqual(id, osmGeo.Id);
+            }
             for (var i = 0; i < 100; i++)
             {
                 var id = 451746 + (i * 100) + 5;
