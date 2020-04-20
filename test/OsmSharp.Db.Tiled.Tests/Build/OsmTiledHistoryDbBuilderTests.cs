@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Streams;
@@ -9,13 +10,13 @@ namespace OsmSharp.Db.Tiled.Tests.Build
     /// Contains builder tests.
     /// </summary>
     [TestFixture]
-    public class OsmDbBuilderTests
+    public class OsmTiledHistoryDbBuilderTests
     {
         /// <summary>
         /// Tests building a database.
         /// </summary>
         [Test]
-        public void OsmDbBuilder_BuildDb_ShouldBuildInitial()
+        public async Task OsmDbBuilder_BuildDb_ShouldBuildInitial()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/data");
@@ -63,19 +64,18 @@ namespace OsmSharp.Db.Tiled.Tests.Build
                     Visible = true
                 }
             };
-            OsmSharp.Db.Tiled.Build.OsmTiledHistoryDbBuilder.Build(
+            await OsmSharp.Db.Tiled.Build.OsmTiledHistoryDbBuilder.Build(
                osmGeos, @"/data", 14);
 
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/meta.json"));
 
-            var meta = OsmTiledHistoryDbOperations.LoadDbMeta("/data/meta.json");
+            var meta = OsmTiledHistoryDbOperations.LoadDbMeta("/data");
             var initialPath = meta.Latest;
             
             // check if initial dir exists.
-            Assert.True(FileSystemFacade.FileSystem.DirectoryExists(initialPath));
             Assert.True(FileSystemFacade.FileSystem.Exists(
-                FileSystemFacade.FileSystem.Combine(initialPath, "meta.json")));
+            FileSystemFacade.FileSystem.Combine(initialPath, "meta.json")));
         }
     }
 }
