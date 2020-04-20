@@ -56,7 +56,7 @@ namespace OsmSharp.Db.Tiled.Replication
 
             var planetFile = config["planet"];
             var dbPath = config["db"];
-            var zoom = 12U;
+            var zoom = 14U;
             var replicationLevel = Replication.Daily;
                 
             var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
@@ -70,14 +70,14 @@ namespace OsmSharp.Db.Tiled.Replication
                 LockHelper.WriteLock(lockFile.FullName);
             
                 // try loading the db, if it doesn't exist build it.
-                if (!OsmDb.TryLoad(dbPath, out var db))
+                if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
                     var source = new PBFOsmStreamSource(
                         File.OpenRead(planetFile));
 
                     // splitting tiles and writing indexes.
-                    db = source.BuildDb(dbPath, zoom);
+                    db = await source.BuildDb(dbPath, zoom);
                 }
             
 //            // start catch up until we reach hours/days.

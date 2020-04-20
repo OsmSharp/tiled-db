@@ -13,7 +13,7 @@ namespace OsmSharp.Db.Tiled.IO
         /// </summary>
         /// <param name="path">The db path.</param>
         /// <param name="dbMeta">The meta-data to write.</param>
-        public static void SaveDbMeta(string path, OsmDbMeta dbMeta)
+        public static void SaveDbMeta(string path, OsmTiledHistoryDbMeta dbMeta)
         {
             var dbMetaPath = PathToMeta(path);
             using (var stream = FileSystemFacade.FileSystem.Open(dbMetaPath, FileMode.Create))
@@ -28,14 +28,14 @@ namespace OsmSharp.Db.Tiled.IO
         /// </summary>
         /// <param name="path">The path.</param>
         /// <returns>The db meta.</returns>
-        public static OsmDbMeta LoadDbMeta(string path)
+        public static OsmTiledHistoryDbMeta LoadDbMeta(string path)
         {
             var dbMetaPath = PathToMeta(path);
             using var stream = FileSystemFacade.FileSystem.OpenRead(dbMetaPath);
             using var streamReader = new StreamReader(stream);
             using var jsonReader = new JsonTextReader(streamReader);
             
-            return JsonSerializer.CreateDefault().Deserialize<OsmDbMeta>(jsonReader);
+            return JsonSerializer.CreateDefault().Deserialize<OsmTiledHistoryDbMeta>(jsonReader);
         }
 
         /// <summary>

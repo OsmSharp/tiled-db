@@ -1,12 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
 using Serilog;
 using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.Build;
-using OsmSharp.Db.Tiled.Replication;
-using OsmSharp.Db.Tiled.Snapshots;
-using OsmSharp.Db.Tiled.Snapshots.Build;
 using OsmSharp.Logging;
 using OsmSharp.Streams;
 
@@ -21,9 +17,9 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/luxembourg-latest.osm.pbf",
+                    @"/data/work/data/OSM/antwerpen.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests/",
-                    @"12"
+                    @"14"
                 };
             }
 //#endif
@@ -57,7 +53,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             };
 
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
+                .MinimumLevel.Verbose()
                 .WriteTo.Console()
                 .WriteTo.File(Path.Combine("logs", "log-.txt"), rollingInterval: RollingInterval.Day)
                 .CreateLogger();
@@ -90,58 +86,16 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 }
 
                 // try loading the db, if it doesn't exist build it.
-                if (!OsmDb.TryLoad(args[1], out var db))
+                if (!OsmTiledHistoryDb.TryLoad(args[1], out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
                     var source = new PBFOsmStreamSource(
                         File.OpenRead(args[0]));
+                    var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+                    progress.RegisterSource(source);
 
                     // splitting tiles and writing indexes.
-                    db = source.BuildDb(args[1], zoom);
-                }
-                
-                // start catch up until we reach hours/days.
-                var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1));
-                while (await catchupEnumerator.MoveNext())
-                {
-                    if (catchupEnumerator.State.Config.IsHourly ||
-                        catchupEnumerator.State.Config.IsDaily)
-                    {
-                        break;
-                    }
-                    
-                    Log.Information($"Applying changes: {catchupEnumerator.State}");
-                    await catchupEnumerator.ApplyCurrent(db);
-                    Log.Information($"Changes applied, new database: {db}");
-                }
-                
-                // start enumerator that follows.
-                var enumerator = new ReplicationDiffEnumerator(Tiled.Replication.Replication.Hourly);
-                var lastDay = db.Latest.Timestamp.Date;
-                while (true)
-                {
-                    if (await enumerator.MoveTo(db.Latest.Timestamp))
-                    {
-                        Log.Information($"Applying changes: {enumerator.State}");
-                        await db.ApplyDiff(enumerator);
-                        Log.Information($"Changes applied, new database: {db}");
-
-                        while (await enumerator.MoveNext())
-                        {
-                            if (lastDay != db.Latest.Timestamp.Date)
-                            {
-                                Log.Information($"A new day, taking snapshot.");
-                                db.TakeSnapshot();
-                                lastDay = db.Latest.Timestamp.Date;
-                            }
-                            
-                            Log.Information($"Applying changes: {enumerator.State}");
-                            await db.ApplyDiff(enumerator);
-                            Log.Information($"Changes applied, new database: {db}");
-                        }
-                    }
-                    
-                    Thread.Sleep(10000);
+                    db = await progress.BuildDb(args[1], zoom);
                 }
             }
             catch (Exception e)

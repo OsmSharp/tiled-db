@@ -1,9 +1,9 @@
-namespace OsmSharp.Db.Tiled.Snapshots
+namespace OsmSharp.Db.Tiled.OsmTiled
 {
     /// <summary>
     /// Holds the types of snapshots.
     /// </summary>
-    public static class SnapshotDbType
+    public static class OsmTiledDbType
     {
         /// <summary>
         /// A full snapshot.

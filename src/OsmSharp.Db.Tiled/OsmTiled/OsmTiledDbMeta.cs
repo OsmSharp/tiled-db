@@ -1,11 +1,11 @@
 using System;
 
-namespace OsmSharp.Db.Tiled.Snapshots
+namespace OsmSharp.Db.Tiled.OsmTiled
 {
     /// <summary>
     /// Represents meta data about a snapshot db.
     /// </summary>
-    public class SnapshotDbMeta
+    public class OsmTiledDbMeta
     {
         /// <summary>
         /// Get or sets the zoom level.

@@ -1,7 +1,8 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.IO;
-using OsmSharp.Db.Tiled.Snapshots.Build;
+using OsmSharp.Db.Tiled.OsmTiled.Build;
 using OsmSharp.Streams;
 
 namespace OsmSharp.Db.Tiled.Build
@@ -16,9 +17,9 @@ namespace OsmSharp.Db.Tiled.Build
         /// <summary>
         /// Builds a new database and write the structure to the given path.
         /// </summary>
-        public static OsmDb BuildDb(this OsmStreamSource source, string path, uint maxZoom = 12)
+        public static async Task<OsmTiledHistoryDb> BuildDb(this OsmStreamSource source, string path, uint zoom = 14)
         {
-            if (maxZoom % 2 != 0) throw new ArgumentException($"{nameof(maxZoom)} max zoom has to be a multiple of 2."); 
+            if (zoom % 2 != 0) throw new ArgumentException($"{nameof(zoom)} max zoom has to be a multiple of 2."); 
             
             if (!FileSystemFacade.FileSystem.DirectoryExists(path)) throw new DirectoryNotFoundException(
                 $"Cannot create OSM db: {path} not found.");
@@ -27,17 +28,17 @@ namespace OsmSharp.Db.Tiled.Build
             if (!FileSystemFacade.FileSystem.DirectoryExists(snapshotDbPath)) FileSystemFacade.FileSystem.CreateDirectory(snapshotDbPath);
 
             // build the snapshot db.
-            source.Build(snapshotDbPath, maxZoom);
+            await source.Build(snapshotDbPath, zoom);
             
             // generate and write the path.
-            var osmDbMeta = new OsmDbMeta()
+            var osmDbMeta = new OsmTiledHistoryDbMeta()
             {
                 Latest = snapshotDbPath
             };
             OsmDbOperations.SaveDbMeta(path, osmDbMeta);
             
             // return the osm db.
-            return new OsmDb(path);
+            return new OsmTiledHistoryDb(path);
         }
     }
 }
