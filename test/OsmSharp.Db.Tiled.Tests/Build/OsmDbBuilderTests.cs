@@ -64,14 +64,18 @@ namespace OsmSharp.Db.Tiled.Tests.Build
                 }
             };
             OsmSharp.Db.Tiled.Build.OsmTiledHistoryDbBuilder.Build(
-               new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
+               osmGeos, @"/data", 14);
 
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/meta.json"));
+
+            var meta = OsmTiledHistoryDbOperations.LoadDbMeta("/data/meta.json");
+            var initialPath = meta.Latest;
             
             // check if initial dir exists.
-            Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/initial"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/initial/meta.json"));
+            Assert.True(FileSystemFacade.FileSystem.DirectoryExists(initialPath));
+            Assert.True(FileSystemFacade.FileSystem.Exists(
+                FileSystemFacade.FileSystem.Combine(initialPath, "meta.json")));
         }
     }
 }
