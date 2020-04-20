@@ -45,9 +45,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <summary>
         /// Gets the base.
         /// </summary>
-        internal string Base => _meta.Base;
+        internal string? Base => _meta.Base;
 
-        internal async Task<OsmDbTile> GetTile((uint x, uint y) tile)
+        internal async Task<OsmDbTile?> GetTile((uint x, uint y) tile)
         {
             var dataTileFile = OsmTiledDbOperations.PathToTile(_path, (tile.x, tile.y, this.Zoom));
 
@@ -63,7 +63,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <param name="type">The type.</param>
         /// <param name="id">The id.</param>
         /// <returns>The object if present.</returns>
-        public abstract Task<OsmGeo> Get(OsmGeoType type, long id);
+        public abstract Task<OsmGeo?> Get(OsmGeoType type, long id);
 
         /// <summary>
         /// Gets all the data in the given tile.

@@ -1,13 +1,28 @@
+using System;
 using System.IO;
 using Newtonsoft.Json;
+using OsmSharp.Db.Tiled.IO;
 
-namespace OsmSharp.Db.Tiled.IO
+namespace OsmSharp.Db.Tiled
 {
     /// <summary>
     /// Contains common IO operations for OSM dbs.
     /// </summary>
-    internal static class OsmDbOperations
+    internal static class OsmTiledHistoryDbOperations
     {
+        /// <summary>
+        /// Builds a path for a new tiled osm db for the give date time.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="dateTime">The date time.</param>
+        /// <returns>A path.</returns>
+        public static string BuildOsmTiledDbPath(string path, DateTime dateTime)
+        {
+            return FileSystemFacade.FileSystem.Combine(path,
+                $"{dateTime.Year:0000}-{dateTime.Month:00}-{dateTime.Day:00}_{dateTime.Hour:00}{dateTime.Minute:00}{dateTime.Second:00}_{dateTime.Millisecond:0000}");
+        }
+        
+        
         /// <summary>
         /// Writes db meta to disk.
         /// </summary>

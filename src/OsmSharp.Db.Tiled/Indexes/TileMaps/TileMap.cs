@@ -160,8 +160,26 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
             stream.Write(BitConverter.GetBytes(_size), 0, 8);
             stream.Write(BitConverter.GetBytes(_nextBlock), 0, 8);
 
-            _pointers.CopyToWithSize(stream);
-            _data.CopyToWithSize(stream);
+            stream.Write(BitConverter.GetBytes(_pointers.Length), 0, 8);
+            using (var streamWriter = new BinaryWriter(stream, System.Text.Encoding.Default, true))
+            {
+                for (var i = 0; i < _pointers.Length; i++)
+                {
+                    streamWriter.Write(_pointers[i]);
+                }
+                streamWriter.Flush();
+            }
+            //_pointers.CopyToWithSize(stream);
+            stream.Write(BitConverter.GetBytes(_data.Length), 0, 8);
+            using (var streamWriter = new BinaryWriter(stream, System.Text.Encoding.Default, true))
+            {
+                for (var i = 0; i < _data.Length; i++)
+                {
+                    streamWriter.Write(_data[i]);
+                }
+                streamWriter.Flush();
+            }
+            //_data.CopyToWithSize(stream);
 
             return stream.Position - position;
         }
@@ -182,8 +200,31 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
             stream.Read(buffer, 0, 8);
             var nextBlock = BitConverter.ToInt64(buffer, 0);
 
-            var pointers = MemoryArray<long>.CopyFromWithSize(stream);
-            var data = MemoryArray<uint>.CopyFromWithSize(stream);
+            stream.Read(buffer, 0, 8);
+            var pointersLength = BitConverter.ToInt64(buffer, 0);
+            var pointers = new MemoryArray<long>(pointersLength);
+            using (var streamReader = new BinaryReader(stream, System.Text.Encoding.Default, true))
+            {
+                for (var i = 0; i < pointers.Length; i++)
+                {
+                    pointers[i] = streamReader.ReadInt64();
+                }
+            }
+            
+            stream.Read(buffer, 0, 8);
+            var dataLength = BitConverter.ToInt64(buffer, 0);
+            var data = new MemoryArray<uint>(dataLength);
+            using (var streamReader = new BinaryReader(stream, System.Text.Encoding.Default, true))
+            {
+                for (var i = 0; i < data.Length; i++)
+                {
+                    data[i] = streamReader.ReadUInt32();
+                }
+            }
+            
+//
+//            var pointers = MemoryArray<long>.CopyFromWithSize(stream);
+//            var data = MemoryArray<uint>.CopyFromWithSize(stream);
 
             return new TileMap(size, blockSize, emptyDefault, nextBlock,
                 pointers, data);

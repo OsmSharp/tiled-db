@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
@@ -21,7 +23,7 @@ namespace OsmSharp.Db.Tiled
         {
             _path = path;
 
-            _meta = OsmDbOperations.LoadDbMeta(_path);
+            _meta = OsmTiledHistoryDbOperations.LoadDbMeta(_path);
             
             this.Latest = OsmTiledDbOperations.LoadDb(_meta.Latest);
         }
@@ -32,6 +34,39 @@ namespace OsmSharp.Db.Tiled
         public OsmTiledDbBase Latest { get; private set; }
 
         private readonly object _diffSync = new object();
+
+        /// <summary>
+        /// Creates a new db.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="data">The data.</param>
+        /// <returns>The new db.</returns>
+        public static async Task<OsmTiledHistoryDb> Create(string path, IEnumerable<OsmGeo> data)
+        {
+            return await Build.OsmTiledHistoryDbBuilder.Build(data, path);
+        }
+        
+        /// <summary>
+        /// Adds a new osm tiled db as latest using the given data.
+        /// </summary>
+        /// <param name="data">The data.</param>
+        public async Task Update(IEnumerable<OsmGeo> data)
+        {
+            var latest = await Build.OsmTiledHistoryDbBuilder.Update(data, this._path);
+            
+            lock (_diffSync)
+            {
+                // update data.
+                this.Latest = latest;
+                
+                // update meta data.
+                _meta = new OsmTiledHistoryDbMeta()
+                {
+                    Latest = this.Latest.Path
+                };
+                OsmTiledHistoryDbOperations.SaveDbMeta(_path, _meta);
+            }
+        }
 
 //        /// <summary>
 //        /// Applies a diff to this OSM db.
@@ -82,9 +117,9 @@ namespace OsmSharp.Db.Tiled
         /// <param name="path">The path.</param>
         /// <param name="osmDb">The db if any.</param>
         /// <returns>True if a db was loaded, false otherwise.</returns>
-        public static bool TryLoad(string path, out OsmTiledHistoryDb osmDb)
+        public static bool TryLoad(string path, out OsmTiledHistoryDb? osmDb)
         {
-            if (FileSystemFacade.FileSystem.Exists(OsmDbOperations.PathToMeta(path)))
+            if (FileSystemFacade.FileSystem.Exists(OsmTiledDbOperations.PathToMeta(path)))
             {
                 osmDb = new OsmTiledHistoryDb(path);
                 return true;
@@ -102,7 +137,7 @@ namespace OsmSharp.Db.Tiled
         {
             try
             {
-                var meta = OsmDbOperations.LoadDbMeta(_path);
+                var meta = OsmTiledHistoryDbOperations.LoadDbMeta(_path);
                 lock (_diffSync)
                 {
                     if (meta.Latest != _meta.Latest)

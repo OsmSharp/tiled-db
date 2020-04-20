@@ -47,7 +47,7 @@ namespace OsmSharp.Db.Tiled.IO
             return Directory.EnumerateDirectories(directory);
         }
 
-        public IEnumerable<string> EnumerateFiles(string directory, string searchPattern = null)
+        public IEnumerable<string> EnumerateFiles(string directory, string? searchPattern = null)
         {
             return Directory.EnumerateFiles(directory, searchPattern);
         }

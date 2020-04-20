@@ -8,6 +8,6 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Gets the latest snapshot db.
         /// </summary>
-        public string Latest { get; set; }
+        public string Latest { get; set; } = string.Empty;
     }
 }

@@ -15,12 +15,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <summary>
         /// The base db if any.
         /// </summary>
-        public string Base { get; set; }
-        
+        public string? Base { get; set; }
+
         /// <summary>
         /// The db type.
         /// </summary>
-        public string Type { get; set; }
+        public string Type { get; set; } = OsmTiledDbType.Full;
         
         /// <summary>
         /// Gets or sets the 

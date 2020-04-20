@@ -18,14 +18,14 @@ namespace OsmSharp.Db.Tiled.IO.Http
             return await ThreadLocalClient.Value.GetStreamAsync(requestUri);
         }
 
-        private static IHttpHandler _defaultHandler;
+        private static IHttpHandler? _defaultHandler;
 
         /// <summary>
         /// Gets or sets the default http handler.
         /// </summary>
-        public static IHttpHandler Default
+        public static IHttpHandler? Default
         {
-            get => _defaultHandler ?? (_defaultHandler = LazyHttpHandler.Value);
+            get => _defaultHandler ??= LazyHttpHandler.Value;
             set => _defaultHandler = value;
         }
     }

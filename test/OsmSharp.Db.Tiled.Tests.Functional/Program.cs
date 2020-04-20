@@ -2,7 +2,6 @@
 using System.IO;
 using Serilog;
 using System.Threading.Tasks;
-using OsmSharp.Db.Tiled.Build;
 using OsmSharp.Logging;
 using OsmSharp.Streams;
 
@@ -17,7 +16,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/antwerpen.osm.pbf",
+                    @"/data/work/data/OSM/belgium-latest.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests/",
                     @"14"
                 };
@@ -84,18 +83,27 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     Log.Fatal("Can't parse zoom: {0}", args[2]);
                     return;
                 }
+                
+                // prepare source.
+                var source = new PBFOsmStreamSource(
+                    File.OpenRead(args[0]));
+                var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+                progress.RegisterSource(source);
 
                 // try loading the db, if it doesn't exist build it.
                 if (!OsmTiledHistoryDb.TryLoad(args[1], out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
-                    var source = new PBFOsmStreamSource(
-                        File.OpenRead(args[0]));
-                    var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-                    progress.RegisterSource(source);
 
                     // splitting tiles and writing indexes.
-                    db = await progress.BuildDb(args[1], zoom);
+                    db = await OsmTiledHistoryDb.Create(args[1], progress);
+                }
+                else
+                {
+                    Log.Information("The DB exists, updating...");
+                    
+                    // add data.
+                    await db.Update(progress);
                 }
             }
             catch (Exception e)

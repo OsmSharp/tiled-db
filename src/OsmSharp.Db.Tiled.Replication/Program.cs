@@ -27,29 +27,29 @@ namespace OsmSharp.Db.Tiled.Replication
                         break;
                     case "warning":
                         Log.Warning(formattedMessage);
-                        break; 
+                        break;
                     case "verbose":
                         Log.Verbose(formattedMessage);
-                        break; 
+                        break;
                     case "information":
                         Log.Information(formattedMessage);
-                        break; 
+                        break;
                     default:
                         Log.Debug(formattedMessage);
                         break;
                 }
             };
-            
+
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .WriteTo.Console()
                 .WriteTo.File(Path.Combine("logs", "log-.txt"), rollingInterval: RollingInterval.Day)
                 .CreateLogger();
-            
+
             var builder = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json");
-            
+
             var config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", true, true)
                 .Build();
@@ -57,29 +57,36 @@ namespace OsmSharp.Db.Tiled.Replication
             var planetFile = config["planet"];
             var dbPath = config["db"];
             var zoom = 14U;
-            var replicationLevel = Replication.Daily;
-                
+
             var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
             if (LockHelper.IsLocked(lockFile.FullName))
             {
                 return;
             }
-            
+
             try
             {
                 LockHelper.WriteLock(lockFile.FullName);
-            
+
+                var source = new PBFOsmStreamSource(
+                    File.OpenRead(planetFile));
+
                 // try loading the db, if it doesn't exist build it.
                 if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
-                    var source = new PBFOsmStreamSource(
-                        File.OpenRead(planetFile));
 
                     // splitting tiles and writing indexes.
-                    db = await source.BuildDb(dbPath, zoom);
+                    db = await OsmTiledHistoryDb.Create(dbPath, source);
                 }
-            
+                else
+                {
+                    Log.Information("The DB exists, updating...");
+
+                    // add data.
+                    await db.Update(source);
+                }
+
 //            // start catch up until we reach hours/days.
 //            var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1), moveDown:false);
 //            while (await catchupEnumerator.MoveNext())

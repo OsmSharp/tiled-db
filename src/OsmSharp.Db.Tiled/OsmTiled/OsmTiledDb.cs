@@ -36,9 +36,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         private (TileMap nodeTileMap, TilesMap wayTileMap, TilesMap relationTileMap) LoadIndexes()
         {
-            TileMap nodeTileMap = null;
-            TilesMap wayTileMap = null;
-            TilesMap relationTileMap = null;
+            TileMap? nodeTileMap = null;
+            TilesMap? wayTileMap = null;
+            TilesMap? relationTileMap = null;
             var nodeMapFile = OsmTiledDbOperations.PathToIndex(this.Path, OsmGeoType.Node);
             if (FileSystemFacade.FileSystem.Exists(nodeMapFile))
             {
@@ -60,13 +60,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 relationTileMap = TilesMap.Deserialize(relationMapStream);
             }
 
-            return (nodeTileMap, wayTileMap, relationTileMap);
+            return (nodeTileMap ?? new TileMap(), wayTileMap ?? new TilesMap(), relationTileMap ?? new TilesMap());
         }
 
         /// <inheritdoc/>
-        public override async Task<OsmGeo> Get(OsmGeoType type, long id)
+        public override async Task<OsmGeo?> Get(OsmGeoType type, long id)
         {
-            OsmDbTile dataTile = null;
+            OsmDbTile? dataTile = null;
             switch (type)
             {
                 case OsmGeoType.Node:
@@ -105,6 +105,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             var dataTile = await this.GetTile(tile);
 
+            if (dataTile == null) return Enumerable.Empty<OsmGeo>();
             return dataTile.Get();
         }
     }

@@ -63,7 +63,7 @@ namespace OsmSharp.Db.Tiled.Tests.Build
                     Visible = true
                 }
             };
-            OsmSharp.Db.Tiled.Build.OsmDbBuilder.BuildDb(
+            OsmSharp.Db.Tiled.Build.OsmTiledHistoryDbBuilder.Build(
                new OsmEnumerableStreamSource(osmGeos), @"/data", 14);
 
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));

@@ -4,11 +4,11 @@ using System.IO;
 using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.Indexes.TileMaps;
 using OsmSharp.Db.Tiled.Tiles;
-using OsmSharp.Streams;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.Tiles;
 using OsmSharp.IO.Binary;
+using OsmSharp.Logging;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Build
 {
@@ -131,7 +131,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             FlushQueue(path);
             
             // convert all tiles to data tiles.
-            foreach (var tile in OsmTiledDbOperations.GetTiles(path, zoom, "*.osm.bin"))
+            Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Information,
+            $"Converting tile streams to data tiles...");
+            var c = 0;
+            Parallel.ForEach(OsmTiledDbOperations.GetTiles(path, zoom, "*.osm.bin"), async (tile) =>
+                //foreach (var tile in OsmTiledDbOperations.GetTiles(path, zoom, "*.osm.bin"))
             {
                 // build data tile.
                 OsmDbTile dataTile;
@@ -141,19 +145,28 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 {
                     dataTile = await OsmDbTile.BuildFromOsmBinaryStream(osmBinStream);
                 }
-                
+
                 // write data tile.
                 var dataTileFile = OsmTiledDbOperations.PathToTile(path, tile);
                 using (var stream = FileSystemFacade.FileSystem.Open(dataTileFile, FileMode.Create))
                 {
                     await dataTile.Serialize(stream);
                 }
-                
+
                 // delete old file.
                 FileSystemFacade.FileSystem.Delete(osmBinFile);
-            }
+                c++;
+
+                if (c % 1000 == 0)
+                {
+                    Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Information,
+                        $"Converted {c} tiles.");
+                }
+            });
             
             // save tile maps.
+            Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Information,
+                $"Saving tile maps...");
             var nodeToTileFile = OsmTiledDbOperations.PathToIndex(path, OsmGeoType.Node);
             if (FileSystemFacade.FileSystem.DirectoryExists(
                 FileSystemFacade.FileSystem.DirectoryForFile(nodeToTileFile)))

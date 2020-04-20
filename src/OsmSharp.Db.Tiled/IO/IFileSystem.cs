@@ -52,7 +52,7 @@ namespace OsmSharp.Db.Tiled.IO
         /// <summary>
         /// Enumerates files.
         /// </summary>
-        IEnumerable<string> EnumerateFiles(string directory, string mask = null);
+        IEnumerable<string> EnumerateFiles(string directory, string? mask = null);
 
         /// <summary>
         /// Opens the given file for read-access.
