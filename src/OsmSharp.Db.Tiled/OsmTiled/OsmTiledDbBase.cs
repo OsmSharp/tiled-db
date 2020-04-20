@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
@@ -46,9 +47,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// </summary>
         internal string Base => _meta.Base;
 
-        internal async Task<OsmDbTile> GetTile((uint x, uint y, uint zoom) tile)
+        internal async Task<OsmDbTile> GetTile((uint x, uint y) tile)
         {
-            var dataTileFile = OsmTiledDbOperations.PathToTile(_path, tile);
+            var dataTileFile = OsmTiledDbOperations.PathToTile(_path, (tile.x, tile.y, this.Zoom));
 
             if (!FileSystemFacade.FileSystem.Exists(dataTileFile)) return null;
 
@@ -63,5 +64,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <param name="id">The id.</param>
         /// <returns>The object if present.</returns>
         public abstract Task<OsmGeo> Get(OsmGeoType type, long id);
+
+        /// <summary>
+        /// Gets all the data in the given tile.
+        /// </summary>
+        /// <param name="tile"></param>
+        /// <returns></returns>
+        public abstract Task<IEnumerable<OsmGeo>> Get((uint x, uint y) tile);
     }
 }

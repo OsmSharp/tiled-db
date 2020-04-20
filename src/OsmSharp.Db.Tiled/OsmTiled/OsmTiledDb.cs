@@ -73,14 +73,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                     var tileId = _nodeTileMap[id];
                     if (tileId == 0) return null;
                     var tile = Tile.FromLocalId(this.Zoom, tileId);
-                    dataTile = await this.GetTile((tile.x, tile.y, this.Zoom));
+                    dataTile = await this.GetTile((tile.x, tile.y));
                     break;
                 case OsmGeoType.Way:
                     var wayTiles = _wayTileMap.Get(id);
                     foreach (var wayTileId in wayTiles)
                     {
                         var wayTile = Tile.FromLocalId(this.Zoom, wayTileId);
-                        dataTile = await this.GetTile((wayTile.x, wayTile.y, this.Zoom));
+                        dataTile = await this.GetTile((wayTile.x, wayTile.y));
                         break;
                     }
                     break;
@@ -89,7 +89,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                     foreach (var relationTileId in relationTiles)
                     {
                         var relationTile = Tile.FromLocalId(this.Zoom, relationTileId);
-                        dataTile = await this.GetTile((relationTile.x, relationTile.y, this.Zoom));
+                        dataTile = await this.GetTile((relationTile.x, relationTile.y));
                         break;
                     }
                     break;
@@ -98,6 +98,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
             
             return dataTile?.Get(type, id);
+        }
+
+        /// <inheritdoc/>
+        public override async Task<IEnumerable<OsmGeo>> Get((uint x, uint y) tile)
+        {
+            var dataTile = await this.GetTile(tile);
+
+            return dataTile.Get();
         }
     }
 }
