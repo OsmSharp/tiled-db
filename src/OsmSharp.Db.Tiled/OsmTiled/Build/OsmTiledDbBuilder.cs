@@ -134,8 +134,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Information,
             $"Converting tile streams to data tiles...");
             var c = 0;
-            Parallel.ForEach(OsmTiledDbOperations.GetTiles(path, zoom, "*.osm.bin"), async (tile) =>
-                //foreach (var tile in OsmTiledDbOperations.GetTiles(path, zoom, "*.osm.bin"))
+            foreach (var tile in OsmTiledDbOperations.GetTiles(path, zoom, "*.osm.bin"))
             {
                 // build data tile.
                 OsmDbTile dataTile;
@@ -162,7 +161,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Information,
                         $"Converted {c} tiles.");
                 }
-            });
+            }
             
             // save tile maps.
             Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Information,
