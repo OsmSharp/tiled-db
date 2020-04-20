@@ -33,6 +33,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             var timestamp = DateTime.MinValue;
             var nodeToTile = new SparseArray();
             var wayToTiles = new OsmGeoIdToTileMap();
+            var relationToTiles = new OsmGeoIdToTileMap();
             var tileSet = new HashSet<uint>();
             var mode = OsmGeoType.Node;
             foreach (var osmGeo in source)
@@ -117,6 +118,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                         }
                     }
 
+                    relationToTiles.Add(relation.Id.Value, tileSet);
+
                     foreach (var tileId in tileSet)
                     {
                         var tile = Tile.FromLocalId(zoom, tileId);
@@ -142,13 +145,45 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 
                 // write data tile.
                 var dataTileFile = OsmTiledDbOperations.PathToTile(path, tile);
-                using (var stream = File.Open(dataTileFile, FileMode.Create))
+                using (var stream = FileSystemFacade.FileSystem.Open(dataTileFile, FileMode.Create))
                 {
                     await dataTile.Serialize(stream);
                 }
                 
                 // delete old file.
                 FileSystemFacade.FileSystem.Delete(osmBinFile);
+            }
+            
+            // save tile maps.
+            var nodeToTileFile = OsmTiledDbOperations.PathToIndex(path, OsmGeoType.Node);
+            if (FileSystemFacade.FileSystem.DirectoryExists(
+                FileSystemFacade.FileSystem.DirectoryForFile(nodeToTileFile)))
+            {
+                FileSystemFacade.FileSystem.CreateDirectory(FileSystemFacade.FileSystem.DirectoryForFile(nodeToTileFile));
+            }
+            using (var stream = FileSystemFacade.FileSystem.Open(nodeToTileFile, FileMode.Create))
+            {
+                nodeToTile.Serialize(stream);
+            }
+            var wayToTileFile = OsmTiledDbOperations.PathToIndex(path, OsmGeoType.Way);
+            if (FileSystemFacade.FileSystem.DirectoryExists(
+                FileSystemFacade.FileSystem.DirectoryForFile(wayToTileFile)))
+            {
+                FileSystemFacade.FileSystem.CreateDirectory(FileSystemFacade.FileSystem.DirectoryForFile(wayToTileFile));
+            }
+            using (var stream = FileSystemFacade.FileSystem.Open(wayToTileFile, FileMode.Create))
+            {
+                wayToTiles.Serialize(stream);
+            }
+            var relationToTileFile = OsmTiledDbOperations.PathToIndex(path, OsmGeoType.Relation);
+            if (FileSystemFacade.FileSystem.DirectoryExists(
+                FileSystemFacade.FileSystem.DirectoryForFile(relationToTileFile)))
+            {
+                FileSystemFacade.FileSystem.CreateDirectory(FileSystemFacade.FileSystem.DirectoryForFile(relationToTileFile));
+            }
+            using (var stream = FileSystemFacade.FileSystem.Open(relationToTileFile, FileMode.Create))
+            {
+                relationToTiles.Serialize(stream);
             }
 
             // save the meta-data.

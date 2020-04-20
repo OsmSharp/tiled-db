@@ -37,7 +37,7 @@ namespace OsmSharp.Db.Tiled.IO
             return Directory.Exists(directory);
         }
 
-        public string DirectoryName(string directory)
+        public string LeafDirectoryName(string directory)
         {
             return (new DirectoryInfo(directory)).Name;
         }

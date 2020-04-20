@@ -112,9 +112,9 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
             return new FileInfo(file).Directory.FullName;
         }
 
-        public string DirectoryName(string directory)
+        public string LeafDirectoryName(string directory)
         {
-            return Path.GetDirectoryName(directory);
+            return directory.Substring(directory.LastIndexOf('/') + 1);
         }
 
         public IEnumerable<string> EnumerateDirectories(string directory)

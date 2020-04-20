@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.IO
@@ -74,15 +75,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             }
             
             foreach(var xDir in FileSystemFacade.FileSystem.EnumerateDirectories(
-                basePath))
+                basePath).ToList())
             {
-                var xDirName = FileSystemFacade.FileSystem.DirectoryName(xDir);
+                var xDirName = FileSystemFacade.FileSystem.LeafDirectoryName(xDir);
                 if (!uint.TryParse(xDirName, out var x))
                 {
                     continue;
                 }
 
-                foreach (var tile in FileSystemFacade.FileSystem.EnumerateFiles(xDir, mask))
+                foreach (var tile in FileSystemFacade.FileSystem.EnumerateFiles(xDir, mask).ToList())
                 {
                     var tileName = FileSystemFacade.FileSystem.FileName(tile);
 
@@ -95,6 +96,20 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
                     yield return (x, y, zoom);
                 }
             }
+        }
+        
+        /// <summary>
+        /// Gets the path to the meta-data for the db at the given path.
+        /// </summary>
+        public static string PathToIndex(string path, OsmGeoType type)
+        {
+            return type switch
+            {
+                OsmGeoType.Node => FileSystemFacade.FileSystem.Combine(path, "nodes.idx"),
+                OsmGeoType.Way => FileSystemFacade.FileSystem.Combine(path, "ways.idx"),
+                OsmGeoType.Relation => FileSystemFacade.FileSystem.Combine(path, "relations.idx"),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            };
         }
         
 //        /// <summary>

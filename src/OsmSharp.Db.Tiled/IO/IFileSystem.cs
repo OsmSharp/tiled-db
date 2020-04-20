@@ -35,9 +35,9 @@ namespace OsmSharp.Db.Tiled.IO
         bool DirectoryExists(string directory);
 
         /// <summary>
-        /// Returns the directory name.
+        /// Returns the directory name of the last directory in the given path.
         /// </summary>
-        string DirectoryName(string directory);
+        string LeafDirectoryName(string directory);
 
         /// <summary>
         /// Creates the given directory.
@@ -64,6 +64,12 @@ namespace OsmSharp.Db.Tiled.IO
         /// </summary>
         Stream OpenWrite(string location);
 
+        /// <summary>
+        /// Opens the file at the given path.
+        /// </summary>
+        /// <param name="file">The file.</param>
+        /// <param name="mode">The mode.</param>
+        /// <returns>A stream.</returns>
         Stream Open(string file, FileMode mode);
 
         /// <summary>
