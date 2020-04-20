@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using OsmSharp.Db.Tiled.Indexes.TileMap;
+using OsmSharp.Db.Tiled.Indexes.TileMaps;
 using OsmSharp.Db.Tiled.IO;
+using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.Tiles;
 using OsmSharp.Db.Tiled.Tiles;
 
@@ -14,9 +15,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     /// </summary>
     public class OsmTiledDb : OsmTiledDbBase
     {
-        private readonly SparseArray _nodeTileMap;
-        private readonly OsmGeoIdToTileMap _wayTileMap;
-        private readonly OsmGeoIdToTileMap _relationTileMap;
+        private readonly TileMap _nodeTileMap;
+        private readonly TilesMap _wayTileMap;
+        private readonly TilesMap _relationTileMap;
         
         /// <summary>
         /// Creates a new db using the data at the given path.
@@ -33,30 +34,30 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             (_nodeTileMap, _wayTileMap, _relationTileMap) = LoadIndexes();
         }
 
-        private (SparseArray nodeTileMap, OsmGeoIdToTileMap wayTileMap, OsmGeoIdToTileMap relationTileMap) LoadIndexes()
+        private (TileMap nodeTileMap, TilesMap wayTileMap, TilesMap relationTileMap) LoadIndexes()
         {
-            SparseArray nodeTileMap = null;
-            OsmGeoIdToTileMap wayTileMap = null;
-            OsmGeoIdToTileMap relationTileMap = null;
-            var nodeMapFile = FileSystemFacade.FileSystem.Combine(this.Path, ".nodes.idx");
+            TileMap nodeTileMap = null;
+            TilesMap wayTileMap = null;
+            TilesMap relationTileMap = null;
+            var nodeMapFile = OsmTiledDbOperations.PathToIndex(this.Path, OsmGeoType.Node);
             if (FileSystemFacade.FileSystem.Exists(nodeMapFile))
             {
                 using var nodeMapStream = FileSystemFacade.FileSystem.OpenRead(nodeMapFile);
-                nodeTileMap = SparseArray.Deserialize(nodeMapStream);
+                nodeTileMap = TileMap.Deserialize(nodeMapStream);
             }
             
-            var wayMapFile = FileSystemFacade.FileSystem.Combine(this.Path, ".ways.idx");
+            var wayMapFile = OsmTiledDbOperations.PathToIndex(this.Path, OsmGeoType.Way);
             if (FileSystemFacade.FileSystem.Exists(nodeMapFile))
             {
                 using var wayMapStream = FileSystemFacade.FileSystem.OpenRead(wayMapFile);
-                wayTileMap = OsmGeoIdToTileMap.Deserialize(wayMapStream);
+                wayTileMap = TilesMap.Deserialize(wayMapStream);
             }
             
-            var relationMapFile = FileSystemFacade.FileSystem.Combine(this.Path, ".relations.idx");
+            var relationMapFile = OsmTiledDbOperations.PathToIndex(this.Path, OsmGeoType.Relation);
             if (FileSystemFacade.FileSystem.Exists(relationMapFile))
             {
                 using var relationMapStream = FileSystemFacade.FileSystem.OpenRead(relationMapFile);
-                relationTileMap = OsmGeoIdToTileMap.Deserialize(relationMapStream);
+                relationTileMap = TilesMap.Deserialize(relationMapStream);
             }
 
             return (nodeTileMap, wayTileMap, relationTileMap);
@@ -76,20 +77,20 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                     break;
                 case OsmGeoType.Way:
                     var wayTiles = _wayTileMap.Get(id);
-                    var wayTileId = wayTiles?.FirstOrDefault();
-                    if (wayTileId != null)
+                    foreach (var wayTileId in wayTiles)
                     {
-                        var wayTile = Tile.FromLocalId(this.Zoom, wayTileId.Value);
+                        var wayTile = Tile.FromLocalId(this.Zoom, wayTileId);
                         dataTile = await this.GetTile((wayTile.x, wayTile.y, this.Zoom));
+                        break;
                     }
                     break;
                 case OsmGeoType.Relation:
                     var relationTiles = _relationTileMap.Get(id);
-                    var relationTileId = relationTiles?.FirstOrDefault();
-                    if (relationTileId != null)
+                    foreach (var relationTileId in relationTiles)
                     {
-                        var relationTile = Tile.FromLocalId(this.Zoom, relationTileId.Value);
+                        var relationTile = Tile.FromLocalId(this.Zoom, relationTileId);
                         dataTile = await this.GetTile((relationTile.x, relationTile.y, this.Zoom));
+                        break;
                     }
                     break;
                 default:

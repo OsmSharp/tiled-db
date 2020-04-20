@@ -4,16 +4,16 @@ using System.IO;
 using Reminiscence;
 using Reminiscence.Arrays;
 
-namespace OsmSharp.Db.Tiled.Indexes.TileMap
+namespace OsmSharp.Db.Tiled.Indexes.TileMaps
 {
-    internal class SparseArray
+    internal class TileMap
     {
         private readonly int _blockSize; 
         private readonly uint _default;
         private readonly MemoryArray<long> _pointers;
         private readonly MemoryArray<uint> _data;
 
-        public SparseArray(long size = 0, int blockSize = 64,
+        public TileMap(long size = 0, int blockSize = 64,
             uint emptyDefault = default)
         {
             if (size < 0) { throw new ArgumentOutOfRangeException(nameof(size), "Size needs to be bigger than or equal to zero."); }
@@ -28,7 +28,7 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMap
             _data = new MemoryArray<uint>(0);
         }
 
-        public SparseArray(long size, int blockSize, uint emptyDefault, long nextBlock,
+        public TileMap(long size, int blockSize, uint emptyDefault, long nextBlock,
             MemoryArray<long> pointers, MemoryArray<uint> data)
         {
             _size = size;
@@ -171,7 +171,7 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMap
         /// </summary>
         /// <param name="stream">The stream.</param>
         /// <returns>The sparse array.</returns>
-        public static SparseArray Deserialize(Stream stream)
+        public static TileMap Deserialize(Stream stream)
         {
             var buffer = new byte[8];
             stream.Read(buffer, 0, 8);
@@ -185,14 +185,14 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMap
             var pointers = MemoryArray<long>.CopyFromWithSize(stream);
             var data = MemoryArray<uint>.CopyFromWithSize(stream);
 
-            return new SparseArray(size, blockSize, emptyDefault, nextBlock,
+            return new TileMap(size, blockSize, emptyDefault, nextBlock,
                 pointers, data);
         }
     }
 
-    internal static class SparseArrayExtensions
+    internal static class TileMapExtensions
     {
-        internal static void EnsureMinimumSize(this SparseArray array, long i)
+        internal static void EnsureMinimumSize(this TileMap array, long i)
         {
             if (array.Length > i) return;
             

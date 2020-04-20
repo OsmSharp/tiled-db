@@ -4,22 +4,22 @@ using System.IO;
 using Reminiscence;
 using Reminiscence.Arrays;
 
-namespace OsmSharp.Db.Tiled.Indexes.TileMap
+namespace OsmSharp.Db.Tiled.Indexes.TileMaps
 {
-    internal class OsmGeoIdToTileMap
+    internal class TilesMap
     {
-        private readonly SparseArray _wayToFirstTile = new SparseArray();
+        private readonly TileMap _wayToFirstTile = new TileMap();
         private readonly MemoryArray<uint> _linkedTileList = new MemoryArray<uint>(0);
         private const uint TileMask = (uint) ((long)1 << 31);
 
         private uint _nextPointer = 0;
 
-        public OsmGeoIdToTileMap()
+        public TilesMap()
         {
             
         }
 
-        private OsmGeoIdToTileMap(SparseArray wayToFirstTile, MemoryArray<uint> linkedTileList,
+        private TilesMap(TileMap wayToFirstTile, MemoryArray<uint> linkedTileList,
             uint nextPointer)
         {
             _wayToFirstTile = wayToFirstTile;
@@ -74,6 +74,7 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMap
         public IEnumerable<uint> Get(long id)
         {
             var idOrPointer = _wayToFirstTile[id];
+            if (idOrPointer == 0) yield break;
             if (idOrPointer > TileMask)
             {
                 yield return (idOrPointer - TileMask);
@@ -100,16 +101,16 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMap
             return stream.Position - position;
         }
 
-        public static OsmGeoIdToTileMap Deserialize(Stream stream)
+        public static TilesMap Deserialize(Stream stream)
         {
-            var wayToFirstTile = SparseArray.Deserialize(stream);
+            var wayToFirstTile = TileMap.Deserialize(stream);
 
             var buffer = new byte[4];
             stream.Read(buffer, 0, 4);
             var nextPointer = BitConverter.ToUInt32(buffer, 0);
             var linkedTileList = MemoryArray<uint>.CopyFromWithSize(stream);
             
-            return new OsmGeoIdToTileMap(wayToFirstTile, linkedTileList, nextPointer);
+            return new TilesMap(wayToFirstTile, linkedTileList, nextPointer);
         }
     }
 }

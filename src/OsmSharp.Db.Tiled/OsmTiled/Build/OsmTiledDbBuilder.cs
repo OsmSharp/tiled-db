@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using OsmSharp.Db.Tiled.Indexes.TileMap;
+using OsmSharp.Db.Tiled.Indexes.TileMaps;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Streams;
 using OsmSharp.Db.Tiled.IO;
@@ -23,17 +23,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="source">The source stream.</param>
         /// <param name="path">The path to store the db at.</param>
         /// <param name="zoom">The zoom.</param>
-        public static async Task<OsmTiledDb> Build(this OsmStreamSource source, string path, uint zoom = 14)
+        public static async Task<OsmTiledDb> Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
         {
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
             if (path == null) { throw new ArgumentNullException(nameof(path)); }
-            if (!source.CanReset) { throw new ArgumentException("Source cannot be reset."); }
             if (!FileSystemFacade.FileSystem.DirectoryExists(path)) { throw new ArgumentException("Output path does not exist."); }
 
             var timestamp = DateTime.MinValue;
-            var nodeToTile = new SparseArray();
-            var wayToTiles = new OsmGeoIdToTileMap();
-            var relationToTiles = new OsmGeoIdToTileMap();
+            var nodeToTile = new TileMap();
+            var wayToTiles = new TilesMap();
+            var relationToTiles = new TilesMap();
             var tileSet = new HashSet<uint>();
             var mode = OsmGeoType.Node;
             foreach (var osmGeo in source)

@@ -2,15 +2,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
-using OsmSharp.Db.Tiled.Indexes.TileMap;
+using OsmSharp.Db.Tiled.Indexes.TileMaps;
 
-namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMap
+namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMaps
 {
     [TestFixture]
-    public class OsmGeoIdToTileMapTests
+    public class TilesMapTests
     {
         [Test]
-        public void OsmGeoIdToTileMap_SettingElements_ShouldSetElements()
+        public void TilesMap_SettingElements_ShouldSetElements()
         {
             IEnumerable<uint> Tiles(long localI)
             {
@@ -21,7 +21,7 @@ namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMap
                 }
             }
             
-            var tileMap = new OsmGeoIdToTileMap();
+            var tileMap = new TilesMap();
             var ids = new List<long>();
             for (var i = 0; i < 100; i++)
             {
@@ -51,7 +51,7 @@ namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMap
         }
         
         [Test]
-        public void OsmGeoIdToTileMap_SerializeDeserialize_ShouldBeCopy()
+        public void TilesMap_SerializeDeserialize_ShouldBeCopy()
         {
             IEnumerable<uint> Tiles(long localI)
             {
@@ -62,7 +62,7 @@ namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMap
                 }
             }
             
-            var tileMapOriginal = new OsmGeoIdToTileMap();
+            var tileMapOriginal = new TilesMap();
             var ids = new List<long>();
             for (var i = 0; i < 100; i++)
             {
@@ -87,7 +87,7 @@ namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMap
             tileMapOriginal.Serialize(stream);
             stream.Seek(0, SeekOrigin.Begin);
 
-            var tileMap = OsmGeoIdToTileMap.Deserialize(stream);
+            var tileMap = TilesMap.Deserialize(stream);
 
             foreach (var id in ids)
             {

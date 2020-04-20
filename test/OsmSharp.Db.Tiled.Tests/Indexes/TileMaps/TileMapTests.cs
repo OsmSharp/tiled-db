@@ -1,17 +1,17 @@
 using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
-using OsmSharp.Db.Tiled.Indexes.TileMap;
+using OsmSharp.Db.Tiled.Indexes.TileMaps;
 
-namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMap
+namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMaps
 {
     [TestFixture]
-    public class SparseArrayTests
+    public class TileMapTests
     {
         [Test]
-        public void SparseArray_SettingElements_ShouldSetElements()
+        public void TileMap_SettingElements_ShouldSetElements()
         {
-            var sparseArray = new SparseArray(451746 + (100 * 100) + 1);
+            var sparseArray = new TileMap(451746 + (100 * 100) + 1);
             var ids = new List<long>();
             for (var i = 0; i < 100; i++)
             {
@@ -40,9 +40,9 @@ namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMap
         }
 
         [Test]
-        public void SparseArray_SerializeDeserialize_ShouldBeCopy()
+        public void TileMap_SerializeDeserialize_ShouldBeCopy()
         {
-            var sparseArrayOriginal = new SparseArray(451746 + (100 * 100) + 1);
+            var sparseArrayOriginal = new TileMap(451746 + (100 * 100) + 1);
             var ids = new List<long>();
             for (var i = 0; i < 100; i++)
             {
@@ -67,7 +67,7 @@ namespace OsmSharp.Db.Tiled.Tests.Indexes.TileMap
             sparseArrayOriginal.Serialize(stream);
             stream.Seek(0, SeekOrigin.Begin);
 
-            var sparseArray = SparseArray.Deserialize(stream);
+            var sparseArray = TileMap.Deserialize(stream);
             foreach (var id in ids)
             {
                 var tile = sparseArray[id];
