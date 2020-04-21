@@ -25,16 +25,12 @@ namespace OsmSharp.Db.Tiled.IO
 
         public string RelativePath(string basePath, string path) 
         {
-            Log.Warning($"base path: {basePath}");
-            Log.Warning($"path: {path}");
             if (!path.StartsWith(basePath))
             {
-                Log.Warning("Does not start with.");
                 return path;
             }
 
             var result = path.Substring(basePath.Length + 1);
-            Log.Warning($"result: {result}");
             return result;
         }
 
