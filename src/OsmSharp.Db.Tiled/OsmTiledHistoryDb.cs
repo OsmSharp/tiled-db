@@ -142,7 +142,8 @@ namespace OsmSharp.Db.Tiled
                 {
                     if (meta.Latest != _meta.Latest)
                     {
-                        var latest = OsmTiledDbOperations.LoadDb(meta.Latest);
+                        var latest = OsmTiledDbOperations.LoadDb(FileSystemFacade.FileSystem.Combine(_path,
+                            meta.Latest));
 
                         this.Latest = latest;
                         _meta = meta;
