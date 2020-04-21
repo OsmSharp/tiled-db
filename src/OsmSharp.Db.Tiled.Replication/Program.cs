@@ -87,6 +87,9 @@ namespace OsmSharp.Db.Tiled.Replication
                     // add data.
                     await db.Update(progress);
                 }
+                
+                
+                Log.Information("DB build successfully.");
 
 //            // start catch up until we reach hours/days.
 //            var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1), moveDown:false);

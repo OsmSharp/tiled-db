@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Serilog;
 
 namespace OsmSharp.Db.Tiled.IO
 {
@@ -22,18 +23,18 @@ namespace OsmSharp.Db.Tiled.IO
             return File.OpenRead(location);
         }
 
-        public string RelativePath(string basePath, string path)
+        public string RelativePath(string basePath, string path) 
         {
-            Console.WriteLine($"base path: {basePath}");
-            Console.WriteLine($"path: {path}");
+            Log.Warning($"base path: {basePath}");
+            Log.Warning($"path: {path}");
             if (!path.StartsWith(basePath))
             {
-                Console.WriteLine("Does not start with.");
+                Log.Warning("Does not start with.");
                 return path;
             }
 
             var result = path.Substring(basePath.Length + 1);
-            Console.WriteLine($"result: {result}");
+            Log.Warning($"result: {result}");
             return result;
         }
 
