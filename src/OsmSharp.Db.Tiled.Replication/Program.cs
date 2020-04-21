@@ -70,6 +70,8 @@ namespace OsmSharp.Db.Tiled.Replication
 
                 var source = new PBFOsmStreamSource(
                     File.OpenRead(planetFile));
+                var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+                progress.RegisterSource(source);
 
                 // try loading the db, if it doesn't exist build it.
                 if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
@@ -77,14 +79,14 @@ namespace OsmSharp.Db.Tiled.Replication
                     Log.Information("The DB doesn't exist yet, building...");
 
                     // splitting tiles and writing indexes.
-                    db = await OsmTiledHistoryDb.Create(dbPath, source);
+                    db = await OsmTiledHistoryDb.Create(dbPath, progress);
                 }
                 else
                 {
                     Log.Information("The DB exists, updating...");
 
                     // add data.
-                    await db.Update(source);
+                    await db.Update(progress);
                 }
 
 //            // start catch up until we reach hours/days.
