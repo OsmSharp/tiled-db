@@ -62,7 +62,7 @@ namespace OsmSharp.Db.Tiled
                 // update meta data.
                 _meta = new OsmTiledHistoryDbMeta()
                 {
-                    Latest = this.Latest.Path
+                    Latest =  FileSystemFacade.FileSystem.RelativePath(this._path, this.Latest.Path)
                 };
                 OsmTiledHistoryDbOperations.SaveDbMeta(_path, _meta);
             }
