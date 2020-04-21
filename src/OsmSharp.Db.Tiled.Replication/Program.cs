@@ -41,7 +41,7 @@ namespace OsmSharp.Db.Tiled.Replication
             };
 
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
+                .MinimumLevel.Debug()
                 .WriteTo.Console()
                 .WriteTo.File(Path.Combine("logs", "log-.txt"), rollingInterval: RollingInterval.Day)
                 .CreateLogger();
