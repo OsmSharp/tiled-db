@@ -56,7 +56,6 @@ namespace OsmSharp.Db.Tiled.Replication
 
             var planetFile = config["planet"];
             var dbPath = config["db"];
-            var zoom = 14U;
 
             var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
             if (LockHelper.IsLocked(lockFile.FullName))
