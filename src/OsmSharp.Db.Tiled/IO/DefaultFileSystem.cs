@@ -22,6 +22,14 @@ namespace OsmSharp.Db.Tiled.IO
             return File.OpenRead(location);
         }
 
+        public string RelativePath(string basePath, string path)
+        {
+            var basePathUri = new Uri(basePath);
+            var pathUri = new Uri(path);
+
+            return basePathUri.MakeRelativeUri(pathUri).ToString();
+        }
+
         public Stream Open(string file, FileMode mode)
         {
             return File.Open(file, mode);

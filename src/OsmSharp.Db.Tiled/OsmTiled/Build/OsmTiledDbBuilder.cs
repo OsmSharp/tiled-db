@@ -9,6 +9,7 @@ using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.Tiles;
 using OsmSharp.IO.Binary;
 using OsmSharp.Logging;
+using Serilog;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Build
 {
@@ -116,7 +117,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                                 break;
                         }
                     }
-
+                    
                     relationToTiles.Add(relation.Id.Value, tileSet);
 
                     foreach (var tileId in tileSet)

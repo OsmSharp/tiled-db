@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using OsmSharp.Db.Tiled.IO;
@@ -71,7 +72,7 @@ namespace OsmSharp.Db.Tiled.Tests.Build
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/meta.json"));
 
             var meta = OsmTiledHistoryDbOperations.LoadDbMeta("/data");
-            var initialPath = meta.Latest;
+            var initialPath = FileSystemFacade.FileSystem.Combine("/data", meta.Latest);
             
             // check if initial dir exists.
             Assert.True(FileSystemFacade.FileSystem.Exists(

@@ -147,6 +147,13 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
             return Path.GetFileName(file);
         }
 
+        public string RelativePath(string basePath, string path)
+        {
+            if (!path.StartsWith(basePath)) return path;
+
+            return path.Substring(basePath.Length + 1);
+        }
+
         public Stream Open(string file, FileMode mode)
         {
             if (mode != FileMode.Open &&

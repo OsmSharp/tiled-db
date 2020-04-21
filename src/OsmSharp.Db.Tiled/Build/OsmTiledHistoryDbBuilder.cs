@@ -34,7 +34,7 @@ namespace OsmSharp.Db.Tiled.Build
             // generate and write the path.
             var osmDbMeta = new OsmTiledHistoryDbMeta()
             {
-                Latest = tiledOsmDbPath
+                Latest = FileSystemFacade.FileSystem.RelativePath(path, tiledOsmDbPath)
             };
             OsmTiledHistoryDbOperations.SaveDbMeta(path, osmDbMeta);
 

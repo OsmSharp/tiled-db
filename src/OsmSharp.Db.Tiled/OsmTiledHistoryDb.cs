@@ -25,7 +25,7 @@ namespace OsmSharp.Db.Tiled
 
             _meta = OsmTiledHistoryDbOperations.LoadDbMeta(_path);
             
-            this.Latest = OsmTiledDbOperations.LoadDb(_meta.Latest);
+            this.Latest = OsmTiledDbOperations.LoadDb(FileSystemFacade.FileSystem.Combine(_path, _meta.Latest));
         }
 
         /// <summary>

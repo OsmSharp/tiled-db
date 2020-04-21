@@ -25,6 +25,14 @@ namespace OsmSharp.Db.Tiled.IO
         string FileName(string file);
 
         /// <summary>
+        /// Returns a relative path.
+        /// </summary>
+        /// <param name="basePath">The base path.</param>
+        /// <param name="path">The path.</param>
+        /// <returns>The path relative to the base path.</returns>
+        string RelativePath(string basePath, string path);
+
+        /// <summary>
         /// Gets the directory the given file is in.
         /// </summary>
         string DirectoryForFile(string file);
