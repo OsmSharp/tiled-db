@@ -24,9 +24,17 @@ namespace OsmSharp.Db.Tiled.IO
 
         public string RelativePath(string basePath, string path)
         {
-            if (!path.StartsWith(basePath)) return path;
+            Console.WriteLine($"base path: {basePath}");
+            Console.WriteLine($"path: {path}");
+            if (!path.StartsWith(basePath))
+            {
+                Console.WriteLine("Does not start with.");
+                return path;
+            }
 
-            return path.Substring(basePath.Length + 1);
+            var result = path.Substring(basePath.Length + 1);
+            Console.WriteLine($"result: {result}");
+            return result;
         }
 
         public Stream Open(string file, FileMode mode)
