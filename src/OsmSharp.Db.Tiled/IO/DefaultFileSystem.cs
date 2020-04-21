@@ -24,10 +24,9 @@ namespace OsmSharp.Db.Tiled.IO
 
         public string RelativePath(string basePath, string path)
         {
-            var basePathUri = new Uri(basePath);
-            var pathUri = new Uri(path);
+            if (!path.StartsWith(basePath)) return path;
 
-            return basePathUri.MakeRelativeUri(pathUri).ToString();
+            return path.Substring(basePath.Length + 1);
         }
 
         public Stream Open(string file, FileMode mode)
