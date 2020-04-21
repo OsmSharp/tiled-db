@@ -66,6 +66,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         public abstract Task<OsmGeo?> Get(OsmGeoType type, long id);
 
         /// <summary>
+        /// Gets the tiles for the given object.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <param name="id">The id.</param>
+        /// <returns>All the tiles to object is in.</returns>
+        public abstract Task<IEnumerable<(uint x, uint y)>> GetTiles(OsmGeoType type, long id);
+
+        /// <summary>
         /// Gets all the data in the given tile.
         /// </summary>
         /// <param name="tile"></param>

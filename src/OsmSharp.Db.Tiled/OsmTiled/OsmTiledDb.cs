@@ -101,6 +101,27 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
+        public override async Task<IEnumerable<(uint x, uint y)>> GetTiles(OsmGeoType type, long id)
+        {  
+            switch (type)
+            {
+                case OsmGeoType.Node:
+                    var tileId = _nodeTileMap[id];
+                    if (tileId == 0) return Enumerable.Empty<(uint x, uint y)>();
+                    var tile = Tile.FromLocalId(this.Zoom, tileId);
+                    return new [] { tile };
+                case OsmGeoType.Way:
+                    var wayTiles = _wayTileMap.Get(id);
+                    return wayTiles.Select(t => Tile.FromLocalId(this.Zoom, t));
+                case OsmGeoType.Relation:
+                    var relationTiles = _relationTileMap.Get(id);
+                    return relationTiles.Select(t => Tile.FromLocalId(this.Zoom, t));
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+            }
+        }
+
+        /// <inheritdoc/>
         public override async Task<IEnumerable<OsmGeo>> Get((uint x, uint y) tile)
         {
             var dataTile = await this.GetTile(tile);
