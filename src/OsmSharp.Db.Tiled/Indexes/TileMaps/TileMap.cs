@@ -163,7 +163,7 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
             stream.Write(BitConverter.GetBytes(_pointers.Length), 0, 8);
             using (var streamWriter = new BinaryWriter(stream, System.Text.Encoding.Default, true))
             {
-                for (var i = 0; i < _pointers.Length; i++)
+                for (long i = 0; i < _pointers.Length; i++)
                 {
                     streamWriter.Write(_pointers[i]);
                 }
@@ -173,7 +173,7 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
             stream.Write(BitConverter.GetBytes(_data.Length), 0, 8);
             using (var streamWriter = new BinaryWriter(stream, System.Text.Encoding.Default, true))
             {
-                for (var i = 0; i < _data.Length; i++)
+                for (long i = 0; i < _data.Length; i++)
                 {
                     streamWriter.Write(_data[i]);
                 }
