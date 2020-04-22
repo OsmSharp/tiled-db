@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.Indexes.TileMaps;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Db.Tiled.IO;
@@ -18,6 +19,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
     /// </summary>
     internal static class OsmTiledDbBuilder
     {
+        private static readonly LRUCache<(uint x, uint y, uint zoom), Stream> StreamCache = new LRUCache<(uint x, uint y, uint zoom), Stream>(128);
+        
         /// <summary>
         /// Builds a new database and write the structure to the given path.
         /// </summary>
@@ -29,6 +32,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
             if (path == null) { throw new ArgumentNullException(nameof(path)); }
             if (!FileSystemFacade.FileSystem.DirectoryExists(path)) { throw new ArgumentException("Output path does not exist."); }
+
+            StreamCache.OnRemove = (stream) =>
+            {
+                stream.Flush();
+                stream.Dispose();
+            };
 
             var timestamp = DateTime.MinValue;
             var nodeToTile = new TileMap();
@@ -129,7 +138,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 }
             }
             
-            FlushQueue(path);
+            StreamCache.Clear();
             
             // convert all tiles to data tiles.
             Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Information,
@@ -211,38 +220,21 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             return new OsmTiledDb(path);
         }
 
-        private static readonly Queue<OsmGeo> Queue = new Queue<OsmGeo>();
-        private static (uint x, uint y, uint zoom) _queueTile = (uint.MaxValue, uint.MaxValue, uint.MaxValue);
-
-        private static void FlushQueue(string path)
-        {
-            if (_queueTile.x == uint.MaxValue) return;
-            
-            var pathToTile = OsmTiledDbOperations.PathToTile(path, _queueTile, ".osm.bin");
-            var directory = FileSystemFacade.FileSystem.DirectoryForFile(pathToTile);
-            if (!FileSystemFacade.FileSystem.DirectoryExists(directory))
-            {
-                FileSystemFacade.FileSystem.CreateDirectory(directory);
-            }
-
-            using var stream = FileSystemFacade.FileSystem.Open(pathToTile, FileMode.Append);
-            while (Queue.Count > 0)
-            {
-                stream.Append(Queue.Dequeue());
-            }
-
-            _queueTile = (uint.MaxValue, uint.MaxValue, uint.MaxValue);
-        }
-
         private static void WriteTo(string path, (uint x, uint y, uint zoom) tile, OsmGeo osmGeo)
         {
-            if (tile != _queueTile)
+            var pathToTile = OsmTiledDbOperations.PathToTile(path, tile, ".osm.bin");
+            if (!StreamCache.TryGet(tile, out var tileStream))
             {
-                FlushQueue(path);
+                var directory = FileSystemFacade.FileSystem.DirectoryForFile(pathToTile);
+                if (!FileSystemFacade.FileSystem.DirectoryExists(directory))
+                {
+                    FileSystemFacade.FileSystem.CreateDirectory(directory);
+                }
+                tileStream = FileSystemFacade.FileSystem.Open(pathToTile, FileMode.Append);
+                StreamCache.Add(tile, tileStream);
             }
 
-            Queue.Enqueue(osmGeo);
-            _queueTile = tile;
+            tileStream.Append(osmGeo);
         }
     }
 }
