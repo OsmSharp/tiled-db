@@ -169,7 +169,6 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
                 }
                 streamWriter.Flush();
             }
-            //_pointers.CopyToWithSize(stream);
             stream.Write(BitConverter.GetBytes(_data.Length), 0, 8);
             using (var streamWriter = new BinaryWriter(stream, System.Text.Encoding.Default, true))
             {
@@ -179,7 +178,6 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
                 }
                 streamWriter.Flush();
             }
-            //_data.CopyToWithSize(stream);
 
             return stream.Position - position;
         }
@@ -205,7 +203,7 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
             var pointers = new MemoryArray<long>(pointersLength);
             using (var streamReader = new BinaryReader(stream, System.Text.Encoding.Default, true))
             {
-                for (var i = 0; i < pointers.Length; i++)
+                for (long i = 0; i < pointers.Length; i++)
                 {
                     pointers[i] = streamReader.ReadInt64();
                 }
@@ -216,15 +214,11 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
             var data = new MemoryArray<uint>(dataLength);
             using (var streamReader = new BinaryReader(stream, System.Text.Encoding.Default, true))
             {
-                for (var i = 0; i < data.Length; i++)
+                for (long i = 0; i < data.Length; i++)
                 {
                     data[i] = streamReader.ReadUInt32();
                 }
             }
-            
-//
-//            var pointers = MemoryArray<long>.CopyFromWithSize(stream);
-//            var data = MemoryArray<uint>.CopyFromWithSize(stream);
 
             return new TileMap(size, blockSize, emptyDefault, nextBlock,
                 pointers, data);
