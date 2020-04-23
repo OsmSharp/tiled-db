@@ -19,7 +19,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
     /// </summary>
     internal static class OsmTiledDbBuilder
     {
-        private static readonly LRUCache<(uint x, uint y, uint zoom), Stream> StreamCache = new LRUCache<(uint x, uint y, uint zoom), Stream>(128);
+        private static readonly LRUCache<(uint x, uint y, uint zoom), Stream> StreamCache = new LRUCache<(uint x, uint y, uint zoom), Stream>(4);
         
         /// <summary>
         /// Builds a new database and write the structure to the given path.
