@@ -1,5 +1,8 @@
 using System;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("OsmSharp.Db.Tiled.Tests")]
+[assembly: InternalsVisibleTo("OsmSharp.Db.Tiled.Tests.Functional")]
 namespace OsmSharp.Db.Tiled.Tiles
 {
     internal static class Tile
@@ -22,6 +25,11 @@ namespace OsmSharp.Db.Tiled.Tiles
         {
             var xMax = (1 << (int) zoom);
             return (uint)(y * xMax + x);
+        }
+        
+        public static uint ToLocalId((uint x, uint y) tile, uint zoom)
+        {
+            return ToLocalId(tile.x, tile.y, zoom);
         }
         
         public static (uint x, uint y) FromLocalId(uint zoom, uint tileId)

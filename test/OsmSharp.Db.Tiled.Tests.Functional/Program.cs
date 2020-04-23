@@ -2,6 +2,8 @@
 using System.IO;
 using Serilog;
 using System.Threading.Tasks;
+using OsmSharp.Db.Tiled.OsmTiled.Build;
+using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Logging;
 using OsmSharp.Streams;
 
@@ -16,7 +18,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/belgium-latest.osm.pbf",
+                    @"/data/work/data/OSM/antwerpen.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests/",
                     @"14"
                 };
