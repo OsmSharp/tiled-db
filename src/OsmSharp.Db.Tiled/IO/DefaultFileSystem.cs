@@ -30,7 +30,12 @@ namespace OsmSharp.Db.Tiled.IO
                 return path;
             }
 
-            var result = path.Substring(basePath.Length + 1);
+            var length = basePath.Length;
+            if (!basePath.EndsWith("/"))
+            {
+                length++;
+            }
+            var result = path.Substring(length);
             return result;
         }
 
