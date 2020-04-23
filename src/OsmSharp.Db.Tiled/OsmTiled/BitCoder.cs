@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
@@ -95,6 +96,40 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             d = stream.ReadByte();
             value += ((uint) d << 28);
             return 5;
+        }
+        
+        private const long IdTypeMask = (long) 1 << 61;
+
+        public static long Encode(OsmGeoKey id)
+        {
+            return Encode(id.Type, id.Id);
+        }
+
+        public static long Encode(OsmGeoType type, long id)
+        {
+            return type switch
+            {
+                OsmGeoType.Node => id,
+                OsmGeoType.Way => (id + IdTypeMask),
+                OsmGeoType.Relation => (id + (IdTypeMask * 2)),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            };
+        }
+
+        public static void Write(this Stream stream, OsmGeoKey key)
+        {
+            var id = Encode(key.Type, key.Id);
+
+            stream.Write(id);
+        }
+        
+        public static void Write(this Stream stream, long value)
+        {
+            for (var b = 0; b < 8; b++)
+            {
+                stream.WriteByte((byte)(value & byte.MaxValue));
+                value >>= 8;
+            }
         }
     }
 }

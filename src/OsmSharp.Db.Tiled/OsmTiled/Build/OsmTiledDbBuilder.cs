@@ -25,7 +25,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="source">The source stream.</param>
         /// <param name="path">The path to store the db at.</param>
         /// <param name="zoom">The zoom.</param>
-        public static async Task<OsmTiledDb> Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
+        public static async Task Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
         {
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
             if (path == null) { throw new ArgumentNullException(nameof(path)); }
@@ -37,10 +37,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             var relationToTiles = new TilesMap();
 
             using var data = FileSystemFacade.FileSystem.Open(
-                FileSystemFacade.FileSystem.Combine(path, "osm.db"), FileMode.Create);
-            using var dataIndex = FileSystemFacade.FileSystem.Open(
-                FileSystemFacade.FileSystem.Combine(path, "osm.db.idx"), FileMode.Create);
+                OsmTiledDbOperations.PathToData(path), FileMode.Create);
+            using var dataTilesIndex = FileSystemFacade.FileSystem.Open(
+                OsmTiledDbOperations.PathToTileIndex(path), FileMode.Create);
+            using var dataIdIndex = FileSystemFacade.FileSystem.Open(
+                OsmTiledDbOperations.PathToIdIndex(path), FileMode.Create);
+            
             var tiledStream = new OsmTiledLinkedStream(data);
+            var idIndex = new OsmTiledIndex(dataIdIndex);
             var tileSet = new HashSet<uint>();
             var mode = OsmGeoType.Node;
             foreach (var osmGeo in source)
@@ -73,7 +77,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     nodeToTile.EnsureMinimumSize(node.Id.Value);
                     nodeToTile[node.Id.Value] = localId;
 
-                    tiledStream.Append(localId, node);
+                    var location = tiledStream.Append(localId, node);
+                    idIndex.Append(new OsmGeoKey(node), location);
                 }
                 else if(osmGeo is Way way)
                 {
@@ -92,7 +97,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
                     wayToTiles.Add(way.Id.Value, tileSet);
                     
-                    tiledStream.Append(tileSet, way);
+                    var location = tiledStream.Append(tileSet, way);
+                    idIndex.Append(new OsmGeoKey(way), location);
                 }
                 else if(osmGeo is Relation relation)
                 {
@@ -122,19 +128,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     
                     relationToTiles.Add(relation.Id.Value, tileSet);
                     
-                    tiledStream.Append(tileSet, relation);
+                    var location = tiledStream.Append(tileSet, relation);
+                    idIndex.Append(new OsmGeoKey(relation), location);
                 }
             }
             
-            // save tile maps and create tiles.
-            Task.WaitAll(Task.Run(() => WriteIndex(path, nodeToTile)), 
-                Task.Run(() => WriteIndex(path, OsmGeoType.Way, wayToTiles)), 
-                Task.Run(() => WriteIndex(path, OsmGeoType.Relation, relationToTiles)),
-                Task.Run(() =>
-                {
-                    tiledStream.Reverse();
-                    tiledStream.SerializeIndex(dataIndex);
-                }));
+            // reverse indexed data and save tile index.
+            tiledStream.Reverse();
+            tiledStream.SerializeIndex(dataTilesIndex);
 
             // save the meta-data.
             var dbMeta = new OsmTiledDbMeta
@@ -145,42 +146,6 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 Timestamp = timestamp
             };
             OsmTiledDbOperations.SaveDbMeta(path, dbMeta);
-            
-            return new OsmTiledDb(path);
-        }
-
-        private static void WriteIndex(string path, TileMap tileMap)
-        {
-            var indexFile = OsmTiledDbOperations.PathToIndex(path, OsmGeoType.Node);
-            if (FileSystemFacade.FileSystem.DirectoryExists(
-                FileSystemFacade.FileSystem.DirectoryForFile(indexFile)))
-            {
-                FileSystemFacade.FileSystem.CreateDirectory(FileSystemFacade.FileSystem.DirectoryForFile(indexFile));
-            }
-
-            Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Verbose,
-                $"Writing Node tile map...");
-            using var stream = FileSystemFacade.FileSystem.Open(indexFile, FileMode.Create);
-            tileMap.Serialize(stream);
-            Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Verbose,
-                $"Node tile map written.");
-        }
-
-        private static void WriteIndex(string path, OsmGeoType type, TilesMap tilesMap)
-        {
-            var indexFile = OsmTiledDbOperations.PathToIndex(path, type);
-            if (FileSystemFacade.FileSystem.DirectoryExists(
-                FileSystemFacade.FileSystem.DirectoryForFile(indexFile)))
-            {
-                FileSystemFacade.FileSystem.CreateDirectory(FileSystemFacade.FileSystem.DirectoryForFile(indexFile));
-            }
-
-            Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Verbose,
-                $"Writing {type} tile map...");
-            using var stream = FileSystemFacade.FileSystem.Open(indexFile, FileMode.Create);
-            tilesMap.Serialize(stream);
-            Logger.Log(nameof(OsmTiledDbBuilder), TraceEventType.Verbose,
-                $"{type} tile map written.");
         }
     }
 }

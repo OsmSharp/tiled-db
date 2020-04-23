@@ -15,9 +15,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     /// </summary>
     public class OsmTiledDb : OsmTiledDbBase
     {
-        private readonly TileMap _nodeTileMap;
-        private readonly TilesMap _wayTileMap;
-        private readonly TilesMap _relationTileMap;
+        private readonly OsmTiledIndex _index;
+        private readonly OsmTiledLinkedStream _data;
         
         /// <summary>
         /// Creates a new db using the data at the given path.
@@ -25,109 +24,48 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         public OsmTiledDb(string path)
             : base(path)
         {
-            (_nodeTileMap, _wayTileMap, _relationTileMap) = LoadIndexes();
+            _data = OsmTiledDbOperations.LoadData(this.Path);
+            _index = OsmTiledDbOperations.LoadIndex(this.Path);
         }
 
         internal OsmTiledDb(string path, OsmTiledDbMeta meta)
             : base(path, meta)
         {
-            (_nodeTileMap, _wayTileMap, _relationTileMap) = LoadIndexes();
-        }
-
-        private (TileMap nodeTileMap, TilesMap wayTileMap, TilesMap relationTileMap) LoadIndexes()
-        {
-            TileMap? nodeTileMap = null;
-            TilesMap? wayTileMap = null;
-            TilesMap? relationTileMap = null;
-            var nodeMapFile = OsmTiledDbOperations.PathToIndex(this.Path, OsmGeoType.Node);
-            if (FileSystemFacade.FileSystem.Exists(nodeMapFile))
-            {
-                using var nodeMapStream = FileSystemFacade.FileSystem.OpenRead(nodeMapFile);
-                nodeTileMap = TileMap.Deserialize(nodeMapStream);
-            }
-            
-            var wayMapFile = OsmTiledDbOperations.PathToIndex(this.Path, OsmGeoType.Way);
-            if (FileSystemFacade.FileSystem.Exists(nodeMapFile))
-            {
-                using var wayMapStream = FileSystemFacade.FileSystem.OpenRead(wayMapFile);
-                wayTileMap = TilesMap.Deserialize(wayMapStream);
-            }
-            
-            var relationMapFile = OsmTiledDbOperations.PathToIndex(this.Path, OsmGeoType.Relation);
-            if (FileSystemFacade.FileSystem.Exists(relationMapFile))
-            {
-                using var relationMapStream = FileSystemFacade.FileSystem.OpenRead(relationMapFile);
-                relationTileMap = TilesMap.Deserialize(relationMapStream);
-            }
-
-            return (nodeTileMap ?? new TileMap(), wayTileMap ?? new TilesMap(), relationTileMap ?? new TilesMap());
+            _data = OsmTiledDbOperations.LoadData(this.Path);
+            _index = OsmTiledDbOperations.LoadIndex(this.Path);
         }
 
         /// <inheritdoc/>
         public override async Task<OsmGeo?> Get(OsmGeoType type, long id)
         {
-            OsmDbTile? dataTile = null;
-            switch (type)
-            {
-                case OsmGeoType.Node:
-                    var tileId = _nodeTileMap[id];
-                    if (tileId == 0) return null;
-                    var tile = Tile.FromLocalId(this.Zoom, tileId);
-                    dataTile = await this.GetTile((tile.x, tile.y));
-                    break;
-                case OsmGeoType.Way:
-                    var wayTiles = _wayTileMap.Get(id);
-                    foreach (var wayTileId in wayTiles)
-                    {
-                        var wayTile = Tile.FromLocalId(this.Zoom, wayTileId);
-                        dataTile = await this.GetTile((wayTile.x, wayTile.y));
-                        break;
-                    }
-                    break;
-                case OsmGeoType.Relation:
-                    var relationTiles = _relationTileMap.Get(id);
-                    foreach (var relationTileId in relationTiles)
-                    {
-                        var relationTile = Tile.FromLocalId(this.Zoom, relationTileId);
-                        dataTile = await this.GetTile((relationTile.x, relationTile.y));
-                        break;
-                    }
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
-            }
+            var pointer = _index.Get((new OsmGeoKey(type, id)));
+            if (!pointer.HasValue) return null;
             
-            return dataTile?.Get(type, id);
+            return _data.Get(pointer.Value);
         }
 
         /// <inheritdoc/>
         public override async Task<IEnumerable<(uint x, uint y)>> GetTiles(OsmGeoType type, long id)
         {  
-            switch (type)
+            var pointer = _index.Get((new OsmGeoKey(type, id)));
+            if (!pointer.HasValue) return Enumerable.Empty<(uint x, uint y)>();
+
+            var tiles = new List<(uint x, uint y)>();
+            
+            foreach (var tileId in _data.GetTilesFor(pointer.Value))
             {
-                case OsmGeoType.Node:
-                    var tileId = _nodeTileMap[id];
-                    if (tileId == 0) return Enumerable.Empty<(uint x, uint y)>();
-                    var tile = Tile.FromLocalId(this.Zoom, tileId);
-                    return new [] { tile };
-                case OsmGeoType.Way:
-                    var wayTiles = _wayTileMap.Get(id);
-                    return wayTiles.Select(t => Tile.FromLocalId(this.Zoom, t));
-                case OsmGeoType.Relation:
-                    var relationTiles = _relationTileMap.Get(id);
-                    return relationTiles.Select(t => Tile.FromLocalId(this.Zoom, t));
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+                tiles.Add(Tile.FromLocalId(this.Zoom, tileId));
             }
+
+            return tiles;
         }
 
         /// <inheritdoc/>
         public override async Task<IEnumerable<OsmGeo>> Get((uint x, uint y) tile)
         {
-            var dataTile = await this.GetTile(tile);
+            var tileId = Tile.ToLocalId(tile, this.Zoom);
 
-            if (dataTile == null) return Enumerable.Empty<OsmGeo>();
-            return dataTile.Get();
+            return _data.GetForTile(tileId);
         }
     }
 }

@@ -45,6 +45,8 @@ namespace OsmSharp.Db.Tiled.IO
 
             return System.Text.Encoding.Unicode.GetString(data, 0, data.Length);
         }
+        
+        // TODO: convert this to something allocation-less.
 
         /// <summary>
         /// Reads an int64 for the given stream.

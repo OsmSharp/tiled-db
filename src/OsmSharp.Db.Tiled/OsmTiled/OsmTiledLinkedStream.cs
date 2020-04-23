@@ -19,6 +19,69 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _pointers = new SparseArray(0, emptyDefault: long.MaxValue);
         }
 
+        private OsmTiledLinkedStream(SparseArray pointers, Stream stream)
+        {
+            _stream = stream;
+            _pointers = pointers;
+        }
+
+        public OsmGeo Get(long pointer, byte[] buffer = null)
+        {
+            if (buffer?.Length < 8) buffer = null;
+            buffer ??= new byte[8];
+            
+            _stream.Seek(pointer, SeekOrigin.Begin);
+
+            // find tile.
+            var cBytes = _stream.ReadDynamicUInt32(out var c);
+            if (c == 1)
+            {
+                _stream.Seek(pointer + cBytes + 12, SeekOrigin.Begin);
+            }
+            else
+            {
+                var tilesBytes = c * 4;
+                var pointerBytes = c * 8;
+                
+                // read next pointer.
+                _stream.Seek(pointer + cBytes + tilesBytes + pointerBytes, SeekOrigin.Begin);
+            }
+
+            return _stream.ReadOsmGeo();
+        }
+
+        public IEnumerable<uint> GetTilesFor(long pointer, byte[] buffer = null)
+        {
+            if (buffer?.Length < 8) buffer = null;
+            buffer ??= new byte[8];
+            
+            _stream.Seek(pointer, SeekOrigin.Begin);
+
+            // find tile.
+            _stream.ReadDynamicUInt32(out var c);
+            if (c == 1)
+            {
+                _stream.Read(buffer, 0, 4);
+                yield return BitConverter.ToUInt32(buffer, 0);
+            }
+            else
+            {
+                var tilesBytes = c * 4;
+                var pointerBytes = c * 8;
+                
+                var t = 0;
+                while (true)
+                {
+                    _stream.Read(buffer, 0, 4);
+                    var currentTile = BitConverter.ToUInt32(buffer, 0);
+                    yield return currentTile;
+
+                    t++;
+                    if (c == t) break;
+                }
+            }
+        }
+
         public long Append(uint tile, OsmGeo osmGeo)
         {
             _pointers.EnsureMinimumSize(tile + 1);
@@ -27,10 +90,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _pointers[tile] = _stream.Position;
             
             _stream.WriteDynamicUInt32(1);
+            _stream.Write(BitConverter.GetBytes(tile), 0, 4);
             _stream.Write(BitConverter.GetBytes(pointer), 0, 8);
-            var pos = _stream.Position;
             _stream.Append(osmGeo);
-            return pos;
+            return _pointers[tile];
         }
 
         public long Append(IReadOnlyCollection<uint> tiles, OsmGeo osmGeo)
@@ -61,9 +124,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 _stream.Write(BitConverter.GetBytes(pointer), 0, 8);
             }
 
-            var pos = _stream.Position;
             _stream.Append(osmGeo);
-            return pos;
+            return position;
         }
 
         public IEnumerable<uint> GetTiles()
@@ -101,6 +163,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 var cBytes = _stream.ReadDynamicUInt32(out var c);
                 if (c == 1)
                 {
+                    _stream.Seek(4, SeekOrigin.Current); // skip tile.
                     _stream.Read(buffer, 0, 8);
                     pointer = BitConverter.ToInt64(buffer, 0);
                 }
@@ -162,6 +225,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             var cBytes = _stream.ReadDynamicUInt32(out var c);
             if (c == 1)
             {
+                _stream.Seek(4, SeekOrigin.Current);
                 _stream.Write(BitConverter.GetBytes(next), 0, 8);
             }
             else
@@ -196,6 +260,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _pointers.Serialize(stream);
 
             return stream.Position - pos;
+        }
+
+        public static OsmTiledLinkedStream Deserialize(Stream indexStream, Stream stream)
+        {
+            var version = indexStream.ReadByte();
+            if (version != 1) throw new InvalidDataException("Invalid version, cannot read index.");
+
+            var pointers = SparseArray.Deserialize(indexStream);
+            
+            return new OsmTiledLinkedStream(pointers, stream);
         }
     }
 }

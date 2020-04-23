@@ -56,7 +56,9 @@ namespace OsmSharp.Db.Tiled.Build
                 FileSystemFacade.FileSystem.CreateDirectory(tiledOsmDbPath);
 
             // build the tiled db.
-            return await OsmTiled.Build.OsmTiledDbBuilder.Build(source, tiledOsmDbPath, zoom);
+            await OsmTiled.Build.OsmTiledDbBuilder.Build(source, tiledOsmDbPath, zoom);
+
+            return new OsmTiledDb(tiledOsmDbPath);
         }
     }
 }

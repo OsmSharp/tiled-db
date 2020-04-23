@@ -37,21 +37,9 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));
             
             // indexes should exist.
-            Assert.True(FileSystemFacade.FileSystem.Exists("/data/nodes.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/data/ways.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/data/relations.idx"));
-
-            // data should exist.
-            Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data/osm.db"));
-            Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/14/8374/5556.osm.tile"));
-            
-            // check if the node is there.
-            await using var stream = FileSystemFacade.FileSystem.OpenRead(@"/data/14/8374/5556.osm.tile");
-            var linkedStream = new OsmTiledLinkedStream(stream);
-            
-            var osmDbTile = await OsmDbTile.Deserialize(stream);
-            var osmGeo = osmDbTile.Get(OsmGeoType.Node, 4561327);
-            Assert.NotNull(osmGeo);
+            Assert.True(FileSystemFacade.FileSystem.Exists("/data/data.db"));
+            Assert.True(FileSystemFacade.FileSystem.Exists("/data/data.id.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists("/data/data.tile.idx"));
         }
     }
 }

@@ -47,16 +47,6 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// </summary>
         internal string? Base => _meta.Base;
 
-        internal async Task<OsmDbTile?> GetTile((uint x, uint y) tile)
-        {
-            var dataTileFile = OsmTiledDbOperations.PathToTile(_path, (tile.x, tile.y, this.Zoom));
-
-            if (!FileSystemFacade.FileSystem.Exists(dataTileFile)) return null;
-
-            using var stream = FileSystemFacade.FileSystem.OpenRead(dataTileFile);
-            return await OsmDbTile.Deserialize(stream);
-        }
-
         /// <summary>
         /// Gets the given object.
         /// </summary>

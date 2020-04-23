@@ -76,7 +76,7 @@ namespace OsmSharp.Db.Tiled.Tests.Build
             
             // check if initial dir exists.
             Assert.True(FileSystemFacade.FileSystem.Exists(
-            FileSystemFacade.FileSystem.Combine(initialPath, "meta.json")));
+                FileSystemFacade.FileSystem.Combine(initialPath, "meta.json")));
         }
     }
 }

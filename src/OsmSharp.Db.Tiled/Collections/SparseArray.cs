@@ -5,7 +5,7 @@ using System.Text;
 
 namespace OsmSharp.Db.Tiled.Collections
 {
-  internal class SparseArray
+    internal class SparseArray
     {
         private long[][] _blocks;
         private readonly int _blockSize; // Holds the maximum array size, always needs to be a power of 2.
@@ -16,29 +16,52 @@ namespace OsmSharp.Db.Tiled.Collections
         public SparseArray(long size, int blockSize = 1 << 16,
             long emptyDefault = default)
         {
-            if (size < 0) { throw new ArgumentOutOfRangeException(nameof(size), "Size needs to be bigger than or equal to zero."); }
-            if (blockSize <= 0) { throw new ArgumentOutOfRangeException(nameof(blockSize),"Block size needs to be bigger than or equal to zero."); }
-            if ((blockSize & (blockSize - 1)) != 0) { throw new ArgumentOutOfRangeException(nameof(blockSize),"Block size needs to be a power of 2."); }
-            
+            if (size < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(size), "Size needs to be bigger than or equal to zero.");
+            }
+
+            if (blockSize <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(blockSize),
+                    "Block size needs to be bigger than or equal to zero.");
+            }
+
+            if ((blockSize & (blockSize - 1)) != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(blockSize), "Block size needs to be a power of 2.");
+            }
+
             _default = emptyDefault;
             _blockSize = blockSize;
             _size = size;
             _arrayPow = ExpOf2(blockSize);
 
-            var blockCount = (long)System.Math.Ceiling((double)size / _blockSize);
+            var blockCount = (long) System.Math.Ceiling((double) size / _blockSize);
             _blocks = new long[blockCount][];
         }
 
+        private SparseArray(long[][] blocks, long size, int blockSize, long emptyDefault)
+        {           
+            _default = emptyDefault;
+            _blockSize = blockSize;
+            _size = size;
+            _arrayPow = ExpOf2(blockSize);
+            _blocks = blocks;
+        }
+
         private static int ExpOf2(int powerOf2)
-        { // this can probably be faster but it needs to run once in the constructor,
+        {
+            // this can probably be faster but it needs to run once in the constructor,
             // feel free to improve but not crucial.
             if (powerOf2 == 1)
             {
                 return 0;
             }
+
             return ExpOf2(powerOf2 / 2) + 1;
         }
-        
+
         /// <summary>
         /// Gets or sets the item at the given index.
         /// </summary>
@@ -48,37 +71,39 @@ namespace OsmSharp.Db.Tiled.Collections
             get
             {
                 if (idx >= this.Length) throw new ArgumentOutOfRangeException(nameof(idx));
-                
+
                 var blockId = idx >> _arrayPow;
                 var block = _blocks[blockId];
                 if (block == null) return _default;
-                
+
                 var localIdx = idx - (blockId << _arrayPow);
                 return block[localIdx];
             }
             set
             {
                 if (idx >= this.Length) throw new ArgumentOutOfRangeException(nameof(idx));
-                
+
                 var blockId = idx >> _arrayPow;
                 var block = _blocks[blockId];
                 if (block == null)
                 {
                     // don't create a new block for a default value.
                     if (EqualityComparer<long>.Default.Equals(value, _default)) return;
-                    
+
                     block = new long[_blockSize];
                     for (var i = 0; i < _blockSize; i++)
                     {
                         block[i] = _default;
                     }
+
                     _blocks[blockId] = block;
                 }
+
                 var localIdx = idx % _blockSize;
                 _blocks[blockId][localIdx] = value;
             }
         }
-        
+
         /// <summary>
         /// Resizes this array to the given size.
         /// </summary>
@@ -86,17 +111,21 @@ namespace OsmSharp.Db.Tiled.Collections
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public void Resize(long size)
         {
-            if (size < 0) { throw new ArgumentOutOfRangeException(nameof(size), "Cannot resize an array to a size of zero or smaller."); }
+            if (size < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(size),
+                    "Cannot resize an array to a size of zero or smaller.");
+            }
 
             _size = size;
 
-            var blockCount = (long)System.Math.Ceiling((double)size / _blockSize);
+            var blockCount = (long) System.Math.Ceiling((double) size / _blockSize);
             if (blockCount != _blocks.Length)
             {
-                Array.Resize(ref _blocks, (int)blockCount);
+                Array.Resize(ref _blocks, (int) blockCount);
             }
         }
-        
+
         /// <summary>
         /// Gets the length of this array.
         /// </summary>
@@ -110,7 +139,7 @@ namespace OsmSharp.Db.Tiled.Collections
         public long Serialize(Stream stream)
         {
             var pos = stream.Position;
-            
+
             stream.WriteByte(1);
             using var streamWriter = new BinaryWriter(stream, Encoding.Default, true);
             streamWriter.Write(_size);
@@ -121,15 +150,45 @@ namespace OsmSharp.Db.Tiled.Collections
             {
                 var block = _blocks[b];
                 if (block == null) continue;
-                
+
                 streamWriter.Write(b);
                 for (var i = 0; i < block.Length; i++)
                 {
-                    streamWriter.Write(block[i]);   
+                    streamWriter.Write(block[i]);
                 }
             }
+            streamWriter.Write(long.MaxValue);
 
             return stream.Position - pos;
+        }
+
+        public static SparseArray Deserialize(Stream stream)
+        {
+            var version = stream.ReadByte();
+            if (version != 1) throw new InvalidDataException("Invalid version, cannot read index.");
+            
+            using var streamReader = new BinaryReader(stream, Encoding.Default, true);
+            var size = streamReader.ReadInt64();
+            var blockSize = streamReader.ReadInt32();
+            var emptyDefault = streamReader.ReadInt64();
+
+            var b = streamReader.ReadInt64();
+            var blockCount = (long) System.Math.Ceiling((double) size / blockSize);
+            var blocks = new long[blockCount][];
+            while (b != long.MaxValue)
+            {
+                var block = new long[blockSize];
+                for (var i = 0; i < block.Length; i++)
+                {
+                    block[i] = streamReader.ReadInt64();
+                }
+
+                blocks[b] = block;
+                
+                b = streamReader.ReadInt64();
+            }
+
+            return new SparseArray(blocks, size, blockSize, emptyDefault);
         }
     }
 

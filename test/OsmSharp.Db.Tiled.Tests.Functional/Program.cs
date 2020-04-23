@@ -18,7 +18,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/antwerpen.osm.pbf",
+                    @"/data/work/data/OSM/belgium-latest.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests/",
                     @"14"
                 };
