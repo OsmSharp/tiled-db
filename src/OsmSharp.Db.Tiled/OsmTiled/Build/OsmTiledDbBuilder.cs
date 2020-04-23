@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.Indexes.TileMaps;
@@ -11,6 +13,7 @@ using OsmSharp.Db.Tiled.OsmTiled.Tiles;
 using OsmSharp.IO.Binary;
 using OsmSharp.Logging;
 using Serilog;
+using TraceEventType = OsmSharp.Logging.TraceEventType;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Build
 {
