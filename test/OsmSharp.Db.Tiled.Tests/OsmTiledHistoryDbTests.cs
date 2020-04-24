@@ -1,5 +1,7 @@
 using System;
+using System.Threading.Tasks;
 using NUnit.Framework;
+using OsmSharp.Db.Tiled.Build;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
@@ -11,73 +13,107 @@ namespace OsmSharp.Db.Tiled.Tests
     public class OsmTiledHistoryDbTests
     {
         [Test]
-        public void OsmTiledHistoryDb_TryReload_NoNewData_ShouldDoNothingAndReturnFalse()
+        public async Task OsmTiledHistoryDb_Create_ShouldCreateNew()
         {
+            var osmGeos = new OsmGeo[]
+            {
+                new Node()
+                {
+                    Id = 456414,
+                    Latitude = 50,
+                    Longitude = 4,
+                    ChangeSetId = 1,
+                    UserId = 1,
+                    UserName = "Ben",
+                    Visible = true,
+                    TimeStamp = DateTime.Now,
+                    Version = 1
+                }
+            };
+            
             FileSystemFacade.FileSystem = new MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/data");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data/snapshot1");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data/snapshot2");
+
+            var newDb = await OsmTiledHistoryDb.Create(@"/data", osmGeos);
             
-            // setup meta data files.
-            OsmTiledDbOperations.SaveDbMeta(@"/data/snapshot1", new OsmTiledDbMeta()
+            Assert.NotNull(newDb.Latest);
+        }
+        
+        [Test]
+        public async Task OsmTiledHistoryDb_TryReload_NoNewData_ShouldDoNothingAndReturnFalse()
+        {
+            var osmGeos = new OsmGeo[]
             {
-                Base = string.Empty,
-                Timestamp = DateTime.Now,
-                Type = OsmTiledDbType.Full,
-                Zoom = 14
-            });
-            OsmTiledHistoryDbOperations.SaveDbMeta(@"/data", new OsmTiledHistoryDbMeta()
-            {
-                Latest = "/data/snapshot1/"
-            });
+                new Node()
+                {
+                    Id = 456414,
+                    Latitude = 50,
+                    Longitude = 4,
+                    ChangeSetId = 1,
+                    UserId = 1,
+                    UserName = "Ben",
+                    Visible = true,
+                    TimeStamp = DateTime.Now,
+                    Version = 1
+                }
+            };
             
-            // load db.
-            Assert.True(OsmTiledHistoryDb.TryLoad(@"/data", out var db));
+            FileSystemFacade.FileSystem = new MockFileSystem(@"/");
+            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+
+            var db = await OsmTiledHistoryDb.Create(@"/data", osmGeos);
             
             // reload db.
             Assert.False(db.TryReload());
         }
         
         [Test]
-        public void OsmTiledHistoryDb_TryReload_NewData_ShouldLoadNewDbAndReturnTrue()
+        public async Task OsmTiledHistoryDb_TryReload_NewData_ShouldLoadNewDbAndReturnTrue()
         {
             FileSystemFacade.FileSystem = new MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/data");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data/snapshot1");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data/snapshot2");
+
+            var db = await OsmTiledHistoryDb.Create(@"/data", new OsmGeo[]
+            {
+                new Node()
+                {
+                    Id = 456414,
+                    Latitude = 50,
+                    Longitude = 4,
+                    ChangeSetId = 1,
+                    UserId = 1,
+                    UserName = "Ben",
+                    Visible = true,
+                    TimeStamp = DateTime.Now,
+                    Version = 1
+                }
+            });
             
-            // setup meta data files.
-            OsmTiledDbOperations.SaveDbMeta(@"/data/snapshot1", new OsmTiledDbMeta()
+            // update db without using the db method (as if it was updated out of process).
+            var tiledDb = await OsmTiledHistoryDbBuilder.Update(new OsmGeo[]
             {
-                Base = string.Empty,
-                Timestamp = DateTime.Now,
-                Type = OsmTiledDbType.Full,
-                Zoom = 12
-            });
-            OsmTiledHistoryDbOperations.SaveDbMeta(@"/data", new OsmTiledHistoryDbMeta()
+                new Node()
+                {
+                    Id = 456414,
+                    Latitude = 50,
+                    Longitude = 4,
+                    ChangeSetId = 1,
+                    UserId = 1,
+                    UserName = "Ben",
+                    Visible = true,
+                    TimeStamp = DateTime.Now,
+                    Version = 2
+                }
+            }, "/data");
+            // update meta data.
+            var meta = new OsmTiledHistoryDbMeta()
             {
-                Latest = "/data/snapshot1/"
-            });
-            
-            // load db.
-            Assert.True(OsmTiledHistoryDb.TryLoad(@"/data", out var db));
-            
-            // setup new meta data files.
-            OsmTiledDbOperations.SaveDbMeta(@"/data/snapshot2", new OsmTiledDbMeta()
-            {
-                Base = string.Empty,
-                Timestamp = DateTime.Now,
-                Type = OsmTiledDbType.Full,
-                Zoom = 12
-            });
-            OsmTiledHistoryDbOperations.SaveDbMeta(@"/data", new OsmTiledHistoryDbMeta()
-            {
-                Latest = "/data/snapshot2/"
-            });
+                Latest =  FileSystemFacade.FileSystem.RelativePath("/data", tiledDb.Path)
+            };
+            OsmTiledHistoryDbOperations.SaveDbMeta("/data", meta);
             
             // reload db.
             Assert.True(db.TryReload());
-            Assert.AreEqual("/data/snapshot2/", db.Latest.Path);
         }
     }
 }

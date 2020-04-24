@@ -12,7 +12,6 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     /// </summary>
     public abstract class OsmTiledDbBase
     {
-        private readonly string _path;
         private readonly OsmTiledDbMeta _meta;
 
         protected OsmTiledDbBase(string path)
@@ -23,14 +22,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         protected OsmTiledDbBase(string path, OsmTiledDbMeta meta)
         {
-            _path = path;
+            Path = path;
             _meta = meta;
         }
 
         /// <summary>
         /// Gets the path.
         /// </summary>
-        internal string Path => _path;
+        internal string Path { get; }
 
         /// <summary>
         /// Gets the zoom.
