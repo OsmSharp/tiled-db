@@ -140,5 +140,19 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 value >>= 8;
             }
         }
+        
+        // TODO: convert this to something allocation-less.
+
+        /// <summary>
+        /// Reads an int64 for the given stream.
+        /// </summary>
+        /// <param name="stream">The stream.</param>
+        /// <returns>The result.</returns>
+        public static long ReadInt64(this Stream stream)
+        {
+            var longBytes = new byte[8];
+            stream.Read(longBytes, 0, 8);
+            return BitConverter.ToInt64(longBytes, 0);
+        }
     }
 }

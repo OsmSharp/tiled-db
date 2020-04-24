@@ -19,7 +19,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 args = new string[]
                 {
                     @"/data/work/data/OSM/belgium-latest.osm.pbf",
-                    @"/media/xivk/2T-SSD-EXT/replication-tests/",
+                    @"/media/xivk/10TB-BACKUP/temp/replication-db",
                     @"14"
                 };
             }
@@ -92,6 +92,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
                 progress.RegisterSource(source);
 
+                var ticks = DateTime.Now.Ticks;
                 // try loading the db, if it doesn't exist build it.
                 if (!OsmTiledHistoryDb.TryLoad(args[1], out var db))
                 {
@@ -107,6 +108,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     // add data.
                     await db.Update(progress);
                 }
+                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
             }
             catch (Exception e)
             {

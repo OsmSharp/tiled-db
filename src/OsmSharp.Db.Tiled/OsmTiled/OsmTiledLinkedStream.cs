@@ -12,13 +12,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         private readonly Stream _stream;
         private readonly SparseArray _pointers;
         private readonly SparseArray _lastPointers;
+        private readonly long EmptyDefault = -1;
 
         public OsmTiledLinkedStream(Stream stream)
         {
             _stream = stream;
             
-            _pointers = new SparseArray(0, emptyDefault: long.MaxValue);
-            _lastPointers = new SparseArray(0, emptyDefault: long.MaxValue);
+            _pointers = new SparseArray(0, emptyDefault: EmptyDefault);
+            _lastPointers = new SparseArray(0, emptyDefault: EmptyDefault);
         }
 
         private OsmTiledLinkedStream(SparseArray pointers, Stream stream)
@@ -35,20 +36,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             
             _stream.Seek(pointer, SeekOrigin.Begin);
 
-            // find tile.
+            // skip over tiles.
             var cBytes = _stream.ReadDynamicUInt32(out var c);
-            if (c == 1)
+            for (var i = 0; i < c; i++)
             {
-                _stream.Seek(pointer + cBytes + 12, SeekOrigin.Begin);
+                _stream.ReadDynamicUInt32(out var _);
             }
-            else
-            {
-                var tilesBytes = c * 4;
-                var pointerBytes = c * 8;
-                
-                // read next pointer.
-                _stream.Seek(pointer + cBytes + tilesBytes + pointerBytes, SeekOrigin.Begin);
-            }
+            _stream.Seek(_stream.Position + (8 * c), SeekOrigin.Begin);
 
             return _stream.ReadOsmGeo();
         }
@@ -62,26 +56,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
             // find tile.
             _stream.ReadDynamicUInt32(out var c);
-            if (c == 1)
+            for (var i = 0; i < c; i++)
             {
-                _stream.Read(buffer, 0, 4);
-                yield return BitConverter.ToUInt32(buffer, 0);
-            }
-            else
-            {
-                var tilesBytes = c * 4;
-                var pointerBytes = c * 8;
-                
-                var t = 0;
-                while (true)
-                {
-                    _stream.Read(buffer, 0, 4);
-                    var currentTile = BitConverter.ToUInt32(buffer, 0);
-                    yield return currentTile;
+                _stream.ReadDynamicUInt32(out var tile);
+                yield return tile;
 
-                    t++;
-                    if (c == t) break;
-                }
             }
         }
 
@@ -94,8 +73,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
             // set first pointer and get previous pointer.
             var pointer = _pointers[tile];
-            var previous = long.MaxValue;
-            if (pointer == long.MaxValue)
+            var previous = EmptyDefault;
+            if (pointer == EmptyDefault)
             { // first object, set pointer.
                 _pointers[tile] = _stream.Position;
             }
@@ -106,7 +85,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             
             // update previous object.
             var next = _stream.Position;
-            if (previous != long.MaxValue)
+            if (previous != EmptyDefault)
             {
                 var before = _stream.Position;
                 _stream.Seek(previous, SeekOrigin.Begin);
@@ -116,9 +95,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
             // write data.
             _stream.WriteDynamicUInt32(1);
-            _stream.Write(tile);
+            _stream.WriteDynamicUInt32(tile);
             _lastPointers[tile] = _stream.Position;
-            _stream.Write(long.MaxValue);
+            _stream.Write(EmptyDefault);
             _stream.Append(osmGeo);
             return next;
         }
@@ -141,7 +120,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             // write tile ids.
             foreach (var tile in tiles)
             {
-                _stream.Write(BitConverter.GetBytes(tile), 0, 4);
+                _stream.WriteDynamicUInt32(tile);
             }
 
             // write pointers and 
@@ -152,8 +131,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 
                 // set first pointer and get previous pointer.
                 var pointer = _pointers[tile];
-                var previous = long.MaxValue;
-                if (pointer == long.MaxValue)
+                var previous = EmptyDefault;
+                if (pointer == EmptyDefault)
                 { // first object, set pointer.
                     _pointers[tile] = next;
                 }
@@ -163,7 +142,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 }
                 
                 // update previous object.
-                if (previous != long.MaxValue)
+                if (previous != EmptyDefault)
                 {
                     var before = _stream.Position;
                     _stream.Seek(previous, SeekOrigin.Begin);
@@ -172,7 +151,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 }
 
                 _lastPointers[tile] = _stream.Position;
-                _stream.Write(long.MaxValue);
+                _stream.Write(EmptyDefault);
             }
 
             _stream.Append(osmGeo);
@@ -184,7 +163,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             for (uint t = 0; t < _pointers.Length; t++)
             {
                 var pointer = _pointers[t];
-                if (pointer == long.MaxValue) continue;
+                if (pointer == EmptyDefault) continue;
 
                 yield return t;
             }
@@ -196,7 +175,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             buffer ??= new byte[8];
             
             var pointer = _pointers[tile];
-            while (pointer != long.MaxValue)
+            while (pointer != EmptyDefault)
             {
                 var originalPointer = pointer;
                 _stream.Seek(pointer, SeekOrigin.Begin);
@@ -205,35 +184,30 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 var cBytes = _stream.ReadDynamicUInt32(out var c);
                 if (c == 1)
                 {
-                    _stream.Seek(4, SeekOrigin.Current); // skip tile.
+                    _stream.ReadDynamicUInt32(out _);
                     _stream.Read(buffer, 0, 8);
                     pointer = BitConverter.ToInt64(buffer, 0);
                 }
                 else
                 {
-                    var tilesBytes = c * 4;
-                    var pointerBytes = c * 8;
                     var t = 0;
-                    while (true)
+                    var pos = -1;
+                    while (t < c)
                     {
-                        _stream.Read(buffer, 0, 4);
-                        var currentTile = BitConverter.ToUInt32(buffer, 0);
-                        if (currentTile == tile)
-                        {
-                            break;
-                        }
+                        _stream.ReadDynamicUInt32(out var currentTile);
+                        if (currentTile == tile) pos = t;
 
                         t++;
-                        if (c == t) throw new InvalidDataException("Cannot find tile, it is expected to always be there.");
                     }
 
                     // read next pointer.
-                    _stream.Seek(pointer + cBytes + tilesBytes + (t * 8), SeekOrigin.Begin);
+                    var pointersStart = _stream.Position;
+                    _stream.Seek(_stream.Position + (pos * 8), SeekOrigin.Begin);
                     _stream.Read(buffer, 0, 8);
                     var nextPointer = BitConverter.ToInt64(buffer, 0);
                 
                     // read data.
-                    _stream.Seek(pointer + cBytes + tilesBytes + pointerBytes, SeekOrigin.Begin);
+                    _stream.Seek(pointersStart + (c * 8), SeekOrigin.Begin);
 
                     pointer = nextPointer;
                 }
