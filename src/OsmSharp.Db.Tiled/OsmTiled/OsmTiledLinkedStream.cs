@@ -7,7 +7,7 @@ using OsmSharp.IO.Binary;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
 {
-    internal class OsmTiledLinkedStream
+    internal class OsmTiledLinkedStream : IDisposable
     {
         private readonly Stream _stream;
         private readonly SparseArray _pointers;
@@ -270,6 +270,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             var pointers = SparseArray.Deserialize(indexStream);
             
             return new OsmTiledLinkedStream(pointers, stream);
+        }
+
+        public void Dispose()
+        {
+            _stream?.Dispose();
         }
     }
 }

@@ -13,7 +13,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     /// <summary> 
     /// Represents a snapshot of OSM data at a given point in time represented by a full copy of the data.
     /// </summary>
-    public class OsmTiledDb : OsmTiledDbBase
+    public class OsmTiledDb : OsmTiledDbBase, IDisposable
     {
         private readonly OsmTiledIndex _index;
         private readonly OsmTiledLinkedStream _data;
@@ -66,6 +66,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             var tileId = Tile.ToLocalId(tile, this.Zoom);
 
             return _data.GetForTile(tileId);
+        }
+
+        /// <inheritdoc/>
+        public void Dispose()
+        {
+            _data?.Dispose();
         }
     }
 }

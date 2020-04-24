@@ -43,7 +43,7 @@ namespace OsmSharp.Db.Tiled
         /// <returns>The new db.</returns>
         public static async Task<OsmTiledHistoryDb> Create(string path, IEnumerable<OsmGeo> data)
         {
-            return await Build.OsmTiledHistoryDbBuilder.Build(data, path, 12);
+            return await Build.OsmTiledHistoryDbBuilder.Build(data, path, 14);
         }
         
         /// <summary>
