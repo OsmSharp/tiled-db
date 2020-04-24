@@ -141,6 +141,40 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         public IEnumerable<OsmGeo> GetForTile(uint tile, byte[] buffer = null)
         {
+            using var enumerator = this.GetForTileInternal(tile, buffer).GetEnumerator();
+            if (!enumerator.MoveNext()) yield break;
+            var osmGeo1 = enumerator.Current;
+            if (!enumerator.MoveNext()) 
+            {
+                yield return osmGeo1; // just one object, no need to reverse.
+                yield break;
+            }
+            var osmGeo2 = enumerator.Current;
+
+            if (osmGeo1?.Id == null) throw new InvalidDataException($"Object that's null or without an id.");
+            if (osmGeo2?.Id == null) throw new InvalidDataException($"Object that's null or without an id.");
+            if (BitCoder.Encode(osmGeo1.Type, osmGeo1.Id.Value) > BitCoder.Encode(osmGeo2.Type, osmGeo2.Id.Value))
+            {
+                this.ReverseTile(tile, buffer);
+
+                foreach (var osmGeo in this.GetForTileInternal(tile, buffer))
+                {
+                    yield return osmGeo;
+                }
+                yield break;
+            }
+
+            yield return osmGeo1;
+            yield return osmGeo2;
+
+            while (enumerator.MoveNext())
+            {
+                yield return enumerator.Current;
+            }
+        }
+
+        private IEnumerable<OsmGeo> GetForTileInternal(uint tile, byte[] buffer = null)
+        {
             foreach (var (osmGeoPointer, _) in this.GetForTilePointers(tile, buffer))
             {
                 _stream.Seek(osmGeoPointer, SeekOrigin.Begin);
@@ -199,7 +233,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        public void Reverse()
+        public void ReverseAll()
         {
             var buffer = new byte[8];
             var pointers = new List<(long osmGeoPointer, long pointer)>();
@@ -215,6 +249,23 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 }
                 UpdateNext(pointers[0].pointer, tileId, long.MaxValue, buffer);
             }
+        }
+
+        private void ReverseTile(uint tileId, byte[] buffer)
+        {
+            if (buffer?.Length < 8) buffer = null;
+            buffer ??= new byte[8];
+            
+            var pointers = new List<(long osmGeoPointer, long pointer)>();
+            pointers.Clear();
+            pointers.AddRange(this.GetForTilePointers(tileId, buffer));
+
+            _pointers[tileId] = pointers[pointers.Count - 1].pointer;
+            for (var i = pointers.Count - 1; i > 0; i--)
+            {
+                UpdateNext(pointers[i].pointer, tileId, pointers[i - 1].pointer, buffer);
+            }
+            UpdateNext(pointers[0].pointer, tileId, long.MaxValue, buffer);
         }
 
         private void UpdateNext(long pointer, uint tile, long next, byte[] buffer)
