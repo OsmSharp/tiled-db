@@ -19,7 +19,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 args = new string[]
                 {
                     @"/data/work/data/OSM/belgium-latest.osm.pbf",
-                    @"/media/xivk/10TB-BACKUP/temp/replication-db",
+                    @"/media/xivk/2T-SSD-EXT/replication-tests",
                     @"14"
                 };
             }
@@ -94,7 +94,10 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
 
                 var ticks = DateTime.Now.Ticks;
                 // try loading the db, if it doesn't exist build it.
-                if (!OsmTiledHistoryDb.TryLoad(args[1], out var db))
+                if (!OsmTiledHistoryDb.TryLoad(args[1], out var db, new OsmTiledHistoryDbLoadSettings()
+                {
+                    AsReader = true
+                }))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
 

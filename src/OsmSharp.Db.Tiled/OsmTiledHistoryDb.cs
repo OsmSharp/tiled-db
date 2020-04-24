@@ -19,13 +19,15 @@ namespace OsmSharp.Db.Tiled
         /// Creates a new OSM db.
         /// </summary>
         /// <param name="path">The path.</param>
-        public OsmTiledHistoryDb(string path)
+        /// <param name="settings">The path.</param>
+        internal OsmTiledHistoryDb(string path, OsmTiledHistoryDbLoadSettings settings = null)
         {
             _path = path;
 
             _meta = OsmTiledHistoryDbOperations.LoadDbMeta(_path);
             
-            this.Latest = OsmTiledDbOperations.LoadDb(FileSystemFacade.FileSystem.Combine(_path, _meta.Latest));
+            this.Latest = OsmTiledDbOperations.LoadDb(
+                FileSystemFacade.FileSystem.Combine(_path, _meta.Latest));
         }
 
         /// <summary>
@@ -116,10 +118,13 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         /// <param name="path">The path.</param>
         /// <param name="osmDb">The db if any.</param>
+        /// <param name="settings">The settings if any.</param>
         /// <returns>True if a db was loaded, false otherwise.</returns>
-        public static bool TryLoad(string path, out OsmTiledHistoryDb? osmDb)
+        public static bool TryLoad(string path, out OsmTiledHistoryDb? osmDb, OsmTiledHistoryDbLoadSettings settings = null)
         {
-            if (FileSystemFacade.FileSystem.Exists(OsmTiledDbOperations.PathToMeta(path)))
+            settings ??= new OsmTiledHistoryDbLoadSettings();
+            if (FileSystemFacade.FileSystem.Exists(
+                OsmTiledDbOperations.PathToMeta(path)))
             {
                 osmDb = new OsmTiledHistoryDb(path);
                 return true;
