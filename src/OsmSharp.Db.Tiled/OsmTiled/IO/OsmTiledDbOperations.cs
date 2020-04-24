@@ -64,8 +64,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         {
             using var indexStream = FileSystemFacade.FileSystem.OpenRead(
                 PathToTileIndex(path));
-            var stream = FileSystemFacade.FileSystem.Open(
-                PathToData(path), FileMode.Open);
+            var stream = FileSystemFacade.FileSystem.OpenRead(
+                PathToData(path));
             
             return OsmTiledLinkedStream.Deserialize(indexStream, stream);
         }

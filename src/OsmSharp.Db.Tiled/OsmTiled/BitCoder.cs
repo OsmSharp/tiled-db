@@ -123,6 +123,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             stream.Write(id);
         }
         
+        public static void Write(this Stream stream, uint value)
+        {
+            for (var b = 0; b < 4; b++)
+            {
+                stream.WriteByte((byte)(value & byte.MaxValue));
+                value >>= 4;
+            }
+        }
+        
         public static void Write(this Stream stream, long value)
         {
             for (var b = 0; b < 8; b++)

@@ -12,7 +12,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
     public class OsmTiledLinkedStreamTests
     {
         [Test]
-        public void OsmTiledLinkedStream_SingleObjectOneTile_ShouldStoreObjectInTile()
+        public void OsmTiledLinkedStream_1ObjectOneTile_ShouldStoreObjectInTile()
         {
             var linkedStream = new OsmTiledLinkedStream(new MemoryStream());
 
@@ -37,11 +37,52 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
         }
         
         [Test]
-        public void OsmTiledLinkedStream_SingleObjectMultipleTiles_ShouldStoreObjectAllTiles()
+        public void OsmTiledLinkedStream_2ObjectsOneTile_ShouldStoreObjectInTile()
         {
             var linkedStream = new OsmTiledLinkedStream(new MemoryStream());
 
-            var way = new Way()
+            var tile = Tile.FromWorld(50, 4, 14);
+            var tileId1 = Tile.ToLocalId(tile, 14);
+            linkedStream.Append(tileId1, new Node()
+            {
+                Id = 456414,
+                Latitude = 50,
+                Longitude = 4,
+                ChangeSetId = 1,
+                UserId = 1,
+                UserName = "Ben",
+                Visible = true,
+                TimeStamp = DateTime.Now,
+                Version = 1
+            });
+            linkedStream.Append(tileId1, new Node()
+            {
+                Id = 456415,
+                Latitude = 50,
+                Longitude = 4,
+                ChangeSetId = 1,
+                UserId = 1,
+                UserName = "Ben",
+                Visible = true,
+                TimeStamp = DateTime.Now,
+                Version = 1
+            });
+
+            var nodes = linkedStream.GetForTile(tileId1).ToList();
+            Assert.AreEqual(2, nodes.Count);
+            Assert.AreEqual(456414, nodes[0].Id);
+            Assert.AreEqual(456415, nodes[1].Id);
+        }
+        
+        [Test]
+        public void OsmTiledLinkedStream_1ObjectMultipleTiles_ShouldStoreObjectAllTiles()
+        {
+            var linkedStream = new OsmTiledLinkedStream(new MemoryStream());
+
+            var tile = Tile.FromWorld(50, 4, 14);
+            var tileId1 = Tile.ToLocalId(tile, 14);
+            var tileId2 = Tile.ToLocalId(tile.x + 1, tile.y, 14);
+            linkedStream.Append(new [] { tileId1, tileId2 }, new Way()
             {
                 Id = 235189,
                 ChangeSetId = 1,
@@ -55,19 +96,65 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
                 UserName = "Ben",
                 Version = 1,
                 Visible = true
-            };
-            var tile = Tile.FromWorld(50, 4, 14);
-            var tileId1 = Tile.ToLocalId(tile, 14);
-            var tileId2 = Tile.ToLocalId(tile.x + 1, tile.y, 14);
-            linkedStream.Append(new [] { tileId1, tileId2 }, way);
+            });
 
             var osmGeos = linkedStream.GetForTile(tileId1).ToList();
             Assert.AreEqual(1, osmGeos.Count);
-            Assert.AreEqual(way.Id, osmGeos[0].Id);
+            Assert.AreEqual(235189, osmGeos[0].Id);
 
             osmGeos = linkedStream.GetForTile(tileId2).ToList();
             Assert.AreEqual(1, osmGeos.Count);
-            Assert.AreEqual(way.Id, osmGeos[0].Id);
+            Assert.AreEqual(235189, osmGeos[0].Id);
+        }
+        
+        [Test]
+        public void OsmTiledLinkedStream_2ObjectMultipleTiles_ShouldStoreObjectAllTiles()
+        {
+            var linkedStream = new OsmTiledLinkedStream(new MemoryStream());
+
+            var tile = Tile.FromWorld(50, 4, 14);
+            var tileId1 = Tile.ToLocalId(tile, 14);
+            var tileId2 = Tile.ToLocalId(tile.x + 1, tile.y, 14);
+            linkedStream.Append(new [] { tileId1, tileId2 }, new Way()
+            {
+                Id = 235189,
+                ChangeSetId = 1,
+                Nodes = new long[]
+                {
+                    456414, 456415
+                },
+                Tags = null,
+                TimeStamp = DateTime.Now,
+                UserId = 1,
+                UserName = "Ben",
+                Version = 1,
+                Visible = true
+            });
+            linkedStream.Append(new [] { tileId1, tileId2 }, new Way()
+            {
+                Id = 235190,
+                ChangeSetId = 1,
+                Nodes = new long[]
+                {
+                    456414, 456415
+                },
+                Tags = null,
+                TimeStamp = DateTime.Now,
+                UserId = 1,
+                UserName = "Ben",
+                Version = 1,
+                Visible = true
+            });
+
+            var osmGeos = linkedStream.GetForTile(tileId1).ToList();
+            Assert.AreEqual(2, osmGeos.Count);
+            Assert.AreEqual(235189, osmGeos[0].Id);
+            Assert.AreEqual(235190, osmGeos[1].Id);
+
+            osmGeos = linkedStream.GetForTile(tileId2).ToList();
+            Assert.AreEqual(2, osmGeos.Count);
+            Assert.AreEqual(235189, osmGeos[0].Id);
+            Assert.AreEqual(235190, osmGeos[1].Id);
         }
         
         [Test]
