@@ -25,12 +25,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="source">The source stream.</param>
         /// <param name="path">The path to store the db at.</param>
         /// <param name="zoom">The zoom.</param>
-        public static async Task Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
+        /// <param name="settings">The settings.</param>
+        public static async Task Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14,
+            OsmTiledDbBuildSettings settings = null)
         {
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
             if (path == null) { throw new ArgumentNullException(nameof(path)); }
             if (!FileSystemFacade.FileSystem.DirectoryExists(path)) { throw new ArgumentException("Output path does not exist."); }
+            
+            settings ??= new OsmTiledDbBuildSettings();
 
+            var buffer = new byte[1024];
+            
             var timestamp = DateTime.MinValue;
             var nodeToTile = new TileMap();
             var wayToTiles = new TilesMap();
@@ -77,7 +83,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     nodeToTile.EnsureMinimumSize(node.Id.Value);
                     nodeToTile[node.Id.Value] = localId;
 
-                    var location = tiledStream.Append(localId, node);
+                    Prepare(node, settings);
+                    var location = tiledStream.Append(localId, node, buffer);
                     idIndex.Append(new OsmGeoKey(node), location);
                 }
                 else if(osmGeo is Way way)
@@ -97,7 +104,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
                     wayToTiles.Add(way.Id.Value, tileSet);
                     
-                    var location = tiledStream.Append(tileSet, way);
+                    Prepare(way, settings);
+                    var location = tiledStream.Append(tileSet, way, buffer);
                     idIndex.Append(new OsmGeoKey(way), location);
                 }
                 else if(osmGeo is Relation relation)
@@ -128,7 +136,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     
                     relationToTiles.Add(relation.Id.Value, tileSet);
                     
-                    var location = tiledStream.Append(tileSet, relation);
+                    Prepare(relation, settings);
+                    var location = tiledStream.Append(tileSet, relation, buffer);
                     idIndex.Append(new OsmGeoKey(relation), location);
                 }
             }
@@ -145,6 +154,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 Timestamp = timestamp
             };
             OsmTiledDbOperations.SaveDbMeta(path, dbMeta);
+        }
+
+        private static void Prepare(this OsmGeo osmGeo, OsmTiledDbBuildSettings settings)
+        {
+            if (!settings.IncludeChangeset) osmGeo.ChangeSetId = null;
+            if (!settings.IncludeUsername) osmGeo.UserName = null;
+            if (!settings.IncludeUserId) osmGeo.UserId = null;
+            if (!settings.IncludeVisible) osmGeo.Visible = null;
         }
     }
 }

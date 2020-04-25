@@ -15,7 +15,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         public void Append(OsmGeoKey id, long pointer)
         {
             _data.Write(id);
-            _data.Write(pointer);
+            _data.WriteInt64(pointer);
         }
 
         public long? Get(OsmGeoKey id)

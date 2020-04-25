@@ -17,20 +17,27 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     {
         private readonly OsmTiledIndex _index;
         private readonly OsmTiledLinkedStream _data;
+        private readonly bool _asReader = false;
         
         /// <summary>
         /// Creates a new db using the data at the given path.
         /// </summary>
-        public OsmTiledDb(string path)
+        internal OsmTiledDb(string path, OsmTiledDbSettings settings)
             : base(path)
         {
+            settings ??= new OsmTiledDbSettings();
+            _asReader = settings.AsReader;
+            
             _data = OsmTiledDbOperations.LoadData(this.Path);
             _index = OsmTiledDbOperations.LoadIndex(this.Path);
         }
 
-        internal OsmTiledDb(string path, OsmTiledDbMeta meta)
+        internal OsmTiledDb(string path, OsmTiledDbMeta meta, OsmTiledDbSettings settings)
             : base(path, meta)
         {
+            settings ??= new OsmTiledDbSettings();
+            _asReader = settings.AsReader;
+            
             _data = OsmTiledDbOperations.LoadData(this.Path);
             _index = OsmTiledDbOperations.LoadIndex(this.Path);
         }
@@ -45,14 +52,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override async Task<IEnumerable<(uint x, uint y)>> GetTiles(OsmGeoType type, long id)
+        public override async Task<IEnumerable<(uint x, uint y)>> GetTiles(OsmGeoType type, long id, byte[] buffer = null)
         {  
             var pointer = _index.Get((new OsmGeoKey(type, id)));
             if (!pointer.HasValue) return Enumerable.Empty<(uint x, uint y)>();
 
             var tiles = new List<(uint x, uint y)>();
             
-            foreach (var tileId in _data.GetTilesFor(pointer.Value))
+            foreach (var tileId in _data.GetTilesFor(pointer.Value, buffer))
             {
                 tiles.Add(Tile.FromLocalId(this.Zoom, tileId));
             }

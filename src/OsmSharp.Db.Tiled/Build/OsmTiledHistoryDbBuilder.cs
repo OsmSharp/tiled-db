@@ -18,8 +18,17 @@ namespace OsmSharp.Db.Tiled.Build
         /// <summary>
         /// Builds a new database and write the structure to the given path.
         /// </summary>
-        public static async Task<OsmTiledHistoryDb> Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
+        /// <param name="source">The source data.</param>
+        /// <param name="path">The path.</param>
+        /// <param name="zoom">The zoom.</param>
+        /// <param name="settings">The settings.</param>
+        /// <returns>A tiled history db.</returns>
+        /// <exception cref="DirectoryNotFoundException"></exception>
+        public static async Task<OsmTiledHistoryDb> Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14,
+            OsmTiledHistoryDbSettings settings = null)
         {
+            settings ??= new OsmTiledHistoryDbSettings();
+            
             if (!FileSystemFacade.FileSystem.DirectoryExists(path))
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
@@ -41,12 +50,21 @@ namespace OsmSharp.Db.Tiled.Build
             // return the osm db.
             return new OsmTiledHistoryDb(path);
         }
-
+        
         /// <summary>
         /// Builds a new database and write the structure to the given path.
         /// </summary>
-        public static async Task<OsmTiledDb> Update(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
+        /// <param name="source">The source data.</param>
+        /// <param name="path">The path.</param>
+        /// <param name="zoom">The zoom.</param>
+        /// <param name="settings">The settings.</param>
+        /// <returns>A new osm tiled db.</returns>
+        /// <exception cref="DirectoryNotFoundException"></exception>
+        public static async Task<OsmTiledDb> Update(this IEnumerable<OsmGeo> source, string path, uint zoom = 14,
+            OsmTiledHistoryDbSettings settings = null)
         {
+            settings ??= new OsmTiledHistoryDbSettings();
+            
             if (!FileSystemFacade.FileSystem.DirectoryExists(path))
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
@@ -58,7 +76,10 @@ namespace OsmSharp.Db.Tiled.Build
             // build the tiled db.
             await OsmTiled.Build.OsmTiledDbBuilder.Build(source, tiledOsmDbPath, zoom);
 
-            return new OsmTiledDb(tiledOsmDbPath);
+            return new OsmTiledDb(tiledOsmDbPath, new OsmTiledDbSettings()
+            {
+                AsReader = settings.AsReader
+            });
         }
     }
 }

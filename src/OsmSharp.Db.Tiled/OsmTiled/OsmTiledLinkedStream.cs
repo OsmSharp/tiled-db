@@ -50,7 +50,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             return _stream.ReadOsmGeo();
         }
 
-        public IEnumerable<uint> GetTilesFor(long pointer, byte[] buffer = null)
+        public IEnumerable<uint> GetTilesFor(long pointer, byte[] buffer)
         {
             if (buffer?.Length < 8) buffer = null;
             buffer ??= new byte[8];
@@ -82,7 +82,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        public long Append(uint tile, OsmGeo osmGeo)
+        public long Append(uint tile, OsmGeo osmGeo, byte[] buffer = null)
         {
             _pointers.EnsureMinimumSize(tile + 1);
 
@@ -92,17 +92,17 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _stream.WriteDynamicUInt32(1);
             _stream.Write(BitConverter.GetBytes(tile), 0, 4);
             _stream.Write(BitConverter.GetBytes(pointer), 0, 8);
-            _stream.Append(osmGeo);
+            _stream.Append(osmGeo, buffer);
             return _pointers[tile];
         }
 
-        public long Append(IReadOnlyCollection<uint> tiles, OsmGeo osmGeo)
+        public long Append(IReadOnlyCollection<uint> tiles, OsmGeo osmGeo, byte[] buffer = null)
         {
             if (tiles.Count == 1)
             {
                 // write pointer only.
                 var tile = tiles.First();
-                return Append(tile, osmGeo);
+                return Append(tile, osmGeo, buffer);
             }
 
             var position = _stream.Position;
@@ -111,7 +111,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             // write tile ids, followed by the pointers.
             foreach (var tile in tiles)
             {
-                _stream.Write(BitConverter.GetBytes(tile), 0, 4);
+                _stream.WriteUInt32(tile);
             }
 
             foreach (var tile in tiles)
@@ -121,10 +121,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 var pointer = _pointers[tile];
                 _pointers[tile] = position;
 
-                _stream.Write(BitConverter.GetBytes(pointer), 0, 8);
+                _stream.WriteInt64(pointer);
             }
 
-            _stream.Append(osmGeo);
+            _stream.Append(osmGeo, buffer);
             return position;
         }
 

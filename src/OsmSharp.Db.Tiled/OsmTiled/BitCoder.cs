@@ -120,10 +120,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             var id = Encode(key.Type, key.Id);
 
-            stream.Write(id);
+            stream.WriteInt64(id);
         }
         
-        public static void Write(this Stream stream, uint value)
+        public static void WriteUInt32(this Stream stream, uint value)
         {
             for (var b = 0; b < 4; b++)
             {
@@ -132,7 +132,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
         
-        public static void Write(this Stream stream, long value)
+        public static void WriteInt64(this Stream stream, long value)
         {
             for (var b = 0; b < 8; b++)
             {

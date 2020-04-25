@@ -95,7 +95,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             FileSystemFacade.FileSystem.CreateDirectory(@"/OsmTiledDbTests");
             await osmGeos.Build(@"/OsmTiledDbTests", 14);
             
-            var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");
+            var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests", null);
             var node1 = await osmTiledDb.Get(OsmGeoType.Node, 456414);
             Assert.NotNull(node1);
             var node2 = await osmTiledDb.Get(OsmGeoType.Node, 456415);
@@ -198,7 +198,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             await osmGeos.Build(@"/OsmTiledDbTests", 14);
             
             // 14/8374/5556.osm.tile
-            var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");
+            var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests", null);
 
             var tile = await osmTiledDb.Get((8374, 5556));
             Assert.NotNull(tile);

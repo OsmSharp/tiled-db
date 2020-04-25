@@ -3,7 +3,7 @@ namespace OsmSharp.Db.Tiled
     /// <summary>
     /// History db load settings.
     /// </summary>
-    public class OsmTiledHistoryDbLoadSettings
+    public class OsmTiledHistoryDbSettings
     {
         /// <summary>
         /// Gets the flag to open the db as a reader.
