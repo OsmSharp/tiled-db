@@ -90,8 +90,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _pointers[tile] = _stream.Position;
             
             _stream.WriteDynamicUInt32(1);
-            _stream.Write(BitConverter.GetBytes(tile), 0, 4);
-            _stream.Write(BitConverter.GetBytes(pointer), 0, 8);
+            _stream.WriteUInt32(tile);
+            _stream.WriteInt64(pointer);
             _stream.Append(osmGeo, buffer);
             return _pointers[tile];
         }
@@ -210,8 +210,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (c == 1)
                 {
                     _stream.Seek(4, SeekOrigin.Current); // skip tile.
-                    _stream.Read(buffer, 0, 8);
-                    pointer = BitConverter.ToInt64(buffer, 0);
+                    pointer = _stream.ReadInt64();
                 }
                 else
                 {
@@ -220,8 +219,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                     var t = 0;
                     while (true)
                     {
-                        _stream.Read(buffer, 0, 4);
-                        var currentTile = BitConverter.ToUInt32(buffer, 0);
+                        var currentTile = _stream.ReadUInt32();
                         if (currentTile == tile)
                         {
                             break;
@@ -233,8 +231,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
                     // read next pointer.
                     _stream.Seek(pointer + cBytes + tilesBytes + (t * 8), SeekOrigin.Begin);
-                    _stream.Read(buffer, 0, 8);
-                    var nextPointer = BitConverter.ToInt64(buffer, 0);
+                    var nextPointer = _stream.ReadInt64();
                 
                     // read data.
                     _stream.Seek(pointer + cBytes + tilesBytes + pointerBytes, SeekOrigin.Begin);
@@ -289,7 +286,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             if (c == 1)
             {
                 _stream.Seek(4, SeekOrigin.Current);
-                _stream.Write(BitConverter.GetBytes(next), 0, 8);
+                _stream.WriteInt64(next);
             }
             else
             {
@@ -298,8 +295,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 var t = 0;
                 while (true)
                 {
-                    _stream.Read(buffer, 0, 4);
-                    var currentTile = BitConverter.ToUInt32(buffer, 0);
+                    var currentTile = _stream.ReadUInt32();
                     if (currentTile == tile)
                     {
                         break;
@@ -311,7 +307,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
                 // read next pointer.
                 _stream.Seek(pointer + cBytes + tilesBytes + (t * 8), SeekOrigin.Begin);
-                _stream.Write(BitConverter.GetBytes(next), 0, 8);
+                _stream.WriteInt64(next);
             }
         }
 
