@@ -73,6 +73,7 @@ namespace OsmSharp.Db.Tiled.Replication
                 progress.RegisterSource(source);
 
                 // try loading the db, if it doesn't exist build it.
+                var ticks = DateTime.Now.Ticks;
                 if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
@@ -88,8 +89,8 @@ namespace OsmSharp.Db.Tiled.Replication
                     await db.Update(progress);
                 }
                 
-                
-                Log.Information("DB build successfully.");
+                Log.Information("DB built successfully.");
+                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
 
 //            // start catch up until we reach hours/days.
 //            var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1), moveDown:false);
