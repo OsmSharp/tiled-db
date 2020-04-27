@@ -14,19 +14,15 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
-    <PackageReference Include="OsmSharp.IO.Binary" Version="0.2.3-alpha" />
     <PackageReference Include="Serilog" Version="2.7.1" />
     <PackageReference Include="Reminiscence" Version="1.4.0-pre003" />
+    <PackageReference Include="OsmSharp.IO.Binary" Version="0.2.3-alpha" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\..\SharedAssemblyVersion.cs">
       <Link>SharedAssemblyVersion.cs</Link>
     </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Remove="OsmTiled\Build\**" />
   </ItemGroup>
 
 </Project>

@@ -50,16 +50,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <param name="type">The type.</param>
         /// <param name="id">The id.</param>
         /// <returns>The object if present.</returns>
-        public abstract Task<OsmGeo?> Get(OsmGeoType type, long id);
+        public abstract Task<OsmGeo?> Get(OsmGeoType type, long id, byte[] buffer = null);
 
         /// <summary>
         /// Gets the tiles for the given object.
         /// </summary>
         /// <param name="type">The type.</param>
         /// <param name="id">The id.</param>
-        /// <param name="buffer">The buffer.</param>
         /// <returns>All the tiles to object is in.</returns>
-        public abstract Task<IEnumerable<(uint x, uint y)>> GetTiles(OsmGeoType type, long id, byte[] buffer = null);
+        public abstract Task<IEnumerable<(uint x, uint y)>> GetTiles(OsmGeoType type, long id);
 
         /// <summary>
         /// Gets all the data in the given tile.
