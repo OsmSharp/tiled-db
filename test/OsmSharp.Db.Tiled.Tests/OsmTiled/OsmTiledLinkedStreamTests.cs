@@ -41,7 +41,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
         {
             var linkedStream = new OsmTiledLinkedStream(new MemoryStream());
 
-            var tile = Tile.FromWorld(50, 4, 14);
+            var tile = Tile.FromWorld(4, 50, 14);
             var tileId1 = Tile.ToLocalId(tile, 14);
             linkedStream.Append(tileId1, new Node()
             {
@@ -221,7 +221,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
                 Version = 1,
                 Visible = true
             };
-            var tile = Tile.FromWorld(50, 4, 14);
+            var tile = Tile.FromWorld(4, 50, 14);
             var tileId1 = Tile.ToLocalId(tile, 14);
             var tileId2 = Tile.ToLocalId(tile.x + 1, tile.y, 14);
             var tileId3 = Tile.ToLocalId(tile.x + 1, tile.y + 1, 14);
@@ -321,7 +321,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
                 Version = 1,
                 Visible = true
             };
-            var tile = Tile.FromWorld(50, 4, 14);
+            var tile = Tile.FromWorld(4, 50, 14);
             var tileId1 = Tile.ToLocalId(tile, 14);
             var tileId2 = Tile.ToLocalId(tile.x + 1, tile.y, 14);
             var tileId3 = Tile.ToLocalId(tile.x + 1, tile.y + 1, 14);

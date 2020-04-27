@@ -5,6 +5,7 @@ using System.Linq;
 using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
+using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
@@ -14,10 +15,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         private readonly Stream _data;
         private readonly SparseArray _pointers;
         private readonly SparseArray _previousPointers;
+        private readonly uint _zoom;
 
-        public OsmTiledLinkedStream(Stream data)
+        public OsmTiledLinkedStream(Stream data, uint zoom = 14)
         {
             _data = data;
+            _zoom = zoom;
+            
+            _data.WriteUInt32(zoom);
             
             _pointers = new SparseArray(0, emptyDefault: long.MaxValue);
             _previousPointers = new SparseArray(0, emptyDefault: long.MaxValue);
@@ -27,6 +32,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             _data = data;
             _pointers = pointers;
+            _zoom = _data.ReadUInt32();
         }
 
         public OsmGeo Get(long pointer, byte[] buffer = null)
@@ -65,6 +71,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _pointers.EnsureMinimumSize(tile + 1);
             _previousPointers.EnsureMinimumSize(tile + 1);
 
+            var isNode = false;
+            if (osmGeo is Node node)
+            {
+                isNode = true;
+                var nodeTileId = ToTile(node);
+                if (nodeTileId != tile) throw new InvalidDataException("Node is not in correct tile.");
+            }
+
             var previousPointer = _previousPointers[tile];
             if (previousPointer == long.MaxValue)
             {
@@ -72,8 +86,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
 
             var pointer = _data.Position;
-            _data.WriteVarUInt32(1);
-            _data.WriteVarUInt32(tile);
+            if (isNode)
+            {
+                _data.WriteVarUInt32(1);
+            }
+            else
+            {
+                _data.WriteVarUInt32(2);
+                _data.WriteVarUInt32(tile);
+            }
             _previousPointers[tile] = _data.Position;
             if (previousPointer != long.MaxValue)
             {
@@ -91,7 +112,21 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             var position = _data.Position;
             var c = (uint) tiles.Count;
-            _data.WriteVarUInt32(c);
+
+            if (c == 1)
+            {
+                return this.Append(tiles.First(), osmGeo, buffer);
+            }
+            
+            // write count with one off.
+            if (c == 0)
+            {
+                _data.WriteVarUInt32(0);
+            }
+            else
+            {
+                _data.WriteVarUInt32(c + 1);
+            }
             
             // write tile ids, followed by the pointers.
             foreach (var tile in tiles)
@@ -133,6 +168,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             return position;
         }
 
+        private uint ToTile(Node node)
+        {
+            if (!node.Longitude.HasValue || !node.Latitude.HasValue) throw new InvalidDataException("Not without latitude or longitude cannot be read.");
+            var tile = Tile.FromWorld(node.Longitude.Value, node.Latitude.Value, _zoom);
+            return Tile.ToLocalId(tile, _zoom);
+        }
+        
         public IEnumerable<uint> GetTiles()
         {
             for (uint t = 0; t < _pointers.Length; t++)
@@ -205,13 +247,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 
                 // read tile count.
                 var c = _data.ReadVarUInt32();
+                var isNode = c == 1;
+                if (c > 1) c -= 1;
                 if (tileFlags.Length < c) Array.Resize(ref tileFlags, (int)c);
 
                 // find tile.
-                for (var t = 0; t < c; t++)
+                if (!isNode)
                 {
-                    var currentTile = _data.ReadVarUInt32();
-                    tileFlags[t] = tilesSet.Contains(currentTile);
+                    for (var t = 0; t < c; t++)
+                    {
+                        var currentTile = _data.ReadVarUInt32();
+                        tileFlags[t] = tilesSet.Contains(currentTile);
+                    }
                 }
 
                 // queue next tiles.
@@ -252,18 +299,27 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
                 // read tile count.
                 var c = _data.ReadVarUInt32();
+                var isNode = c == 1;
+                if (c > 1) c -= 1;
 
                 // find tile.
                 var tIndex = -1;
-                for (var t = 0; t < c; t++)
+                if (isNode)
                 {
-                    var currentTile = _data.ReadVarUInt32();
-                    if (currentTile == tile)
-                    {
-                        tIndex = t;
-                    }
+                    tIndex = 0;
                 }
-                if (tIndex < 0) throw new InvalidDataException("Tile not found, should always be there!");
+                else
+                {
+                    for (var t = 0; t < c; t++)
+                    {
+                        var currentTile = _data.ReadVarUInt32();
+                        if (currentTile == tile)
+                        {
+                            tIndex = t;
+                        }
+                    }
+                    if (tIndex < 0) throw new InvalidDataException("Tile not found, should always be there!");
+                }
 
                 // read next pointer.
                 var pointerPosition = _data.Position;

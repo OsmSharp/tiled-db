@@ -550,12 +550,12 @@ namespace OsmSharp.Db.Tiled.IO
             }
         }
 
-        public static ulong ReadUInt32(this Stream stream)
+        public static uint ReadUInt32(this Stream stream)
         {
-            var value = 0UL;
+            var value = 0U;
             for (var b = 0; b < 4; b++)
             {
-                value += ((ulong)stream.ReadByte() << (b * 8));
+                value += ((uint)stream.ReadByte() << (b * 8));
             }
 
             return value;
