@@ -16,16 +16,13 @@
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="Serilog" Version="2.7.1" />
     <PackageReference Include="Reminiscence" Version="1.4.0-pre003" />
+    <PackageReference Include="OsmSharp.IO.Binary" Version="0.2.3-alpha" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\..\SharedAssemblyVersion.cs">
       <Link>SharedAssemblyVersion.cs</Link>
     </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\osmsharp\osm-binary\src\OsmSharp.IO.Binary\OsmSharp.IO.Binary.csproj" />
   </ItemGroup>
 
 </Project>
