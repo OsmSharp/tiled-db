@@ -8,6 +8,7 @@ using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Logging;
+using Serilog;
 using TraceEventType = OsmSharp.Logging.TraceEventType;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Build

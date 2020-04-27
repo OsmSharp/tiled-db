@@ -1,5 +1,6 @@
 using System.IO;
 using OsmSharp.Db.Tiled.IO;
+using OsmSharp.Db.Tiled.OsmTiled.IO;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
 {
@@ -20,7 +21,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         public long? Get(OsmGeoKey id)
         {
-            var encoded = BitCoder.Encode(id);
+            var encoded = OsmGeoCoder.Encode(id);
             var pointer = Find(encoded);
             if (pointer == null) return null;
 
