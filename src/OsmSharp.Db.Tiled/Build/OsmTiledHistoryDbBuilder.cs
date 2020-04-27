@@ -4,9 +4,6 @@ using System.IO;
 using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
-using OsmSharp.Db.Tiled.OsmTiled.Build;
-using OsmSharp.Db.Tiled.OsmTiled.Tiles;
-using OsmSharp.Streams;
 
 namespace OsmSharp.Db.Tiled.Build
 {

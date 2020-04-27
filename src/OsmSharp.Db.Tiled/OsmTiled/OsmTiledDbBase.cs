@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
-using OsmSharp.Db.Tiled.OsmTiled.Tiles;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
 {

@@ -2,10 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using OsmSharp.Db.Tiled.Indexes.TileMaps;
-using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
-using OsmSharp.Db.Tiled.OsmTiled.Tiles;
 using OsmSharp.Db.Tiled.Tiles;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
