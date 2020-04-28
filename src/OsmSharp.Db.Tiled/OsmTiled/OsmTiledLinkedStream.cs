@@ -190,8 +190,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        public IEnumerable<OsmGeo> GetForTile(uint tile, byte[] buffer = null)
+        public IEnumerable<OsmGeo> GetForTile(uint tile, byte[] buffer)
         {
+            if (buffer?.Length < 1024) Array.Resize(ref buffer, 1024); 
+            
             using var enumerator = this.GetForTileInternal(tile, buffer).GetEnumerator();
             if (!enumerator.MoveNext()) yield break;
             var osmGeo1 = enumerator.Current;
@@ -226,8 +228,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        public IEnumerable<OsmGeo> GetForTiles(IEnumerable<uint> tiles)
+        public IEnumerable<OsmGeo> GetForTiles(IEnumerable<uint> tiles, byte[] buffer)
         {
+            if (buffer?.Length < 1024) Array.Resize(ref buffer, 1024); 
+            
             var queue = new BinaryHeap();
             var tilesSet = new HashSet<uint>(tiles);
             foreach (var tile in tilesSet)
@@ -277,24 +281,21 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                     }
                 }
                 
-                yield return _data.ReadOsmGeo();
+                yield return _data.ReadOsmGeo(buffer);
             }
         }
 
-        private IEnumerable<OsmGeo> GetForTileInternal(uint tile, byte[] buffer = null)
+        private IEnumerable<OsmGeo> GetForTileInternal(uint tile, byte[]? buffer)
         {
-            foreach (var (osmGeoPointer, _) in this.GetForTilePointers(tile, buffer))
+            foreach (var (osmGeoPointer, _) in this.GetForTilePointers(tile))
             {
                 _data.Seek(osmGeoPointer, SeekOrigin.Begin);
-                yield return _data.ReadOsmGeo();
+                yield return _data.ReadOsmGeo(buffer);
             }
         }
 
-        private IEnumerable<(long pointer, long osmGeoPointer)> GetForTilePointers(uint tile, byte[] buffer = null)
+        private IEnumerable<(long pointer, long osmGeoPointer)> GetForTilePointers(uint tile)
         {
-            if (buffer?.Length < 8) buffer = null;
-            buffer ??= new byte[8];
-            
             var pointer = _pointers[tile];
             while (pointer != long.MaxValue)
             {

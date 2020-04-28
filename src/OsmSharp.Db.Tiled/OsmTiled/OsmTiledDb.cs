@@ -33,7 +33,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override async Task<OsmGeo?> Get(OsmGeoType type, long id, byte[] buffer = null)
+        public override async Task<OsmGeo?> Get(OsmGeoType type, long id, byte[]? buffer = null)
         {
             var pointer = _index.Get((new OsmGeoKey(type, id)));
             if (!pointer.HasValue) return null;
@@ -58,11 +58,17 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override async Task<IEnumerable<OsmGeo>> Get((uint x, uint y) tile)
+        public override async Task<IEnumerable<OsmGeo>> Get((uint x, uint y)[] tiles, byte[]? buffer = null)
         {
-            var tileId = Tile.ToLocalId(tile, this.Zoom);
-
-            return _data.GetForTile(tileId);
+            buffer ??= new byte[1024];
+            
+            if (tiles.Length == 1)
+            {
+                var tileId = Tile.ToLocalId(tiles[0], this.Zoom);
+                return _data.GetForTile(tileId, buffer);
+            }
+            return _data.GetForTiles(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)), 
+                buffer);
         }
 
         /// <inheritdoc/>

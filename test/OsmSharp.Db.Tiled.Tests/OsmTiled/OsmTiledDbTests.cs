@@ -200,7 +200,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             // 14/8374/5556.osm.tile
             var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");
 
-            var tile = await osmTiledDb.Get((8374, 5556));
+            var tile = await osmTiledDb.Get(new (uint x, uint y) [] { (8374, 5556) });
             Assert.NotNull(tile);
 
             using var enumerator = tile.GetEnumerator();

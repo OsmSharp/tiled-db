@@ -31,7 +31,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             var tile = Tile.ToLocalId(Tile.FromWorld(node.Longitude.Value, node.Latitude.Value, 14), 14);
             linkedStream.Append(tile, node);
 
-            var nodes = linkedStream.GetForTile(tile).ToList();
+            var nodes = linkedStream.GetForTile(tile, new byte[1024]).ToList();
             Assert.AreEqual(1, nodes.Count);
             Assert.AreEqual(node.Id, nodes[0].Id);
         }
@@ -68,7 +68,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
                 Version = 1
             });
 
-            var nodes = linkedStream.GetForTile(tileId1).ToList();
+            var nodes = linkedStream.GetForTile(tileId1, new byte[1024]).ToList();
             Assert.AreEqual(2, nodes.Count);
             Assert.AreEqual(456414, nodes[0].Id);
             Assert.AreEqual(456415, nodes[1].Id);
@@ -98,11 +98,11 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
                 Visible = true
             });
 
-            var osmGeos = linkedStream.GetForTile(tileId1).ToList();
+            var osmGeos = linkedStream.GetForTile(tileId1, new byte[1024]).ToList();
             Assert.AreEqual(1, osmGeos.Count);
             Assert.AreEqual(235189, osmGeos[0].Id);
 
-            osmGeos = linkedStream.GetForTile(tileId2).ToList();
+            osmGeos = linkedStream.GetForTile(tileId2, new byte[1024]).ToList();
             Assert.AreEqual(1, osmGeos.Count);
             Assert.AreEqual(235189, osmGeos[0].Id);
         }
@@ -146,12 +146,12 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
                 Visible = true
             });
 
-            var osmGeos = linkedStream.GetForTile(tileId1).ToList();
+            var osmGeos = linkedStream.GetForTile(tileId1, new byte[1024]).ToList();
             Assert.AreEqual(2, osmGeos.Count);
             Assert.AreEqual(235189, osmGeos[0].Id);
             Assert.AreEqual(235190, osmGeos[1].Id);
 
-            osmGeos = linkedStream.GetForTile(tileId2).ToList();
+            osmGeos = linkedStream.GetForTile(tileId2, new byte[1024]).ToList();
             Assert.AreEqual(2, osmGeos.Count);
             Assert.AreEqual(235189, osmGeos[0].Id);
             Assert.AreEqual(235190, osmGeos[1].Id);
@@ -233,26 +233,26 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             linkedStream.Append(new [] { tileId1, tileId2 }, way1);
             linkedStream.Append(new [] { tileId1, tileId2, tileId3, tileId4, tileId5 }, relation1);
 
-            var osmGeos = linkedStream.GetForTile(tileId1).ToList();
+            var osmGeos = linkedStream.GetForTile(tileId1, new byte[1024]).ToList();
             Assert.AreEqual(3, osmGeos.Count);
             Assert.AreEqual(relation1.Id, osmGeos[2].Id);
             Assert.AreEqual(way1.Id, osmGeos[1].Id);
             Assert.AreEqual(node1.Id, osmGeos[0].Id);
 
-            osmGeos = linkedStream.GetForTile(tileId2).ToList();
+            osmGeos = linkedStream.GetForTile(tileId2, new byte[1024]).ToList();
             Assert.AreEqual(2, osmGeos.Count);
             Assert.AreEqual(relation1.Id, osmGeos[1].Id);
             Assert.AreEqual(way1.Id, osmGeos[0].Id);
 
-            osmGeos = linkedStream.GetForTile(tileId3).ToList();
+            osmGeos = linkedStream.GetForTile(tileId3, new byte[1024]).ToList();
             Assert.AreEqual(1, osmGeos.Count);
             Assert.AreEqual(relation1.Id, osmGeos[0].Id);
 
-            osmGeos = linkedStream.GetForTile(tileId4).ToList();
+            osmGeos = linkedStream.GetForTile(tileId4, new byte[1024]).ToList();
             Assert.AreEqual(1, osmGeos.Count);
             Assert.AreEqual(relation1.Id, osmGeos[0].Id);
 
-            osmGeos = linkedStream.GetForTile(tileId5).ToList();
+            osmGeos = linkedStream.GetForTile(tileId5, new byte[1024]).ToList();
             Assert.AreEqual(1, osmGeos.Count);
             Assert.AreEqual(relation1.Id, osmGeos[0].Id);
         }
@@ -333,12 +333,12 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             linkedStream.Append(new[] {tileId1, tileId2}, way1);
             linkedStream.Append(new[] {tileId1, tileId2, tileId3, tileId4, tileId5}, relation1);
 
-            var osmGeos = linkedStream.GetForTiles(new[] {tileId2, tileId3}).ToList();
+            var osmGeos = linkedStream.GetForTiles(new[] {tileId2, tileId3}, new byte[1024]).ToList();
             Assert.AreEqual(2, osmGeos.Count);
             Assert.AreEqual(way1.Id, osmGeos[0].Id);
             Assert.AreEqual(relation1.Id, osmGeos[1].Id);
 
-            osmGeos = linkedStream.GetForTiles(new[] {tileId1, tileId2, tileId3}).ToList();
+            osmGeos = linkedStream.GetForTiles(new[] {tileId1, tileId2, tileId3}, new byte[1024]).ToList();
             Assert.AreEqual(3, osmGeos.Count);
             Assert.AreEqual(node1.Id, osmGeos[0].Id);
             Assert.AreEqual(way1.Id, osmGeos[1].Id);
