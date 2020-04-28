@@ -74,31 +74,39 @@ namespace OsmSharp.Db.Tiled.IO
             }
         }
 
-        private void GrowBuffer(int offset)
+        private void MoveBuffer(int count)
         {
-            var position = _position + offset;
+            var position = _position + count;
             if (position < _bufferPosition)
             { 
                 // all data is before buffer, don't grow it.
                 return;
             }
 
-            var size = (int)(position - _bufferPosition);
-            if (_bufferSize > size)
+            var lastBufferPosition = _bufferPosition + _bufferSize;
+            if (lastBufferPosition < position)
             {
-                // no need to grow.
-                return;
+                // first try growing the buffer.
+                if (_bufferSize < _buffer.Length)
+                {
+                    var newSize = _bufferSize + (position - lastBufferPosition);
+                    if (newSize <= _buffer.Length)
+                    {
+                        // growing buffer makes enough space.
+                        _bufferSize = (int)newSize;
+                        return;
+                    }
+                    
+                    // growing buffer has reached maximum but still not enough space.
+                    _bufferSize = _buffer.Length;
+                }
+                
+                // force buffer move to minimum viable position.
+                var positionBefore = _position;
+                _position = position - 1;
+                MoveBuffer();
+                _position = positionBefore;
             }
-
-            if (size > _buffer.Length)
-            {
-                // grown until max.
-                size = _buffer.Length;
-            }
-
-            // resize buffer and make sure position is optimal.
-            _bufferSize = size;
-            MoveBuffer();
         }
         
         public override void Flush()
@@ -122,14 +130,21 @@ namespace OsmSharp.Db.Tiled.IO
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (_position + count < _bufferPosition)
+            // read if from buffer when available, from underlying stream when not.
+            if (count > _buffer.Length) throw new ArgumentException("Cannot write byte arrays larger than buffer.");
+            
+            if (_position + count <= _bufferPosition)
             {
                 // completely before buffer.
                 _stream.Seek(_position, SeekOrigin.Begin);
-                return _stream.Read(buffer, offset, count);
+                var c = _stream.Read(buffer, offset, count);
+                _position = _stream.Position;
+                return c;
             }
             else
             {
+                var originalCount = count;
+                
                 // read bytes before buffer if any.
                 var bytesBeforeBuffer = (int)(_bufferPosition - _position);
                 if (bytesBeforeBuffer > 0)
@@ -141,22 +156,22 @@ namespace OsmSharp.Db.Tiled.IO
                 }
                 
                 // read bytes from buffer at end if there is an overlap.
-                var bufferPointer = _bufferPointer;
-                var bufferSpan = buffer.AsSpan(offset);
-                if (bufferPointer + count > _bufferSize)
+                var bufferOffset = (int) (_position - _bufferPosition);
+                var bufferSpan = _buffer.AsSpan((bufferOffset + _bufferPointer) % _bufferSize);
+                if (count > bufferSpan.Length)
                 {
-                    // read overlaps buffer end.
-                    var bytesAtEnd = _bufferSize - bufferPointer;
-                    _buffer.AsSpan(bufferPointer, bytesAtEnd).CopyTo(bufferSpan);
-                    offset += bytesAtEnd;
-                    count -= bytesAtEnd;
-                    bufferPointer = 0;
-                    bufferSpan = buffer.AsSpan(offset);
+                    // write overlaps buffer end.
+                    bufferSpan.CopyTo(buffer.AsSpan(offset));
+                    offset += bufferSpan.Length;
+                    count -= bufferSpan.Length;
+                    bufferSpan = _buffer.AsSpan(0,  count);
                 }
                 
-                // read bytes from buffer.
-                _buffer.AsSpan(bufferPointer, count).CopyTo(bufferSpan);
-                return count;
+                // write bytes to buffer.
+                bufferSpan.Slice(0, count).CopyTo(buffer.AsSpan(offset));
+
+                _position += originalCount;
+                return originalCount;
             }
         }
 
@@ -174,8 +189,6 @@ namespace OsmSharp.Db.Tiled.IO
             {
                 _position = this.Length - offset;
             }
-            
-            MoveBuffer();
 
             return _position;
         }
@@ -187,6 +200,8 @@ namespace OsmSharp.Db.Tiled.IO
 
         public override void Write(byte[] buffer, int offset, int count)
         {
+            if (count > _buffer.Length) throw new ArgumentException("Cannot write byte arrays larger than buffer.");
+            
             if (_position + count < _bufferPosition)
             {
                 // completely before buffer.
@@ -199,7 +214,7 @@ namespace OsmSharp.Db.Tiled.IO
                 var originalCount = count;
                 
                 // grow buffer if needed.
-                GrowBuffer(count);
+                MoveBuffer(count);
                 
                 // write bytes before buffer if any.
                 var bytesBeforeBuffer = (int)(_bufferPosition - _position);
@@ -212,18 +227,15 @@ namespace OsmSharp.Db.Tiled.IO
                 }
                 
                 // writes bytes to buffer at end if there is an overlap.
-                var bufferPointer = _bufferPointer;
                 var bufferOffset = (int) (_position - _bufferPosition);
-                var bufferSpan = _buffer.AsSpan((bufferOffset + _bufferPointer) % _bufferSize, _bufferSize - bufferOffset);
+                var bufferSpan = _buffer.AsSpan((bufferOffset + _bufferPointer) % _bufferSize);
                 if (count > bufferSpan.Length)
                 {
                     // write overlaps buffer end.
-                    var bytesAtEnd = _bufferSize - bufferPointer;
-                    buffer.AsSpan(offset, bytesAtEnd).CopyTo(bufferSpan);
-                    offset += bytesAtEnd;
-                    count -= bytesAtEnd;
-                    bufferPointer = 0;
-                    bufferSpan = buffer.AsSpan(bufferPointer);
+                    buffer.AsSpan(offset, bufferSpan.Length).CopyTo(bufferSpan);
+                    offset += bufferSpan.Length;
+                    count -= bufferSpan.Length;
+                    bufferSpan = _buffer.AsSpan(0,  _bufferPointer);
                 }
                 
                 // write bytes to buffer.
