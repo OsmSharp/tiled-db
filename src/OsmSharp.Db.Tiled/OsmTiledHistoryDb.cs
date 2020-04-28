@@ -19,8 +19,7 @@ namespace OsmSharp.Db.Tiled
         /// Creates a new OSM db.
         /// </summary>
         /// <param name="path">The path.</param>
-        /// <param name="settings">The path.</param>
-        internal OsmTiledHistoryDb(string path, OsmTiledHistoryDbSettings settings = null)
+        internal OsmTiledHistoryDb(string path)
         {
             _path = path;
 
@@ -118,11 +117,9 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         /// <param name="path">The path.</param>
         /// <param name="osmDb">The db if any.</param>
-        /// <param name="settings">The settings if any.</param>
         /// <returns>True if a db was loaded, false otherwise.</returns>
-        public static bool TryLoad(string path, out OsmTiledHistoryDb? osmDb, OsmTiledHistoryDbSettings settings = null)
+        public static bool TryLoad(string path, out OsmTiledHistoryDb? osmDb)
         {
-            settings ??= new OsmTiledHistoryDbSettings();
             if (FileSystemFacade.FileSystem.Exists(
                 OsmTiledDbOperations.PathToMeta(path)))
             {

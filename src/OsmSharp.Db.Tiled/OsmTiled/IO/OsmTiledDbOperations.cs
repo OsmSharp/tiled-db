@@ -15,17 +15,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             JsonSerializer.CreateDefault().Serialize(streamWriter, dbMeta);
         }
         
-        public static OsmTiledDbBase LoadDb(string path, OsmTiledDbSettings settings = null)
+        public static OsmTiledDbBase LoadDb(string path)
         {
-            settings ??= new OsmTiledDbSettings();
-            
             var meta = OsmTiledDbOperations.LoadDbMeta(path);
             switch (meta.Type)
             {
 //                case SnapshotDbType.Diff:
 //                    return new SnapshotDbDiff(path, meta);
                 case OsmTiledDbType.Full:
-                    return new OsmTiledDb(path, meta, settings);
+                    return new OsmTiledDb(path, meta);
             }
             
             throw new Exception("Could not determine db type from meta.");

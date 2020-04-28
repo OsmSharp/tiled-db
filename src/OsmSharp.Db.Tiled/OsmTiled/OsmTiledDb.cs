@@ -14,26 +14,20 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     {
         private readonly OsmTiledIndex _index;
         private readonly OsmTiledLinkedStream _data;
-        private readonly bool _asReader = false;
         
         /// <summary>
         /// Creates a new db using the data at the given path.
         /// </summary>
-        internal OsmTiledDb(string path, OsmTiledDbSettings settings)
+        internal OsmTiledDb(string path)
             : base(path)
         {
-            _asReader = settings.AsReader;
-            
             _data = OsmTiledDbOperations.LoadData(this.Path);
             _index = OsmTiledDbOperations.LoadIndex(this.Path);
         }
 
-        internal OsmTiledDb(string path, OsmTiledDbMeta meta, OsmTiledDbSettings settings)
+        internal OsmTiledDb(string path, OsmTiledDbMeta meta)
             : base(path, meta)
         {
-            settings ??= new OsmTiledDbSettings();
-            _asReader = settings.AsReader;
-            
             _data = OsmTiledDbOperations.LoadData(this.Path);
             _index = OsmTiledDbOperations.LoadIndex(this.Path);
         }

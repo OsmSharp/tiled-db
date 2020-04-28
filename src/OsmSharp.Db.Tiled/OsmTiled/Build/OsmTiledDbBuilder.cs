@@ -22,7 +22,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="zoom">The zoom.</param>
         /// <param name="settings">The settings.</param>
         public static async Task Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14,
-            OsmTiledDbBuildSettings settings = null)
+            OsmTiledDbBuildSettings? settings = null)
         {
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
             if (path == null) { throw new ArgumentNullException(nameof(path)); }

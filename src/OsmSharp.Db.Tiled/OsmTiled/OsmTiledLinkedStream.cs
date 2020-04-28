@@ -28,11 +28,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _previousPointers = new SparseArray(0, emptyDefault: long.MaxValue);
         }
 
-        private OsmTiledLinkedStream(SparseArray pointers, Stream data)
+        private OsmTiledLinkedStream(SparseArray pointers, Stream data, uint zoom)
         {
             _data = data;
             _pointers = pointers;
-            _zoom = _data.ReadUInt32();
+            _zoom = zoom;
         }
 
         public OsmGeo Get(long pointer, byte[]? buffer = null)
@@ -70,7 +70,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        public long Append(uint tile, OsmGeo osmGeo, byte[] buffer = null)
+        public long Append(uint tile, OsmGeo osmGeo, byte[]? buffer = null)
         {
             _pointers.EnsureMinimumSize(tile + 1);
             _previousPointers.EnsureMinimumSize(tile + 1);
@@ -112,7 +112,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             return pointer;
         }
 
-        public long Append(IReadOnlyCollection<uint> tiles, OsmGeo osmGeo, byte[] buffer = null)
+        public long Append(IReadOnlyCollection<uint> tiles, OsmGeo osmGeo, byte[]? buffer = null)
         {
             var position = _data.Position;
             var c = (uint) tiles.Count;
@@ -355,8 +355,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             if (version != 1) throw new InvalidDataException("Invalid version, cannot read index.");
 
             var pointers = SparseArray.Deserialize(indexStream);
+
+            var zoom = stream.ReadUInt32();
             
-            return new OsmTiledLinkedStream(pointers, stream);
+            return new OsmTiledLinkedStream(pointers, stream, zoom);
         }
 
         public void Dispose()

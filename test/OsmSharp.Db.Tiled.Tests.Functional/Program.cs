@@ -94,10 +94,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
 
                 var ticks = DateTime.Now.Ticks;
                 // try loading the db, if it doesn't exist build it.
-                if (!OsmTiledHistoryDb.TryLoad(args[1], out var db, new OsmTiledHistoryDbSettings()
-                {
-                    AsReader = true
-                }))
+                if (!OsmTiledHistoryDb.TryLoad(args[1], out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
 
