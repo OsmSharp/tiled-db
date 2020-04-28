@@ -37,8 +37,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             var wayToTiles = new TilesMap();
             var relationToTiles = new TilesMap();
 
-            using var data = FileSystemFacade.FileSystem.Open(
+            using var dataBase = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToData(path), FileMode.Create);
+            var data = new HugeBufferedStream(dataBase);
             using var dataTilesIndex = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToTileIndex(path), FileMode.Create);
             using var dataIdIndex = FileSystemFacade.FileSystem.Open(
@@ -138,6 +139,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             }
             
             // reverse indexed data and save tile index.
+            data.Flush();
             tiledStream.SerializeIndex(dataTilesIndex);
 
             // save the meta-data.
