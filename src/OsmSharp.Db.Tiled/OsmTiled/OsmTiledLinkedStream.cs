@@ -7,6 +7,7 @@ using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
+using Serilog;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
 {
@@ -15,12 +16,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         private readonly Stream _data;
         private readonly SparseArray _pointers;
         private readonly SparseArray? _previousPointers;
+        private readonly long[]? _pointers1;
+        private readonly long[]? _pointers2;
         private readonly uint _zoom;
 
         private const long NoData = long.MaxValue;
         private const long EmptyTile = long.MaxValue - 1;
 
-        public OsmTiledLinkedStream(Stream data, uint zoom = 14)
+        public OsmTiledLinkedStream(Stream data, uint zoom = 14, bool usePointersCache = false)
         {
             _data = data;
             _zoom = zoom;
@@ -29,6 +32,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             
             _pointers = new SparseArray(0, emptyDefault: NoData);
             _previousPointers = new SparseArray(0, emptyDefault: NoData);
+            if (usePointersCache)
+            {
+                _pointers1 = new long[1024 * 1024 * 32];
+                _pointers2 = new long[1024 * 1024 * 32];
+            }
         }
 
         private OsmTiledLinkedStream(SparseArray pointers, Stream data, uint zoom)
@@ -36,6 +44,26 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _data = data;
             _pointers = pointers;
             _zoom = zoom;
+        }
+
+        private long _nextDelayedPointer = 0;
+
+        private void FlushDelayedPointers()
+        {
+            if (_pointers1 == null || _pointers2 == null) return;
+            
+            Array.Sort(_pointers1, _pointers2, 0, (int)_nextDelayedPointer);
+
+            Log.Verbose($"Flushing {_nextDelayedPointer}...");
+            var before = _data.Position;
+            for (var i = 0; i < _nextDelayedPointer; i++)
+            {
+                _data.Seek(_pointers1[i], SeekOrigin.Begin);
+                _data.WriteInt64(_pointers2[i]);
+            }
+
+            _data.Seek(before, SeekOrigin.Begin);
+            _nextDelayedPointer = 0;
         }
 
         public OsmGeo Get(long pointer, byte[]? buffer = null)
@@ -120,10 +148,26 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _previousPointers[tile] = _data.Position;
             if (previousPointer != NoData)
             {
-                var before = _data.Position;
-                _data.Seek(previousPointer, SeekOrigin.Begin);
-                _data.WriteInt64(pointer);
-                _data.Seek(before, SeekOrigin.Begin);
+                if (_pointers1 != null &&
+                    _pointers2 != null &&
+                    _data is HugeBufferedStream bufferedStream &&
+                    !bufferedStream.IsInBuffer(previousPointer))
+                {
+                    // delay write, outside of buffer.
+                    _pointers1[_nextDelayedPointer] = previousPointer;
+                    _pointers2[_nextDelayedPointer] = pointer;
+                    _nextDelayedPointer++;
+
+                    if (_nextDelayedPointer == _pointers1.Length) FlushDelayedPointers();
+                }
+                else
+                {
+                    // write pointer, in buffer.
+                    var before = _data.Position;
+                    _data.Seek(previousPointer, SeekOrigin.Begin);
+                    _data.WriteInt64(pointer);
+                    _data.Seek(before, SeekOrigin.Begin);
+                }
             }
             _data.WriteInt64(NoData);
             _data.Append(osmGeo, buffer);
@@ -177,8 +221,23 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 
                 if (previousPointer == NoData) continue;
                 
-                _data.Seek(previousPointer, SeekOrigin.Begin);
-                _data.WriteInt64(position);
+                if (_pointers1 != null &&
+                    _pointers2 != null &&
+                    _data is HugeBufferedStream bufferedStream &&
+                    !bufferedStream.IsInBuffer(previousPointer))
+                {
+                    // delay write, outside of buffer.
+                    _pointers1[_nextDelayedPointer] = previousPointer;
+                    _pointers2[_nextDelayedPointer] = position;
+                    _nextDelayedPointer++;
+
+                    if (_nextDelayedPointer == _pointers1.Length) FlushDelayedPointers();
+                }
+                else
+                {
+                    _data.Seek(previousPointer, SeekOrigin.Begin);
+                    _data.WriteInt64(position);
+                }
             }
             
             // write end pointers.
@@ -423,6 +482,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             return new OsmTiledLinkedStream(pointers, stream, zoom);
         }
 
+        public void Flush()
+        {
+            this.FlushDelayedPointers();
+
+            _data.Flush();
+        }
+        
         public void Dispose()
         {
             _data?.Dispose();

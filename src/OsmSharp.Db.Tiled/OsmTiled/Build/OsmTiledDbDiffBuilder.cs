@@ -292,6 +292,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             }
 
             // reverse indexed data and save tile index.
+            tiledStream.Flush();
             tiledStream.SerializeIndex(dataTilesIndex);
 
             // save the meta-data.

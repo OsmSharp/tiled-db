@@ -9,7 +9,7 @@ namespace OsmSharp.Db.Tiled.IO
         private readonly byte[] _buffer;
         private readonly int _blockSize;
 
-        public HugeBufferedStream(Stream stream, int bufferSize = 1024*1024*1024, int blockSize = 1024*1024)
+        public HugeBufferedStream(Stream stream, int bufferSize = 1024*1024*1024, int blockSize = 1024)
         {
             if (!stream.CanRead) throw new ArgumentException("Stream doesn't support reading.");
             if (!stream.CanSeek) throw new ArgumentException("Stream doesn't support seeking.");
@@ -130,8 +130,26 @@ namespace OsmSharp.Db.Tiled.IO
         
         public override int ReadByte()
         {
-            this.Read(SingleByte, 0, 1);
-            return SingleByte[0];
+            if (_position + 1 <= _bufferPosition)
+            {
+                // completely before buffer.
+                _stream.Seek(_position, SeekOrigin.Begin);
+                return _stream.ReadByte();
+            }
+            else
+            {
+                // read bytes before buffer if any.
+                var bytesBeforeBuffer = (int)(_bufferPosition - _position);
+                if (bytesBeforeBuffer > 0)
+                {
+                    _stream.Seek(_position, SeekOrigin.Begin);
+                    return _stream.ReadByte();
+                }
+                
+                // read bytes from buffer at end if there is an overlap.
+                var bufferOffset = (int) (_position - _bufferPosition);
+                return _buffer[(bufferOffset + _bufferPointer) % _bufferSize];
+            }
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -204,11 +222,48 @@ namespace OsmSharp.Db.Tiled.IO
             throw new NotSupportedException();
         }
 
-        private readonly byte[] SingleByte = new byte[1];
         public override void WriteByte(byte value)
         {
-            SingleByte[0] = value;
-            Write(SingleByte, 0, 1);
+            if (_position + 1 <= _bufferPosition)
+            {
+                // completely before buffer.
+                _stream.Seek(_position, SeekOrigin.Begin);
+                _stream.WriteByte(value);
+                _position = _stream.Position;
+            }
+            else
+            {
+                // grow buffer if needed.
+                MoveBuffer(1);
+                
+                // write bytes before buffer if any.
+                var bytesBeforeBuffer = (int)(_bufferPosition - _position);
+                if (bytesBeforeBuffer > 0)
+                {
+                    _stream.Seek(_position, SeekOrigin.Begin);
+                    _stream.WriteByte(value);
+                    _position += 1;
+                    return;
+                }
+                
+                // writes bytes to buffer at end if there is an overlap.
+                var bufferOffset = (int) (_position - _bufferPosition);
+                _buffer[(bufferOffset + _bufferPointer) % _bufferSize] = value;
+
+                _position += 1;
+            }
+        }
+
+        public bool IsInBuffer(long position, int count = 1)
+        {
+            if (count > _buffer.Length) return false;
+            
+            if (position + count <= _bufferPosition)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public override void Write(byte[] buffer, int offset, int count)

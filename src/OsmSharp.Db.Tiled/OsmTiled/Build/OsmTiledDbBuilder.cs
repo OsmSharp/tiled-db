@@ -45,7 +45,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             using var dataIdIndex = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToIdIndex(path), FileMode.Create);
             
-            var tiledStream = new OsmTiledLinkedStream(data);
+            var tiledStream = new OsmTiledLinkedStream(data, usePointersCache: true);
             var idIndex = new OsmTiledIndex(dataIdIndex);
             var tileSet = new HashSet<uint>();
             var mode = OsmGeoType.Node;
@@ -139,7 +139,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             }
             
             // reverse indexed data and save tile index.
-            data.Flush();
+            tiledStream.Flush();
             tiledStream.SerializeIndex(dataTilesIndex);
 
             // save the meta-data.
