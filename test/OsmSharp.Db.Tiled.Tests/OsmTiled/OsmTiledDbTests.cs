@@ -96,20 +96,20 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             await osmGeos.Build(@"/OsmTiledDbTests");
             
             var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");
-            var node1 = await osmTiledDb.Get(OsmGeoType.Node, 456414);
+            var node1 = osmTiledDb.Get(OsmGeoType.Node, 456414);
             Assert.NotNull(node1);
-            var node2 = await osmTiledDb.Get(OsmGeoType.Node, 456415);
+            var node2 = osmTiledDb.Get(OsmGeoType.Node, 456415);
             Assert.NotNull(node2);
-            var way1 = await osmTiledDb.Get(OsmGeoType.Way, 235189);
+            var way1 = osmTiledDb.Get(OsmGeoType.Way, 235189);
             Assert.NotNull(way1);
-            var relation1 = await osmTiledDb.Get(OsmGeoType.Relation, 982313);
+            var relation1 = osmTiledDb.Get(OsmGeoType.Relation, 982313);
             Assert.NotNull(relation1);
             
-            var doesNotExist = await osmTiledDb.Get(OsmGeoType.Relation, 982314);
+            var doesNotExist = osmTiledDb.Get(OsmGeoType.Relation, 982314);
             Assert.Null(doesNotExist);
-            doesNotExist = await osmTiledDb.Get(OsmGeoType.Node, 456413);
+            doesNotExist = osmTiledDb.Get(OsmGeoType.Node, 456413);
             Assert.Null(doesNotExist);
-            doesNotExist = await osmTiledDb.Get(OsmGeoType.Way, 235188);
+            doesNotExist = osmTiledDb.Get(OsmGeoType.Way, 235188);
             Assert.Null(doesNotExist);
         }
         
@@ -200,26 +200,26 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             // 14/8374/5556.osm.tile
             var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");
 
-            var tile = await osmTiledDb.Get(new (uint x, uint y) [] { (8374, 5556) });
+            var tile = osmTiledDb.Get(new (uint x, uint y) [] { (8374, 5556) });
             Assert.NotNull(tile);
 
             using var enumerator = tile.GetEnumerator();
             Assert.True(enumerator.MoveNext());
             Assert.NotNull(enumerator.Current);
-            Assert.AreEqual(456414, enumerator.Current.Id);
-            Assert.AreEqual(OsmGeoType.Node, enumerator.Current.Type);
+            Assert.AreEqual(456414, enumerator.Current.osmGeo.Id);
+            Assert.AreEqual(OsmGeoType.Node, enumerator.Current.osmGeo.Type);
             Assert.True(enumerator.MoveNext());
             Assert.NotNull(enumerator.Current);
-            Assert.AreEqual(456415, enumerator.Current.Id);
-            Assert.AreEqual(OsmGeoType.Node, enumerator.Current.Type);
+            Assert.AreEqual(456415, enumerator.Current.osmGeo.Id);
+            Assert.AreEqual(OsmGeoType.Node, enumerator.Current.osmGeo.Type);
             Assert.True(enumerator.MoveNext());
             Assert.NotNull(enumerator.Current);
-            Assert.AreEqual(235189, enumerator.Current.Id);
-            Assert.AreEqual(OsmGeoType.Way, enumerator.Current.Type);
+            Assert.AreEqual(235189, enumerator.Current.osmGeo.Id);
+            Assert.AreEqual(OsmGeoType.Way, enumerator.Current.osmGeo.Type);
             Assert.True(enumerator.MoveNext());
             Assert.NotNull(enumerator.Current);
-            Assert.AreEqual(982313, enumerator.Current.Id);
-            Assert.AreEqual(OsmGeoType.Relation, enumerator.Current.Type);
+            Assert.AreEqual(982313, enumerator.Current.osmGeo.Id);
+            Assert.AreEqual(OsmGeoType.Relation, enumerator.Current.osmGeo.Type);
         }
     }
 }

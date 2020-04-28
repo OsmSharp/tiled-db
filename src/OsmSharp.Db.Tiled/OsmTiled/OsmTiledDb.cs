@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 
@@ -33,7 +32,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override async Task<OsmGeo?> Get(OsmGeoType type, long id, byte[]? buffer = null)
+        public override OsmGeo? Get(OsmGeoType type, long id, byte[]? buffer = null)
         {
             var pointer = _index.Get((new OsmGeoKey(type, id)));
             if (!pointer.HasValue) return null;
@@ -42,33 +41,38 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override async Task<IEnumerable<(uint x, uint y)>> GetTiles(OsmGeoType type, long id)
+        public override IEnumerable<(uint x, uint y)> GetTiles(OsmGeoType type, long id)
         {  
             var pointer = _index.Get((new OsmGeoKey(type, id)));
-            if (!pointer.HasValue) return Enumerable.Empty<(uint x, uint y)>();
-
-            var tiles = new List<(uint x, uint y)>();
+            if (!pointer.HasValue) yield break;
             
             foreach (var tileId in _data.GetTilesFor(pointer.Value))
             {
-                tiles.Add(Tile.FromLocalId(this.Zoom, tileId));
+                yield return Tile.FromLocalId(this.Zoom, tileId);
             }
-
-            return tiles;
         }
 
         /// <inheritdoc/>
-        public override async Task<IEnumerable<OsmGeo>> Get((uint x, uint y)[] tiles, byte[]? buffer = null)
+        public override IEnumerable<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles)> Get(IReadOnlyCollection<(uint x, uint y)> tiles, byte[]? buffer = null)
         {
             buffer ??= new byte[1024];
             
-            if (tiles.Length == 1)
+            if (tiles.Count == 1)
             {
-                var tileId = Tile.ToLocalId(tiles[0], this.Zoom);
-                return _data.GetForTile(tileId, buffer);
+                var tileId = Tile.ToLocalId(tiles.First(), this.Zoom);
+                foreach (var osmGeo in _data.GetForTile(tileId, buffer))
+                {
+                    yield return (osmGeo, tiles);
+                }
             }
-            return _data.GetForTiles(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)), 
-                buffer);
+            else
+            {
+                foreach (var (osmGeo, osmGeoTiles) in _data.GetForTiles(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)), 
+                    buffer))
+                {
+                    yield return (osmGeo, osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
+                }
+            }
         }
 
         /// <inheritdoc/>

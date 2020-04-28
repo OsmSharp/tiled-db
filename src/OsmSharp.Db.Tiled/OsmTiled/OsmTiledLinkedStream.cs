@@ -14,8 +14,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     {
         private readonly Stream _data;
         private readonly SparseArray _pointers;
-        private readonly SparseArray _previousPointers;
+        private readonly SparseArray? _previousPointers;
         private readonly uint _zoom;
+
+        private const long NoData = long.MaxValue;
+        private const long EmptyTile = long.MaxValue - 1;
 
         public OsmTiledLinkedStream(Stream data, uint zoom = 14)
         {
@@ -24,8 +27,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             
             _data.WriteUInt32(zoom);
             
-            _pointers = new SparseArray(0, emptyDefault: long.MaxValue);
-            _previousPointers = new SparseArray(0, emptyDefault: long.MaxValue);
+            _pointers = new SparseArray(0, emptyDefault: NoData);
+            _previousPointers = new SparseArray(0, emptyDefault: NoData);
         }
 
         private OsmTiledLinkedStream(SparseArray pointers, Stream data, uint zoom)
@@ -64,6 +67,19 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _data.Seek(pointer, SeekOrigin.Begin);
 
             var c = _data.ReadVarUInt32();
+            if (c == 1)
+            {
+                // pointers, read node, determine tile.
+                _data.Seek(c * 8, SeekOrigin.Current);
+
+                // TODO: find a way to only read lat/lon.
+                if (!(_data.ReadOsmGeo() is Node node)) throw new InvalidDataException("Expected node.");
+
+                yield return ToTile(node);
+                yield break;
+            }
+
+            c--;
             for (var i = 0; i < c; i++)
             {
                 yield return _data.ReadVarUInt32();
@@ -72,6 +88,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         public long Append(uint tile, OsmGeo osmGeo, byte[]? buffer = null)
         {
+            if (_previousPointers == null) throw new InvalidOperationException("Stream is not writeable.");
+            
             _pointers.EnsureMinimumSize(tile + 1);
             _previousPointers.EnsureMinimumSize(tile + 1);
 
@@ -84,7 +102,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
 
             var previousPointer = _previousPointers[tile];
-            if (previousPointer == long.MaxValue)
+            if (previousPointer == NoData)
             {
                 _pointers[tile] = _data.Position;
             }
@@ -100,20 +118,22 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 _data.WriteVarUInt32(tile);
             }
             _previousPointers[tile] = _data.Position;
-            if (previousPointer != long.MaxValue)
+            if (previousPointer != NoData)
             {
                 var before = _data.Position;
                 _data.Seek(previousPointer, SeekOrigin.Begin);
                 _data.WriteInt64(pointer);
                 _data.Seek(before, SeekOrigin.Begin);
             }
-            _data.WriteInt64(long.MaxValue);
+            _data.WriteInt64(NoData);
             _data.Append(osmGeo, buffer);
             return pointer;
         }
 
         public long Append(IReadOnlyCollection<uint> tiles, OsmGeo osmGeo, byte[]? buffer = null)
         {
+            if (_previousPointers == null) throw new InvalidOperationException("Stream is not writeable.");
+            
             var position = _data.Position;
             var c = (uint) tiles.Count;
 
@@ -147,7 +167,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 _previousPointers.EnsureMinimumSize(tile + 1);
                 
                 var previousPointer = _previousPointers[tile];
-                if (previousPointer == long.MaxValue)
+                if (previousPointer == NoData)
                 {
                     _pointers[tile] = position;
                 }
@@ -155,7 +175,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 _previousPointers[tile] = p + (t * 8);
                 t++;
                 
-                if (previousPointer == long.MaxValue) continue;
+                if (previousPointer == NoData) continue;
                 
                 _data.Seek(previousPointer, SeekOrigin.Begin);
                 _data.WriteInt64(position);
@@ -165,7 +185,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _data.Seek(p, SeekOrigin.Begin);
             foreach (var _ in tiles)
             {
-                _data.WriteInt64(long.MaxValue);
+                _data.WriteInt64(NoData);
             }
 
             _data.Append(osmGeo, buffer);
@@ -184,10 +204,27 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             for (uint t = 0; t < _pointers.Length; t++)
             {
                 var pointer = _pointers[t];
-                if (pointer == long.MaxValue) continue;
+                if (pointer == NoData) continue;
 
                 yield return t;
             }
+        }
+
+        public void SetAsEmpty(uint tile)
+        {
+            if (_previousPointers == null) throw new InvalidOperationException("Stream is not writeable.");
+            
+            _pointers.EnsureMinimumSize(tile + 1);
+            _previousPointers.EnsureMinimumSize(tile + 1);
+
+            _pointers[tile] = EmptyTile;
+        }
+
+        public bool HasTile(uint tile)
+        {
+            if (_pointers.Length < tile) return false;
+
+            return _pointers[tile] != NoData;
         }
 
         public IEnumerable<OsmGeo> GetForTile(uint tile, byte[] buffer)
@@ -228,16 +265,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        public IEnumerable<OsmGeo> GetForTiles(IEnumerable<uint> tiles, byte[] buffer)
+        public IEnumerable<(OsmGeo osmGeo, List<uint> tile)> GetForTiles(IEnumerable<uint> tiles, byte[] buffer)
         {
-            if (buffer?.Length < 1024) Array.Resize(ref buffer, 1024); 
+            if (buffer?.Length < 1024) Array.Resize(ref buffer, 1024);
+            var tilesToReturn = new List<uint>();
             
             var queue = new BinaryHeap();
             var tilesSet = new HashSet<uint>(tiles);
             foreach (var tile in tilesSet)
             {
+                if (_pointers.Length < tile) continue;
                 var pointer = _pointers[tile];
-                if (pointer == long.MaxValue) continue;
+                if (pointer == NoData) continue;
                 
                 queue.Push(pointer);
             }
@@ -259,13 +298,22 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (c > 1) c -= 1;
                 if (tileFlags.Length < c) Array.Resize(ref tileFlags, (int)c);
 
-                // find tile.
+                // find tile(s).
+                tilesToReturn.Clear();
                 if (!isNode)
                 {
                     for (var t = 0; t < c; t++)
                     {
                         var currentTile = _data.ReadVarUInt32();
-                        tileFlags[t] = tilesSet.Contains(currentTile);
+                        if (tilesSet.Contains(currentTile))
+                        {
+                            tileFlags[t] = true;
+                            tilesToReturn.Add(currentTile);
+                        }
+                        else
+                        {
+                            tileFlags[t] = false;
+                        }
                     }
                 }
 
@@ -273,15 +321,25 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 for (var t = 0; t < c; t++)
                 {
                     var nextPointer = _data.ReadInt64();
-                    if (nextPointer == long.MaxValue) continue;
+                    if (nextPointer == NoData) continue;
 
                     if (tileFlags[t])
                     {
                         queue.Push(nextPointer);
                     }
                 }
-                
-                yield return _data.ReadOsmGeo(buffer);
+
+                if (isNode)
+                {
+                    if (!(_data.ReadOsmGeo(buffer) is Node node)) throw new InvalidDataException("Node expected.");
+
+                    tilesToReturn.Add(ToTile(node));
+                    yield return (node, tilesToReturn);
+                }
+                else
+                {
+                    yield return (_data.ReadOsmGeo(buffer), tilesToReturn);
+                }
             }
         }
 
@@ -296,8 +354,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         private IEnumerable<(long pointer, long osmGeoPointer)> GetForTilePointers(uint tile)
         {
+            if (_pointers.Length < tile) yield break;
+            
             var pointer = _pointers[tile];
-            while (pointer != long.MaxValue)
+            if (pointer == EmptyTile) yield break;
+            while (pointer != NoData)
             {
                 var originalPointer = pointer;
                 _data.Seek(pointer, SeekOrigin.Begin);

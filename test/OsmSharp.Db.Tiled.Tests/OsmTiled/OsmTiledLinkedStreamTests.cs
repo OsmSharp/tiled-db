@@ -335,14 +335,14 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
 
             var osmGeos = linkedStream.GetForTiles(new[] {tileId2, tileId3}, new byte[1024]).ToList();
             Assert.AreEqual(2, osmGeos.Count);
-            Assert.AreEqual(way1.Id, osmGeos[0].Id);
-            Assert.AreEqual(relation1.Id, osmGeos[1].Id);
+            Assert.AreEqual(way1.Id, osmGeos[0].osmGeo.Id);
+            Assert.AreEqual(relation1.Id, osmGeos[1].osmGeo.Id);
 
             osmGeos = linkedStream.GetForTiles(new[] {tileId1, tileId2, tileId3}, new byte[1024]).ToList();
             Assert.AreEqual(3, osmGeos.Count);
-            Assert.AreEqual(node1.Id, osmGeos[0].Id);
-            Assert.AreEqual(way1.Id, osmGeos[1].Id);
-            Assert.AreEqual(relation1.Id, osmGeos[2].Id);
+            Assert.AreEqual(node1.Id, osmGeos[0].osmGeo.Id);
+            Assert.AreEqual(way1.Id, osmGeos[1].osmGeo.Id);
+            Assert.AreEqual(relation1.Id, osmGeos[2].osmGeo.Id);
         }
 
 //        [Test]
