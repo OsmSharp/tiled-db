@@ -35,7 +35,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _zoom = _data.ReadUInt32();
         }
 
-        public OsmGeo Get(long pointer, byte[] buffer = null)
+        public OsmGeo Get(long pointer, byte[]? buffer = null)
         {
             if (buffer?.Length < 1024) buffer = null;
             buffer ??= new byte[1024];
@@ -44,11 +44,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
             // find tile.
             var c = _data.ReadVarUInt32();
-            for (var i = 0; i < c; i++)
+            if (c != 1)
             {
-                _data.ReadVarUInt32();
+                c -= 1;
+                for (var i = 0; i < c; i++)
+                {
+                    _data.ReadVarUInt32();
+                }
             }
-            
+
             // skip pointers.
             _data.Seek(c * 8, SeekOrigin.Current);
 

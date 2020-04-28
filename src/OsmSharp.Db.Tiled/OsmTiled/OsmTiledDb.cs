@@ -22,7 +22,6 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         internal OsmTiledDb(string path, OsmTiledDbSettings settings)
             : base(path)
         {
-            settings ??= new OsmTiledDbSettings();
             _asReader = settings.AsReader;
             
             _data = OsmTiledDbOperations.LoadData(this.Path);
