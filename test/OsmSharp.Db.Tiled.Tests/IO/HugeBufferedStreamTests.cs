@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using NUnit.Framework;
 using OsmSharp.Db.Tiled.IO;
@@ -60,7 +61,7 @@ namespace OsmSharp.Db.Tiled.Tests.IO
         }
         
         [Test]
-        public void HugeBufferedStream_SeekWithingBuffer_ShouldMoveToBufferedBytes()
+        public void HugeBufferedStream_Seek_WithingBuffer_ShouldMoveToBufferedBytes()
         {
             var memoryStream = new MemoryStream();
             var bufferedStream = new HugeBufferedStream(memoryStream, 128, 32);
@@ -81,7 +82,7 @@ namespace OsmSharp.Db.Tiled.Tests.IO
         }
         
         [Test]
-        public void HugeBufferedStream_SeekBeforeBuffer_ShouldMoveToBaseStreamBytes()
+        public void HugeBufferedStream_Seek_BeforeBuffer_ShouldMoveToBaseStreamBytes()
         {
             var memoryStream = new MemoryStream();
             var bufferedStream = new HugeBufferedStream(memoryStream, 128, 32);
@@ -102,7 +103,7 @@ namespace OsmSharp.Db.Tiled.Tests.IO
         }
         
         [Test]
-        public void HugeBufferedStream_WriteBeyondBuffer_ShouldWriteBytes()
+        public void HugeBufferedStream_WriteByte_BeyondBuffer_ShouldWriteBytes()
         {
             var memoryStream = new MemoryStream();
             var bufferedStream = new HugeBufferedStream(memoryStream, 128, 32);
@@ -121,7 +122,7 @@ namespace OsmSharp.Db.Tiled.Tests.IO
         }
         
         [Test]
-        public void HugeBufferedStream_WriteBeyondBuffer_WriteLargeBitArray_ShouldWriteBytes()
+        public void HugeBufferedStream_Write_BeyondBuffer_ShouldWriteBytes()
         {
             var memoryStream = new MemoryStream();
             var bufferedStream = new HugeBufferedStream(memoryStream, 128, 32);
@@ -143,7 +144,7 @@ namespace OsmSharp.Db.Tiled.Tests.IO
         }
         
         [Test]
-        public void HugeBufferedStream_WriteBeyondBuffer_WriteLargeBitArray_NotAligned_ShouldWriteBytes()
+        public void HugeBufferedStream_Write_BeyondBuffer_NotAligned_ShouldWriteBytes()
         {
             var memoryStream = new MemoryStream();
             var bufferedStream = new HugeBufferedStream(memoryStream, 128, 32);
@@ -165,6 +166,57 @@ namespace OsmSharp.Db.Tiled.Tests.IO
             {
                 memoryStream.Seek(i + 64, SeekOrigin.Begin);
                 Assert.AreEqual((byte)(i % 256), memoryStream.ReadByte(), $"Data at {i} doesn't match.");
+            }
+        }
+        
+        [Test]
+        public void HugeBufferedStream_WriteByte_BeforeBuffer_ShouldWriteToBaseStream()
+        {
+            var memoryStream = new MemoryStream();
+            var bufferedStream = new HugeBufferedStream(memoryStream, 128, 32);
+
+            for (var i = 0; i < 1024; i++)
+            {
+                bufferedStream.WriteByte((byte)(i % 256));
+            }
+
+            bufferedStream.Seek(0, SeekOrigin.Begin);
+            for (var i = 0; i < 128; i++)
+            {
+                bufferedStream.WriteByte((byte)(265 - (i % 256)));
+            }
+            bufferedStream.Flush();
+
+            for (var i = 0; i < 128; i++)
+            {
+                memoryStream.Seek(i, SeekOrigin.Begin);
+                Assert.AreEqual((byte)(265 - (i % 256)), memoryStream.ReadByte(), $"Data at {i} doesn't match.");
+            }
+        }
+        
+        [Test]
+        public void HugeBufferedStream_WriteByte_BeforeAndOnBuffer_ShouldWriteTo()
+        {
+            var memoryStream = new MemoryStream();
+            var bufferedStream = new HugeBufferedStream(memoryStream, 128, 32);
+
+            for (var i = 0; i < 1024; i++)
+            {
+                bufferedStream.WriteByte((byte)(i % 256));
+            }
+
+            // overwrite data again
+            bufferedStream.Seek(0, SeekOrigin.Begin);
+            for (var i = 0; i < 1024; i++)
+            {
+                bufferedStream.WriteByte((byte)(265 - (i % 256)));
+            }
+            bufferedStream.Flush();
+
+            for (var i = 0; i < 1024; i++)
+            {
+                memoryStream.Seek(i, SeekOrigin.Begin);
+                Assert.AreEqual((byte)(265 - (i % 256)), memoryStream.ReadByte(), $"Data at {i} doesn't match.");
             }
         }
         

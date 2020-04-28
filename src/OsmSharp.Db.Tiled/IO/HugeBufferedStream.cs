@@ -202,7 +202,7 @@ namespace OsmSharp.Db.Tiled.IO
         {
             if (count > _buffer.Length) throw new ArgumentException("Cannot write byte arrays larger than buffer.");
             
-            if (_position + count < _bufferPosition)
+            if (_position + count <= _bufferPosition)
             {
                 // completely before buffer.
                 _stream.Seek(_position, SeekOrigin.Begin);
