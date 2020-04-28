@@ -127,6 +127,12 @@ namespace OsmSharp.Db.Tiled.IO
             
             _stream.Flush();
         }
+        
+        public override int ReadByte()
+        {
+            this.Read(SingleByte, 0, 1);
+            return SingleByte[0];
+        }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
@@ -196,6 +202,13 @@ namespace OsmSharp.Db.Tiled.IO
         public override void SetLength(long value)
         {
             throw new NotSupportedException();
+        }
+
+        private readonly byte[] SingleByte = new byte[1];
+        public override void WriteByte(byte value)
+        {
+            SingleByte[0] = value;
+            Write(SingleByte, 0, 1);
         }
 
         public override void Write(byte[] buffer, int offset, int count)
