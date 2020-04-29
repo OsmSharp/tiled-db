@@ -23,7 +23,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="changeset">The changeset stream.</param>
         /// <param name="path">The path to store the db at.</param>
         /// <param name="settings">The settings.</param>
-        public static async Task ApplyChangSet(this OsmTiledDb osmTiledDb, OsmChange changeset, string path, 
+        public static void ApplyChangSet(this OsmTiledDbBase osmTiledDb, OsmChange changeset, string path, 
             OsmTiledDbDiffBuildSettings? settings = null)
         {
             settings ??= new OsmTiledDbDiffBuildSettings();

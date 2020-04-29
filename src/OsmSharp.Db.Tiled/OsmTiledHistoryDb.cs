@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
+using OsmSharp.Db.Tiled.OsmTiled.Build;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
 namespace OsmSharp.Db.Tiled
@@ -69,29 +71,37 @@ namespace OsmSharp.Db.Tiled
             }
         }
 
-//        /// <summary>
-//        /// Applies a diff to this OSM db.
-//        /// </summary>
-//        /// <remarks>
-//        /// This does not update the latest snapshot but makes a new latest snapshot.
-//        /// </remarks>
-//        /// <param name="diff">The changeset.</param>
-//        /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
-//        public void ApplyDiff(OsmChange diff, DateTime? timeStamp = null)
-//        {
-//            lock (_diffSync)
-//            {
-//                // update data.
-//                this.Latest = this.Latest.BuildDiff(diff, timeStamp);
-//                
-//                // update meta data.
-//                _meta = new OsmDbMeta()
-//                {
-//                    Latest = this.Latest.Path
-//                };
-//                OsmDbOperations.SaveDbMeta(_path, _meta);
-//            }
-//        }
+        /// <summary>
+        /// Applies a diff to this OSM db.
+        /// </summary>
+        /// <remarks>
+        /// This does not update the latest snapshot but makes a new latest snapshot.
+        /// </remarks>
+        /// <param name="diff">The changeset.</param>
+        /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
+        public void ApplyDiff(OsmChange diff, DateTime? timeStamp = null)
+        {
+            lock (_diffSync)
+            {           
+                // format new path.
+                var tiledOsmDbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(this._path, DateTime.Now);
+                if (!FileSystemFacade.FileSystem.DirectoryExists(tiledOsmDbPath))
+                    FileSystemFacade.FileSystem.CreateDirectory(tiledOsmDbPath);
+                
+                // build new db.
+                this.Latest.ApplyChangSet(diff, tiledOsmDbPath);
+                
+                // update data.
+                this.Latest = new OsmTiledDbDiff(tiledOsmDbPath, this.Latest);
+                
+                // update meta data.
+                _meta = new OsmTiledHistoryDbMeta()
+                {
+                    Latest =  FileSystemFacade.FileSystem.RelativePath(this._path, this.Latest.Path)
+                };
+                OsmTiledHistoryDbOperations.SaveDbMeta(_path, _meta);
+            }
+        }
         
 //        /// <summary>
 //        /// Take the last db and convert it into a snapshot.

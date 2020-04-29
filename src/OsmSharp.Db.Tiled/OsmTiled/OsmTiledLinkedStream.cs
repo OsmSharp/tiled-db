@@ -107,6 +107,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 yield break;
             }
 
+            if (c == 0) yield break;
             c--;
             for (var i = 0; i < c; i++)
             {

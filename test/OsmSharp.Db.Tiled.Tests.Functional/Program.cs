@@ -1,7 +1,10 @@
 ﻿using System;
 using System.IO;
+using System.IO.Compression;
 using Serilog;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
+using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.OsmTiled.Build;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Logging;
@@ -18,7 +21,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/belgium-latest.osm.pbf",
+                    @"/media/xivk/2T-SSD-EXT/planet/belgium-2020-04-27.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests",
                     @"14"
                 };
@@ -91,23 +94,29 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     File.OpenRead(args[0]));
                 var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
                 progress.RegisterSource(source);
-
+                
                 var ticks = DateTime.Now.Ticks;
                 // try loading the db, if it doesn't exist build it.
                 if (!OsmTiledHistoryDb.TryLoad(args[1], out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
-
+                
                     // splitting tiles and writing indexes.
                     db = await OsmTiledHistoryDb.Create(args[1], progress);
                 }
-                else
+                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                
+                // apply changes.
+                ticks = DateTime.Now.Ticks;
+                Log.Information($"Applying changes");
+                var serializer = new XmlSerializer(typeof(OsmChange));
+                await using var diffStream = File.OpenRead(@"/media/xivk/2T-SSD-EXT/planet/planet-786.osc.gz");
+                await using (var decompressed = new GZipStream(diffStream, CompressionMode.Decompress))
+                using (var streamReader = new StreamReader(decompressed))
                 {
-                    Log.Information("The DB exists, updating...");
-                    
-                    // add data.
-                    await db.Update(progress);
+                    if (serializer.Deserialize(streamReader) is OsmChange osmChange) db.ApplyDiff(osmChange);
                 }
+                
                 Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
             }
             catch (Exception e)

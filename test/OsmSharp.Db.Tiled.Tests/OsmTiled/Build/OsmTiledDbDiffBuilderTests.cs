@@ -37,7 +37,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            await osmTiledDb.ApplyChangSet(diff, @"/diff");
+            osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // indexes should exist.
             Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.db"));
@@ -82,7 +82,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            await osmTiledDb.ApplyChangSet(diff, @"/diff");
+            osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // indexes should exist.
             Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.db"));
@@ -127,7 +127,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            await osmTiledDb.ApplyChangSet(diff, @"/diff");
+            osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // indexes should exist.
             Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.db"));
@@ -190,7 +190,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            await osmTiledDb.ApplyChangSet(diff, @"/diff");
+            osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // load diff and query.
             var diffDb = new OsmTiledDbDiff(@"/diff");
@@ -234,7 +234,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            await osmTiledDb.ApplyChangSet(diff, @"/diff");
+            osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // load diff and query.
             var diffDb = new OsmTiledDbDiff(@"/diff");
@@ -300,7 +300,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            await osmTiledDb.ApplyChangSet(diff, @"/diff");
+            osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // load diff and query.
             var diffDb = new OsmTiledDbDiff(@"/diff");
