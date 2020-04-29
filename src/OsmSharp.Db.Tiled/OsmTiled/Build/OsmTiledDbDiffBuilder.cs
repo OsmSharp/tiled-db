@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.IO;
+using OsmSharp.Db.Tiled.OsmTiled.Changes;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 
@@ -26,182 +27,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             OsmTiledDbDiffBuildSettings? settings = null)
         {
             settings ??= new OsmTiledDbDiffBuildSettings();
-            
+             
             var zoom = osmTiledDb.Zoom;
             
             // collect all affected tiles and tile mutations.
-            var modifications = new SortedDictionary<OsmGeoKey, (IEnumerable<uint>? tiles, OsmGeo? osmGeo)>();
-            var modifiedTiles = new HashSet<uint>();
-
-            IEnumerable<uint> GetTilesFor(OsmGeoKey key)
-            {
-                if (modifications == null) throw new InvalidOperationException();
-                if (modifications.TryGetValue(key, out var modification))
-                {
-                    if (modification.tiles == null) return Enumerable.Empty<uint>();
-                    return modification.tiles;
-                }
-                
-                return (osmTiledDb.GetTiles(key.Type, key.Id)).Select(x => 
-                    Tile.ToLocalId(x, osmTiledDb.Zoom)).ToList();
-            }
-
-            // process new objects, assign ids and collect affected tiles.
-            var timestamp = DateTime.MinValue;
-            if (changeset.Create != null)
-            {
-                foreach (var create in changeset.Create)
-                {
-                    if (create == null) continue;
-                
-                    // update timestamp.
-                    if (create.TimeStamp.HasValue &&
-                        create.TimeStamp > timestamp)
-                    {
-                        timestamp = create.TimeStamp.Value;
-                    }
-                    
-                    Prepare(create, settings);
-                    
-                    // collect tiles per object.
-                    var key = new OsmGeoKey(create);
-                    var tileSet = new HashSet<uint>();
-                    if (create is Node newNode)
-                    {
-                        if (newNode.Latitude == null || newNode.Longitude == null) throw new InvalidDataException("Cannot store node without a valid location.");
-                        
-                        var tile = Tile.FromWorld(newNode.Longitude.Value, newNode.Latitude.Value, zoom);
-                        var localId = Tile.ToLocalId(tile.x, tile.y, zoom);
-
-                        tileSet.Add(localId);
-                    }
-                    else if (create is Way way)
-                    {
-                        foreach (var n in way.Nodes)
-                        {
-                            var nodeTiles = GetTilesFor(key);
-                            foreach (var nodeTile in nodeTiles)
-                            {
-                                tileSet.Add(nodeTile);
-                            }
-                        }
-                    }
-                    else if (create is Relation relation)
-                    {
-                        foreach (var m in relation.Members)
-                        {
-                            var memberTiles = GetTilesFor(key);
-                            foreach (var nodeTile in memberTiles)
-                            {
-                                tileSet.Add(nodeTile);
-                            }
-                        }
-                    }
-                    
-                    // save the tile mutations and affected tiles.
-                    foreach (var tile in tileSet)
-                    {
-                        modifiedTiles.Add(tile);
-                    }
-
-                    // save the tiles, this key is new.
-                    modifications[key] = (tileSet, create);
-                }
-            }
-            if (changeset.Delete != null)
-            {
-                foreach (var deleted in changeset.Delete)
-                {
-                    if (deleted == null) continue;
-                
-                    // update timestamp.
-                    if (deleted.TimeStamp.HasValue &&
-                        deleted.TimeStamp > timestamp)
-                    {
-                        timestamp = deleted.TimeStamp.Value;
-                    }
-                    
-                    var key = new OsmGeoKey(deleted);
-                    
-                    // save the tile mutations and affected tiles.
-                    var tileSet = GetTilesFor(key);
-                    foreach (var tile in tileSet)
-                    {
-                        modifiedTiles.Add(tile);
-                    }
-
-                    modifications[key] = (null, null);
-                }
-            }
-            if (changeset.Modify != null)
-            {
-                foreach (var modify in changeset.Modify)
-                {
-                    if (modify == null) continue;
-                
-                    // update timestamp.
-                    if (modify.TimeStamp.HasValue &&
-                        modify.TimeStamp > timestamp)
-                    {
-                        timestamp = modify.TimeStamp.Value;
-                    }
-                    
-                    Prepare(modify, settings);
-                    
-                    // collect tiles per object.
-                    var key = new OsmGeoKey(modify);  
-                    
-                    var tileSet = new HashSet<uint>();
-                    if (modify is Node newNode)
-                    {
-                        if (newNode.Latitude == null || newNode.Longitude == null) throw new InvalidDataException("Cannot store node without a valid location.");
-                        
-                        var tile = Tile.FromWorld(newNode.Longitude.Value, newNode.Latitude.Value, zoom);
-                        var localId = Tile.ToLocalId(tile.x, tile.y, zoom);
-
-                        tileSet.Add(localId);
-                    }
-                    else if (modify is Way way)
-                    {
-                        foreach (var n in way.Nodes)
-                        {
-                            var nodeTiles = GetTilesFor(key);
-                            foreach (var nodeTile in nodeTiles)
-                            {
-                                tileSet.Add(nodeTile);
-                            }
-                        }
-                    }
-                    else if (modify is Relation relation)
-                    {
-                        foreach (var m in relation.Members)
-                        {
-                            var memberTiles = GetTilesFor(key);
-                            foreach (var nodeTile in memberTiles)
-                            {
-                                tileSet.Add(nodeTile);
-                            }
-                        }
-                    }
-                    
-                    // remove objects that have moved between tiles.
-                    var oldTiles = new HashSet<uint>((osmTiledDb.GetTiles(key.Type, key.Id))
-                        .Select(x => Tile.ToLocalId(x, osmTiledDb.Zoom)));
-                    foreach (var tile in oldTiles)
-                    {
-                        modifiedTiles.Add(tile);
-                    }
-                    
-                    // add objects to tiles that need to have the modified data.
-                    foreach (var tile in tileSet)
-                    {
-                        modifiedTiles.Add(tile);
-                    }
-                        
-                    // save the tiles, the set has changed.
-                    modifications[key] = (tileSet, modify);
-                }
-            }
+            // build a modifications stream, a sorted stream augmented with tile ids. 
+            var (timestamp, modifiedTiles, modifications) = changeset.BuildTiledStream(zoom,
+                (key) => osmTiledDb.GetTiles(key.Type, key.Id).Select(x =>
+                    Tile.ToLocalId(x, osmTiledDb.Zoom)));
 
             using var data = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToData(path), FileMode.Create);
@@ -232,8 +65,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     var existing = existingStream.Current;
                     var modified = modifiedStream.Current;
                     if (existing.osmGeo.Id == null) throw new InvalidDataException("Object found without an id.");
-                    var existingId = OsmGeoCoder.Encode(modified.Key.Type, modified.Key.Id);
-                    var modifiedId = OsmGeoCoder.Encode(existing.osmGeo.Type, existing.osmGeo.Id.Value);
+                    var modifiedId = OsmGeoCoder.Encode(modified.key.Type, modified.key.Id);
+                    var existingId = OsmGeoCoder.Encode(existing.osmGeo.Type, existing.osmGeo.Id.Value);
                     if (existingId < modifiedId)
                     {
                         // move existing.
@@ -243,15 +76,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     else if (modifiedId < existingId)
                     {
                         // move modified.
-                        next = (modified.Value.tiles?.ToList(), modified.Value.osmGeo, modified.Key);
+                        next = (modified.tiles?.ToList(), modified.osmGeo, modified.key);
                         modifiedHasNext = modifiedStream.MoveNext();
                     }
                     else
                     { // overwrite existing if equal.
                         // move modified.
-                        next = (modified.Value.tiles?.ToList(), modified.Value.osmGeo, modified.Key);
+                        next = (modified.tiles?.ToList(), modified.osmGeo, modified.key);
                         modifiedHasNext = modifiedStream.MoveNext();
-                        existingHasNext = modifiedStream.MoveNext();
+                        existingHasNext = existingStream.MoveNext();
                     }
                 }
                 else if (existingHasNext)
@@ -265,7 +98,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 {
                     // move modified.
                     var modified = modifiedStream.Current;
-                    next = (modified.Value.tiles?.ToList(), modified.Value.osmGeo, modified.Key);
+                    next = (modified.tiles?.ToList(), modified.osmGeo, modified.key);
                     modifiedHasNext = modifiedStream.MoveNext();
                 }
 
@@ -275,6 +108,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     idIndex.Append(next.Value.key, -1);
                     continue;
                 }
+                
+                // apply settings.
+                Prepare(next.Value.osmGeo, settings);
                 
                 // append to output.
                 var tiles = next.Value.tiles.ToList();
