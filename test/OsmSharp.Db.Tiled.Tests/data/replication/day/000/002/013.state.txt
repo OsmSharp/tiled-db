@@ -1,3 +1,0 @@
-#Sun Mar 18 00:06:19 UTC 2018
-sequenceNumber=2013
-timestamp=2018-03-18T00\:00\:00Z

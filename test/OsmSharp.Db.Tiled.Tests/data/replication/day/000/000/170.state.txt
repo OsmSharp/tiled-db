@@ -1,3 +1,0 @@
-#Fri Mar 01 00:06:21 UTC 2013
-sequenceNumber=170
-timestamp=2013-03-01T00\:00\:00Z

@@ -1,3 +1,0 @@
-#Wed May 22 00:06:58 UTC 2019
-sequenceNumber=2443
-timestamp=2019-05-22T00\:00\:00Z

@@ -6,6 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\..\..\..\osmsharp\replication\src\OsmSharp.Replication\OsmSharp.Replication.csproj" />
       <ProjectReference Include="..\OsmSharp.Db.Tiled\OsmSharp.Db.Tiled.csproj" />
     </ItemGroup>
 

@@ -1,7 +1,0 @@
-#Tue Sep 24 02:34:03 UTC 2019
-sequenceNumber=3685067
-txnMaxQueried=2324463656
-txnActiveList=
-txnReadyList=
-txnMax=2324463656
-timestamp=2019-09-24T02\:34\:02Z

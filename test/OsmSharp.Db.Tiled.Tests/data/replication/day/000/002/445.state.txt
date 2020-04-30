@@ -1,3 +1,0 @@
-#Fri May 24 00:06:51 UTC 2019
-sequenceNumber=2445
-timestamp=2019-05-24T00\:00\:00Z

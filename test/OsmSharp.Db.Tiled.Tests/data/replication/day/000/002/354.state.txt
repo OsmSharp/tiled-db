@@ -1,3 +1,0 @@
-#Fri Feb 22 00:06:36 UTC 2019
-sequenceNumber=2354
-timestamp=2019-02-22T00\:00\:00Z

@@ -20,8 +20,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             var meta = OsmTiledDbOperations.LoadDbMeta(path);
             switch (meta.Type)
             {
-//                case SnapshotDbType.Diff:
-//                    return new SnapshotDbDiff(path, meta);
+                case OsmTiledDbType.Diff:
+                    return new OsmTiledDbDiff(path, meta);
                 case OsmTiledDbType.Full:
                     return new OsmTiledDb(path, meta);
             }

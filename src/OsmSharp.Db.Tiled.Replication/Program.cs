@@ -1,15 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Build;
 using OsmSharp.Logging;
+using OsmSharp.Replication;
 using OsmSharp.Streams;
 using Serilog;
 
 namespace OsmSharp.Db.Tiled.Replication
 {
-    class Program
+    internal static class Program
     {
         static async Task Main(string[] args)
         {
@@ -67,44 +70,50 @@ namespace OsmSharp.Db.Tiled.Replication
             {
                 LockHelper.WriteLock(lockFile.FullName);
 
-                var source = new PBFOsmStreamSource(
-                    File.OpenRead(planetFile));
-                var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-                progress.RegisterSource(source);
-
                 // try loading the db, if it doesn't exist build it.
                 var ticks = DateTime.Now.Ticks;
                 if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
                 {
                     Log.Information("The DB doesn't exist yet, building...");
-
+                    
+                    var source = new PBFOsmStreamSource(
+                        File.OpenRead(planetFile));
+                    var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+                    progress.RegisterSource(source);
+                    
                     // splitting tiles and writing indexes.
                     db = await OsmTiledHistoryDb.Create(dbPath, progress);
+                    Log.Information("DB built successfully.");
+                    Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                    return;
                 }
-                else
-                {
-                    Log.Information("The DB exists, updating...");
-
-                    // add data.
-                    await db.Update(progress);
-                }
+                Log.Information("DB loaded successfully.");
                 
-                Log.Information("DB built successfully.");
-                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                // start catch up until we reach hours/days.
+                var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1));
+                var changeSets = new List<OsmChange>();
+                while (await catchupEnumerator.MoveNext())
+                {
+                    Log.Verbose($"Downloading diff: {catchupEnumerator.State}");
+                    changeSets.Add(await catchupEnumerator.Diff());
+                }
 
-//            // start catch up until we reach hours/days.
-//            var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1), moveDown:false);
-//            while (await catchupEnumerator.MoveNext())
-//            {
-//                if (catchupEnumerator.State.Config.Period >= replicationLevel.Period)
-//                { // replication level reached.
-//                    break;
-//                }
-//                    
-//                Log.Information($"Applying changes: {catchupEnumerator.State}");
-//                await catchupEnumerator.ApplyCurrent(db);
-//                Log.Information($"Changes applied, new database: {db}");
-//            }
+                // apply changes.
+                if (changeSets.Count == 0)
+                {
+                    Log.Information("No new changes.");
+                    return;
+                }
+
+                var changeSet = changeSets[0];
+                if (changeSets.Count > 1)
+                {
+                    Log.Verbose($"Squashing changes...");
+                    changeSet = changeSets.Squash();
+                }
+                Log.Information($"Applying changes...");
+                db.ApplyDiff(changeSet);
+                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
             }
             catch (Exception e)
             {

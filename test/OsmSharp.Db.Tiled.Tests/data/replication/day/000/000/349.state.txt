@@ -1,3 +1,0 @@
-#Tue Aug 27 00:05:57 UTC 2013
-sequenceNumber=349
-timestamp=2013-08-27T00\:00\:00Z

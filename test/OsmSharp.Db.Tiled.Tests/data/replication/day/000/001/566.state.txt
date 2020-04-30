@@ -1,3 +1,0 @@
-#Mon Dec 26 00:06:02 UTC 2016
-sequenceNumber=1566
-timestamp=2016-12-26T00\:00\:00Z

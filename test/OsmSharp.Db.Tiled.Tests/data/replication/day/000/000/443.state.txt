@@ -1,3 +1,0 @@
-#Fri Nov 29 00:06:04 UTC 2013
-sequenceNumber=443
-timestamp=2013-11-29T00\:00\:00Z

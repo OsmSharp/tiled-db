@@ -142,24 +142,74 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (localTiles.Count == 0)
                 {
                     // no tiles is in this diff.
-                    foreach (var t in _baseDb.Get(tiles, buffer))
+                    foreach (var t in _baseDb.Get(otherTiles, buffer))
                     {
                         yield return t;
                     }
+
+                    yield break;
                 }
-                else if (otherTiles.Count == 0)
+
+
+                if (otherTiles.Count == 0)
                 {
                     // all tiles in this diff.
-                    foreach (var (osmGeo, osmGeoTiles) in _data.GetForTiles(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)), 
+                    foreach (var (osmGeo, osmGeoTiles) in _data.GetForTiles(
+                        localTiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
                         buffer))
                     {
                         yield return (osmGeo, osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
                     }
+
+                    yield break;
                 }
-                else
+
+                // data in both, merge the two.
+                using var baseEnumerator = _baseDb.Get(otherTiles, buffer).GetEnumerator();
+                using var thisEnumerator = _data.GetForTiles(localTiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
+                    buffer).GetEnumerator();
+                var baseHasNext = baseEnumerator.MoveNext();
+                var thisHasNext = thisEnumerator.MoveNext();
+
+                while (baseHasNext || thisHasNext)
                 {
-                    // data in both, merge the two.
-                    throw new NotImplementedException();
+                    if (baseHasNext && thisHasNext)
+                    {
+                        var baseKey = new OsmGeoKey(baseEnumerator.Current.osmGeo);
+                        var thisKey = new OsmGeoKey(thisEnumerator.Current.osmGeo);
+
+                        if (baseKey < thisKey)
+                        {
+                            yield return baseEnumerator.Current;
+                            baseHasNext = baseEnumerator.MoveNext();
+                        }
+                        else if (thisKey < baseKey)
+                        {
+                            var (osmGeo, osmGeoTiles) = thisEnumerator.Current;
+                            yield return (osmGeo,
+                                osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
+                            thisHasNext = thisEnumerator.MoveNext();
+                        }
+                        else
+                        {
+                            var (osmGeo, osmGeoTiles) = thisEnumerator.Current;
+                            yield return (osmGeo,
+                                osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
+                            baseHasNext = baseEnumerator.MoveNext();
+                            thisHasNext = thisEnumerator.MoveNext();
+                        }
+                    }
+                    else if (baseHasNext)
+                    {
+                        yield return baseEnumerator.Current;
+                        baseHasNext = baseEnumerator.MoveNext();
+                    }
+                    else
+                    {
+                        var (osmGeo, osmGeoTiles) = thisEnumerator.Current;
+                        yield return (osmGeo, osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
+                        thisHasNext = thisEnumerator.MoveNext();
+                    }
                 }
             }
         }

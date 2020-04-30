@@ -1,3 +1,0 @@
-#Mon Dec 04 00:06:39 UTC 2017
-sequenceNumber=1909
-timestamp=2017-12-04T00\:00\:00Z

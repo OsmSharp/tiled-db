@@ -1,3 +1,0 @@
-#Sun Oct 07 00:06:39 UTC 2012
-sequenceNumber=25
-timestamp=2012-10-07T00\:00\:00Z

@@ -1,3 +1,0 @@
-#Mon Jun 24 00:06:15 UTC 2013
-sequenceNumber=285
-timestamp=2013-06-24T00\:00\:00Z

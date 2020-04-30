@@ -1,3 +1,0 @@
-#Wed Sep 11 05:02:09 UTC 2019
-sequenceNumber=61318
-timestamp=2019-09-11T05\:00\:00Z

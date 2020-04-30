@@ -16,12 +16,6 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Content Include="data\**\*.*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\src\OsmSharp.Db.Tiled\OsmSharp.Db.Tiled.csproj" />
   </ItemGroup>
 

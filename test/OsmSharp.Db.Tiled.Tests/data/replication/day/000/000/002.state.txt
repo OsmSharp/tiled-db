@@ -1,3 +1,0 @@
-#Fri Sep 14 00:06:22 UTC 2012
-sequenceNumber=2
-timestamp=2012-09-14T00\:00\:00Z

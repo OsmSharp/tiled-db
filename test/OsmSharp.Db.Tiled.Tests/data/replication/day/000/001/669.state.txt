@@ -1,3 +1,0 @@
-#Sat Apr 08 00:06:27 UTC 2017
-sequenceNumber=1669
-timestamp=2017-04-08T00\:00\:00Z

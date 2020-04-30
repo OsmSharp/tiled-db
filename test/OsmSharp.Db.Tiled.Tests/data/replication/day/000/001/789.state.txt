@@ -1,3 +1,0 @@
-#Sun Aug 06 00:06:12 UTC 2017
-sequenceNumber=1789
-timestamp=2017-08-06T00\:00\:00Z

@@ -1,3 +1,0 @@
-#Sat May 25 00:06:17 UTC 2013
-sequenceNumber=255
-timestamp=2013-05-25T00\:00\:00Z

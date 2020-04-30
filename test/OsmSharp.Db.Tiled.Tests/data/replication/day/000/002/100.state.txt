@@ -1,3 +1,0 @@
-#Wed Jun 13 00:06:43 UTC 2018
-sequenceNumber=2100
-timestamp=2018-06-13T00\:00\:00Z

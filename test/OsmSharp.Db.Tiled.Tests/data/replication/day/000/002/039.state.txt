@@ -1,3 +1,0 @@
-#Fri Apr 13 00:06:30 UTC 2018
-sequenceNumber=2039
-timestamp=2018-04-13T00\:00\:00Z

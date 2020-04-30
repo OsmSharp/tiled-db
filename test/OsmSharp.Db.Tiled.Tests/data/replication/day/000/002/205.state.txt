@@ -1,3 +1,0 @@
-#Wed Sep 26 00:07:04 UTC 2018
-sequenceNumber=2205
-timestamp=2018-09-26T00\:00\:00Z

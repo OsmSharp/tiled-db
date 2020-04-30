@@ -1,3 +1,0 @@
-#Tue Mar 27 00:06:40 UTC 2018
-sequenceNumber=2022
-timestamp=2018-03-27T00\:00\:00Z

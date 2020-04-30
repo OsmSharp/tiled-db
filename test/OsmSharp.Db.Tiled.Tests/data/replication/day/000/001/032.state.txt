@@ -1,3 +1,0 @@
-#Sat Jul 11 00:06:06 UTC 2015
-sequenceNumber=1032
-timestamp=2015-07-11T00\:00\:00Z

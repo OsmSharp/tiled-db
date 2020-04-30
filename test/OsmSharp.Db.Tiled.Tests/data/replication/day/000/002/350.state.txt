@@ -1,3 +1,0 @@
-#Mon Feb 18 00:06:21 UTC 2019
-sequenceNumber=2350
-timestamp=2019-02-18T00\:00\:00Z

@@ -1,3 +1,0 @@
-#Thu Dec 13 00:06:47 UTC 2018
-sequenceNumber=2283
-timestamp=2018-12-13T00\:00\:00Z
