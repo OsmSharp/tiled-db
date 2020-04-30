@@ -136,28 +136,72 @@ namespace OsmSharp.Db.Tiled.Collections
         /// Serializes this array.
         /// </summary>
         /// <param name="stream">The stream.</param>
+        /// <param name="version">The version of the layout to write.</param>
         /// <returns>The number of bytes written.</returns>
-        public long Serialize(Stream stream)
+        public long Serialize(Stream stream, byte version = 2)
         {
             var pos = stream.Position;
 
-            stream.WriteByte(1);
-            stream.WriteInt64(_size);
-            stream.WriteInt32(_blockSize);
-            stream.WriteInt64(_default);
-
-            for (long b = 0; b < _blocks.Length; b++)
+            if (version == 1)
             {
-                var block = _blocks[b];
-                if (block == null) continue;
+                stream.WriteByte(1);
+                stream.WriteInt64(_size);
+                stream.WriteInt32(_blockSize);
+                stream.WriteInt64(_default);
 
-                stream.WriteInt64(b);
-                for (var i = 0; i < block.Length; i++)
+                for (long b = 0; b < _blocks.Length; b++)
                 {
-                    stream.WriteInt64(block[i]);
+                    var block = _blocks[b];
+                    if (block == null) continue;
+
+                    stream.WriteInt64(b);
+                    for (var i = 0; i < block.Length; i++)
+                    {
+                        stream.WriteInt64(block[i]);
+                    }
                 }
+
+                stream.WriteInt64(long.MaxValue);
             }
-            stream.WriteInt64(long.MaxValue);
+            else if (version == 2)
+            {
+                stream.WriteByte(2);
+                stream.WriteVarInt64(_size);
+                stream.WriteVarInt32(_blockSize);
+                stream.WriteVarInt64(_default);
+
+                for (long b = 0; b < _blocks.Length; b++)
+                {
+                    var block = _blocks[b];
+                    if (block == null) continue;
+
+                    var min = int.MaxValue;
+                    var max = int.MinValue;
+                    for (var i = 0; i < block.Length; i++)
+                    {
+                        if (block[i] == _default) continue;
+                        
+                        if (min > i) min = i;
+                        if (max < i) max = i;
+                    }
+                    
+                    if (max == int.MinValue) continue;
+
+                    stream.WriteVarInt64(b);
+                    stream.WriteVarInt32(min);
+                    stream.WriteVarInt32(max - min);
+                    for (var i = min; i <= max; i++)
+                    {
+                        stream.WriteInt64(block[i]);
+                    }
+                }
+
+                stream.WriteVarInt64(long.MaxValue);
+            }
+            else
+            {
+                throw new InvalidDataException("Invalid data layout version, cannot write index.");
+            }
 
             return stream.Position - pos;
         }
@@ -165,29 +209,69 @@ namespace OsmSharp.Db.Tiled.Collections
         public static SparseArray Deserialize(Stream stream)
         {
             var version = stream.ReadByte();
-            if (version != 1) throw new InvalidDataException("Invalid version, cannot read index.");
-            
-            var size = stream.ReadInt64();
-            var blockSize = stream.ReadInt32();
-            var emptyDefault = stream.ReadInt64();
 
-            var b = stream.ReadInt64();
-            var blockCount = (long) Math.Ceiling((double) size / blockSize);
-            var blocks = new long[blockCount][];
-            while (b != long.MaxValue)
+            if (version == 1)
             {
-                var block = new long[blockSize];
-                for (var i = 0; i < block.Length; i++)
+                var size = stream.ReadInt64();
+                var blockSize = stream.ReadInt32();
+                var emptyDefault = stream.ReadInt64();
+
+                var b = stream.ReadInt64();
+                var blockCount = (long) Math.Ceiling((double) size / blockSize);
+                var blocks = new long[blockCount][];
+                while (b != long.MaxValue)
                 {
-                    block[i] = stream.ReadInt64();
+                    var block = new long[blockSize];
+                    for (var i = 0; i < block.Length; i++)
+                    {
+                        block[i] = stream.ReadInt64();
+                    }
+
+                    blocks[b] = block;
+
+                    b = stream.ReadInt64();
                 }
 
-                blocks[b] = block;
+                return new SparseArray(blocks, size, blockSize, emptyDefault);
+            }
+            else
+            {                
+                var size = stream.ReadVarInt64();
+                var blockSize = stream.ReadVarInt32();
+                var emptyDefault = stream.ReadVarInt64();
                 
-                b = stream.ReadInt64();
+                var blockCount = (long) Math.Ceiling((double) size / blockSize);
+                var blocks = new long[blockCount][];
+
+                var b = stream.ReadVarInt64();
+                while (b != long.MaxValue)
+                {
+                    var block = new long[blockSize];
+                    var min = stream.ReadVarInt32();
+                    var max = stream.ReadVarInt32() + min;
+
+                    for (var i = 0; i < min; i++)
+                    {
+                        block[i] = emptyDefault;
+                    }
+                    for (var i = min; i <= max; i++)
+                    {
+                        block[i] = stream.ReadInt64();
+                    }
+                    for (var i = max + 1; i < block.Length; i++)
+                    {
+                        block[i] = emptyDefault;
+                    }
+
+                    blocks[b] = block;
+
+                    b = stream.ReadVarInt64();
+                }
+
+                return new SparseArray(blocks, size, blockSize, emptyDefault);
             }
 
-            return new SparseArray(blocks, size, blockSize, emptyDefault);
+            throw new InvalidDataException("Invalid version, cannot read index.");
         }
     }
 
