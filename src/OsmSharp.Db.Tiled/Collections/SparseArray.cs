@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using OsmSharp.Db.Tiled.IO;
 
 namespace OsmSharp.Db.Tiled.Collections
 {
@@ -141,23 +142,22 @@ namespace OsmSharp.Db.Tiled.Collections
             var pos = stream.Position;
 
             stream.WriteByte(1);
-            using var streamWriter = new BinaryWriter(stream, Encoding.Default, true);
-            streamWriter.Write(_size);
-            streamWriter.Write(_blockSize);
-            streamWriter.Write(_default);
+            stream.WriteInt64(_size);
+            stream.WriteInt32(_blockSize);
+            stream.WriteInt64(_default);
 
             for (long b = 0; b < _blocks.Length; b++)
             {
                 var block = _blocks[b];
                 if (block == null) continue;
 
-                streamWriter.Write(b);
+                stream.WriteInt64(b);
                 for (var i = 0; i < block.Length; i++)
                 {
-                    streamWriter.Write(block[i]);
+                    stream.WriteInt64(block[i]);
                 }
             }
-            streamWriter.Write(long.MaxValue);
+            stream.WriteInt64(long.MaxValue);
 
             return stream.Position - pos;
         }
@@ -167,25 +167,24 @@ namespace OsmSharp.Db.Tiled.Collections
             var version = stream.ReadByte();
             if (version != 1) throw new InvalidDataException("Invalid version, cannot read index.");
             
-            using var streamReader = new BinaryReader(stream, Encoding.Default, true);
-            var size = streamReader.ReadInt64();
-            var blockSize = streamReader.ReadInt32();
-            var emptyDefault = streamReader.ReadInt64();
+            var size = stream.ReadInt64();
+            var blockSize = stream.ReadInt32();
+            var emptyDefault = stream.ReadInt64();
 
-            var b = streamReader.ReadInt64();
-            var blockCount = (long) System.Math.Ceiling((double) size / blockSize);
+            var b = stream.ReadInt64();
+            var blockCount = (long) Math.Ceiling((double) size / blockSize);
             var blocks = new long[blockCount][];
             while (b != long.MaxValue)
             {
                 var block = new long[blockSize];
                 for (var i = 0; i < block.Length; i++)
                 {
-                    block[i] = streamReader.ReadInt64();
+                    block[i] = stream.ReadInt64();
                 }
 
                 blocks[b] = block;
                 
-                b = streamReader.ReadInt64();
+                b = stream.ReadInt64();
             }
 
             return new SparseArray(blocks, size, blockSize, emptyDefault);
