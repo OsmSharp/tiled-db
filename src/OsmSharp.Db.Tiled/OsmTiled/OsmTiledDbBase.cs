@@ -36,6 +36,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         public uint Zoom => _meta.Zoom;
 
         /// <summary>
+        /// Gets the id.
+        /// </summary>
+        internal long Id => _meta.Id;
+
+        /// <summary>
         /// Gets the timestamp.
         /// </summary>
         public DateTime Timestamp => _meta.Timestamp;
@@ -43,7 +48,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <summary>
         /// Gets the base.
         /// </summary>
-        internal string? Base => _meta.Base;
+        internal long? Base => _meta.Base;
 
         /// <summary>
         /// Gets the object for the given type/id.

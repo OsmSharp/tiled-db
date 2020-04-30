@@ -8,23 +8,28 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     public class OsmTiledDbMeta
     {
         /// <summary>
+        /// Gets or sets the id of this db.
+        /// </summary>
+        public long Id { get; set; }
+        
+        /// <summary>
         /// Get or sets the zoom level.
         /// </summary>
         public uint Zoom { get; set; }
         
         /// <summary>
-        /// The base db if any.
+        /// The base db id if any.
         /// </summary>
-        public string? Base { get; set; }
+        public long? Base { get; set; }
 
         /// <summary>
         /// The db type.
         /// </summary>
         public string Type { get; set; } = OsmTiledDbType.Full;
-        
+
         /// <summary>
         /// Gets or sets the 
         /// </summary>
-        public DateTime Timestamp { get; set; }
+        public DateTime Timestamp => this.Id.FromUnixTime();
     }
 }

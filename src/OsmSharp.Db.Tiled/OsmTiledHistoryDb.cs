@@ -16,6 +16,7 @@ namespace OsmSharp.Db.Tiled
     public class OsmTiledHistoryDb
     {
         private readonly string _path;
+        private readonly Dictionary<long, OsmTiledDbBase> _dbs;
         private OsmTiledHistoryDbMeta _meta;
 
         /// <summary>
@@ -26,10 +27,20 @@ namespace OsmSharp.Db.Tiled
         {
             _path = path;
 
+            _dbs = new Dictionary<long, OsmTiledDbBase>();
             _meta = OsmTiledHistoryDbOperations.LoadDbMeta(_path);
+
+            this.Latest = this.GetDb(_meta.Latest);
+        }
+
+        private OsmTiledDbBase GetDb(long id)
+        {
+            if (_dbs.TryGetValue(id, out var osmTiledDbBase)) return osmTiledDbBase;
             
-            this.Latest = OsmTiledDbOperations.LoadDb(
-                FileSystemFacade.FileSystem.Combine(_path, _meta.Latest));
+            osmTiledDbBase = OsmTiledDbOperations.LoadDb(this._path, id, this.GetDb);
+            _dbs[id] = osmTiledDbBase;
+
+            return osmTiledDbBase;
         }
 
         /// <summary>
@@ -66,18 +77,15 @@ namespace OsmSharp.Db.Tiled
                 // update meta data.
                 _meta = new OsmTiledHistoryDbMeta()
                 {
-                    Latest =  FileSystemFacade.FileSystem.RelativePath(this._path, this.Latest.Path)
+                    Latest = latest.Id
                 };
                 OsmTiledHistoryDbOperations.SaveDbMeta(_path, _meta);
             }
         }
 
         /// <summary>
-        /// Applies a diff to this OSM db.
+        /// Applies a diff to this OSM db, the latest db is updated.
         /// </summary>
-        /// <remarks>
-        /// This does not update the latest snapshot but makes a new latest snapshot.
-        /// </remarks>
         /// <param name="diff">The changeset.</param>
         /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
         public void ApplyDiff(OsmChange diff, DateTime? timeStamp = null)
@@ -85,24 +93,25 @@ namespace OsmSharp.Db.Tiled
             lock (_diffSync)
             {           
                 // format new path.
-                var tempPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(this._path, DateTime.Now, "temp");
+                var tempPath = OsmTiledDbOperations.BuildOsmTiledDbPath(this._path, DateTime.Now.ToUnixTime(), "temp");
                 if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
                     FileSystemFacade.FileSystem.CreateDirectory(tempPath);
                 
                 // build new db.
                 var dbMeta = this.Latest.ApplyChangSet(diff, tempPath);
+                timeStamp ??= dbMeta.Timestamp;
                 
                 // generate a proper path and move the data there.
-                var dbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(this._path, dbMeta.Timestamp, OsmTiledDbType.Snapshot);
+                var dbPath = OsmTiledDbOperations.BuildOsmTiledDbPath(this._path, timeStamp.Value.ToUnixTime(), OsmTiledDbType.Snapshot);
                 FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
                 
                 // update data.
-                this.Latest = new OsmTiledDbSnapshot(dbPath, this.Latest);
+                this.Latest = new OsmTiledDbSnapshot(dbPath, this.GetDb);
                 
                 // update meta data.
                 _meta = new OsmTiledHistoryDbMeta()
                 {
-                    Latest =  FileSystemFacade.FileSystem.RelativePath(this._path, this.Latest.Path)
+                    Latest = this.Latest.Id
                 };
                 OsmTiledHistoryDbOperations.SaveDbMeta(_path, _meta);
             }
@@ -162,10 +171,7 @@ namespace OsmSharp.Db.Tiled
                 {
                     if (meta.Latest != _meta.Latest)
                     {
-                        var latest = OsmTiledDbOperations.LoadDb(FileSystemFacade.FileSystem.Combine(_path,
-                            meta.Latest));
-
-                        this.Latest = latest;
+                        this.Latest = this.GetDb(meta.Latest);
                         _meta = meta;
                         return true;
                     }

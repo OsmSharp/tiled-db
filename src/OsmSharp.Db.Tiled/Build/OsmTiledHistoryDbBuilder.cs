@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
+using OsmSharp.Db.Tiled.OsmTiled.IO;
 
 namespace OsmSharp.Db.Tiled.Build
 {
@@ -25,7 +26,7 @@ namespace OsmSharp.Db.Tiled.Build
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
 
-            var tempPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, DateTime.Now, "temp");
+            var tempPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, DateTime.Now.ToUnixTime(), "temp");
             if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
@@ -33,13 +34,13 @@ namespace OsmSharp.Db.Tiled.Build
             var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom);
 
             // generate a proper path and move the data there.
-            var dbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, dbMeta.Timestamp, OsmTiledDbType.Full);
+            var dbPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, dbMeta.Id, OsmTiledDbType.Full);
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
 
             // generate and write the path.
             var osmDbMeta = new OsmTiledHistoryDbMeta()
             {
-                Latest = FileSystemFacade.FileSystem.RelativePath(path, dbPath)
+                Latest = dbMeta.Id
             };
             OsmTiledHistoryDbOperations.SaveDbMeta(path, osmDbMeta);
 
@@ -61,7 +62,7 @@ namespace OsmSharp.Db.Tiled.Build
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
 
-            var tempPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, DateTime.Now, OsmTiledDbType.Full);
+            var tempPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, DateTime.Now.ToUnixTime(), OsmTiledDbType.Full);
             if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
@@ -69,13 +70,13 @@ namespace OsmSharp.Db.Tiled.Build
             var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom);
 
             // generate a proper path and move the data there.
-            var dbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, dbMeta.Timestamp, OsmTiledDbType.Full);
+            var dbPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, dbMeta.Id, OsmTiledDbType.Full);
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
 
             // generate and write the path.
             var osmDbMeta = new OsmTiledHistoryDbMeta()
             {
-                Latest = FileSystemFacade.FileSystem.RelativePath(path, dbPath)
+                Latest = dbMeta.Id
             };
             OsmTiledHistoryDbOperations.SaveDbMeta(path, osmDbMeta);
 

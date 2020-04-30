@@ -3,6 +3,8 @@ using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using OsmSharp.Db.Tiled.IO;
+using OsmSharp.Db.Tiled.OsmTiled;
+using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Streams;
 
 namespace OsmSharp.Db.Tiled.Tests.Build
@@ -17,7 +19,7 @@ namespace OsmSharp.Db.Tiled.Tests.Build
         /// Tests building a database.
         /// </summary>
         [Test]
-        public async Task OsmDbBuilder_BuildDb_ShouldBuildInitial()
+        public void OsmDbBuilder_BuildDb_ShouldBuildInitial()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/data");
@@ -72,7 +74,7 @@ namespace OsmSharp.Db.Tiled.Tests.Build
             Assert.True(FileSystemFacade.FileSystem.Exists(@"/data/meta.json"));
 
             var meta = OsmTiledHistoryDbOperations.LoadDbMeta("/data");
-            var initialPath = FileSystemFacade.FileSystem.Combine("/data", meta.Latest);
+            var initialPath = OsmTiledDbOperations.BuildOsmTiledDbPath("/data", meta.Latest, OsmTiledDbType.Full);
             
             // check if initial dir exists.
             Assert.True(FileSystemFacade.FileSystem.Exists(

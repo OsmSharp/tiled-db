@@ -11,43 +11,31 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     /// </summary>
     public class OsmTiledDbSnapshot : OsmTiledDbBase, IDisposable
     {
-        private readonly OsmTiledIndex _index;
-        private readonly OsmTiledLinkedStream _data;
-        private readonly OsmTiledDbBase _baseDb;
+        private readonly Func<long, OsmTiledDbBase> _getBaseDb;
         
-        /// <summary>
-        /// Creates a new db using the data at the given path.
-        /// </summary>
-        internal OsmTiledDbSnapshot(string path, OsmTiledDbBase? baseDb = null)
-            : base(path)
+        internal OsmTiledDbSnapshot(string path, Func<long, OsmTiledDbBase> getBaseDb, OsmTiledDbMeta? meta = null)
+            : base(path, meta ?? OsmTiledDbOperations.LoadDbMeta(path))
         {
-            _data = OsmTiledDbOperations.LoadData(this.Path);
-            _index = OsmTiledDbOperations.LoadIndex(this.Path);
-
-            if (baseDb != null)
-            {
-                _baseDb = baseDb;
-                return;
-            }
-            
-            if (this.Base == null) throw new Exception("Cannot instantiate diff db without a the base database.");
-            _baseDb = OsmTiledDbOperations.LoadDb(this.Base);
+            _getBaseDb = getBaseDb;
         }
 
-        internal OsmTiledDbSnapshot(string path, OsmTiledDbMeta meta, OsmTiledDbBase? baseDb = null)
-            : base(path, meta)
+        private OsmTiledIndex? _index;
+        private OsmTiledIndex GetIndex()
         {
-            _data = OsmTiledDbOperations.LoadData(this.Path);
-            _index = OsmTiledDbOperations.LoadIndex(this.Path);
-            
-            if (baseDb != null)
-            {
-                _baseDb = baseDb;
-                return;
-            }
-            
-            if (this.Base == null) throw new Exception("Cannot instantiate diff db without a the base database.");
-            _baseDb = OsmTiledDbOperations.LoadDb(this.Base);
+            return _index ??= OsmTiledDbOperations.LoadIndex(this.Path);
+        }
+
+        private OsmTiledLinkedStream? _data;
+        private OsmTiledLinkedStream GetData()
+        {
+            return _data ??= OsmTiledDbOperations.LoadData(this.Path);
+        }
+
+        private OsmTiledDbBase? _baseDb;
+        private OsmTiledDbBase GetBaseDb()
+        {
+            if (this.Base == null) throw new Exception($"A {nameof(OsmTiledDbSnapshot)} always needs a base db.");
+            return _baseDb ??= _getBaseDb(this.Base.Value);
         }
         
         /// <inheritdoc/>
@@ -65,15 +53,17 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <inheritdoc/>
         public override OsmGeo? Get(OsmGeoKey key, byte[]? buffer = null)
         {
-            var pointer = _index.Get(key);
+            var index = this.GetIndex();
+            
+            var pointer = index.Get(key);
             return pointer switch
             {
                 // object was deleted!
                 -1 => null,
                 // attempt base db.
-                null => _baseDb.Get(key, buffer),
+                null => this.GetBaseDb().Get(key, buffer),
                 // get data locally.
-                _ => _data.Get(pointer.Value, buffer)
+                _ => this.GetData().Get(pointer.Value, buffer)
             };
         }
 
@@ -92,7 +82,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <inheritdoc/>
         public override IEnumerable<(uint x, uint y)> GetTiles(OsmGeoKey key)
         {  
-            var pointer = _index.Get(key);
+            var pointer = this.GetIndex().Get(key);
             switch (pointer)
             {
                 case -1:
@@ -101,7 +91,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 case null:
                 {
                     // attempt getting data from base db.
-                    foreach (var osmGeo in _baseDb.GetTiles(key))
+                    foreach (var osmGeo in this.GetBaseDb().GetTiles(key))
                     {
                         yield return osmGeo;
                     }
@@ -111,7 +101,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 default:
                 {
                     // object is here, get it locally.
-                    foreach (var tileId in _data.GetTilesFor(pointer.Value))
+                    foreach (var tileId in this.GetData().GetTilesFor(pointer.Value))
                     {
                         yield return Tile.FromLocalId(this.Zoom, tileId);
                     }
@@ -125,15 +115,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         public override IEnumerable<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles)> Get(IReadOnlyCollection<(uint x, uint y)> tiles, byte[]? buffer = null)
         {
             buffer ??= new byte[1024];
-            
+            var data = this.GetData();
             if (tiles.Count == 1)
             {
                 var tileId = Tile.ToLocalId(tiles.First(), this.Zoom);
-                var tileIsLocal = _data.HasTile(tileId);
+                var tileIsLocal = data.HasTile(tileId);
                 if (tileIsLocal)
                 {
                     // tile is in this diff.
-                    foreach (var osmGeo in _data.GetForTile(tileId, buffer))
+                    foreach (var osmGeo in data.GetForTile(tileId, buffer))
                     {
                         yield return (osmGeo, tiles);
                     }
@@ -141,7 +131,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 else
                 {
                     // tile is not in diff.
-                    foreach (var t in _baseDb.Get(tiles, buffer))
+                    foreach (var t in this.GetBaseDb().Get(tiles, buffer))
                     {
                         yield return t;
                     }
@@ -153,7 +143,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 var otherTiles = new List<(uint x, uint y)>(tiles.Count);
                 foreach (var tile in tiles)
                 {
-                    if (_data.HasTile(Tile.ToLocalId(tile, this.Zoom)))
+                    if (data.HasTile(Tile.ToLocalId(tile, this.Zoom)))
                     {
                         localTiles.Add(tile);
                     }
@@ -166,7 +156,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (localTiles.Count == 0)
                 {
                     // no tiles is in this diff.
-                    foreach (var t in _baseDb.Get(otherTiles, buffer))
+                    foreach (var t in this.GetBaseDb().Get(otherTiles, buffer))
                     {
                         yield return t;
                     }
@@ -178,7 +168,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (otherTiles.Count == 0)
                 {
                     // all tiles in this diff.
-                    foreach (var (osmGeo, osmGeoTiles) in _data.GetForTiles(
+                    foreach (var (osmGeo, osmGeoTiles) in data.GetForTiles(
                         localTiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
                         buffer))
                     {
@@ -189,8 +179,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 }
 
                 // data in both, merge the two.
-                using var baseEnumerator = _baseDb.Get(otherTiles, buffer).GetEnumerator();
-                using var thisEnumerator = _data.GetForTiles(localTiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
+                using var baseEnumerator = this.GetBaseDb().Get(otherTiles, buffer).GetEnumerator();
+                using var thisEnumerator = data.GetForTiles(localTiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
                     buffer).GetEnumerator();
                 var baseHasNext = baseEnumerator.MoveNext();
                 var thisHasNext = thisEnumerator.MoveNext();

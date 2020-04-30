@@ -109,7 +109,7 @@ namespace OsmSharp.Db.Tiled.Tests
             // update meta data.
             var meta = new OsmTiledHistoryDbMeta()
             {
-                Latest =  FileSystemFacade.FileSystem.RelativePath("/data", tiledDb.Path)
+                Latest =  tiledDb.Id
             };
             OsmTiledHistoryDbOperations.SaveDbMeta("/data", meta);
             

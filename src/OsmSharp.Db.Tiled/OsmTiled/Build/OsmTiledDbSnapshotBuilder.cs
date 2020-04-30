@@ -22,9 +22,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="osmTiledDb">The tiled db.</param>
         /// <param name="changeset">The changeset stream.</param>
         /// <param name="path">The path to store the db at.</param>
+        /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
         /// <param name="settings">The settings.</param>
         public static OsmTiledDbMeta ApplyChangSet(this OsmTiledDbBase osmTiledDb, OsmChange changeset, string path, 
-            OsmTiledDbSnapshotBuildSettings? settings = null)
+            OsmTiledDbSnapshotBuildSettings? settings = null, DateTime? timeStamp = null)
         {
             settings ??= new OsmTiledDbSnapshotBuildSettings();
              
@@ -32,7 +33,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             
             // collect all affected tiles and tile mutations.
             // build a modifications stream, a sorted stream augmented with tile ids. 
-            var (timestamp, modifiedTiles, modifications) = changeset.BuildTiledStream(zoom,
+            var (modifiedTimeStamp, modifiedTiles, modifications) = changeset.BuildTiledStream(zoom,
                 (key) => osmTiledDb.GetTiles(key.Type, key.Id).Select(x =>
                     Tile.ToLocalId(x, osmTiledDb.Zoom)));
 
@@ -131,13 +132,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             tiledStream.Flush();
             tiledStream.SerializeIndex(dataTilesIndex);
 
+            // update timestamp properly.
+            timeStamp ??= modifiedTimeStamp;
+            
             // save the meta-data.
             var meta = new OsmTiledDbMeta
             {
-                Base = osmTiledDb.Path, 
+                Id = timeStamp.Value.ToUnixTime(),
+                Base = osmTiledDb.Id, 
                 Type = OsmTiledDbType.Snapshot,
                 Zoom = zoom,
-                Timestamp = timestamp
             };
             OsmTiledDbOperations.SaveDbMeta(path, meta);
             return meta;

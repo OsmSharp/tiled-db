@@ -13,20 +13,6 @@ namespace OsmSharp.Db.Tiled
     /// </summary>
     internal static class OsmTiledHistoryDbOperations
     {
-        /// <summary>
-        /// Builds a path for a new tiled osm db for the give date time.
-        /// </summary>
-        /// <param name="path">The path.</param>
-        /// <param name="dateTime">The date time.</param>
-        /// <param name="type">The type.</param>
-        /// <returns>A path.</returns>
-        public static string BuildOsmTiledDbPath(string path, DateTime dateTime, string type)
-        {
-            var millisecondEpochs = dateTime.ToUnixTime();
-
-            return FileSystemFacade.FileSystem.Combine(path,
-                $"{millisecondEpochs:0000000000000000}_{type}");
-        }
 
         /// <summary>
         /// Tries to parse the data from the given path, return true if successful.

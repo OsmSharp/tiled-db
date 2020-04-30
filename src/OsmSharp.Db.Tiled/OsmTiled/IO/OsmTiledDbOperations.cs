@@ -7,6 +7,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
 {
     internal static class OsmTiledDbOperations
     {
+        public static string BuildOsmTiledDbPath(string path, long id, string type)
+        {
+            return FileSystemFacade.FileSystem.Combine(path,
+                $"{id:0000000000000000}_{type}");
+        }
+        
         public static void SaveDbMeta(string path, OsmTiledDbMeta dbMeta)
         {
             var dbMetaPath = PathToMeta(path);
@@ -15,15 +21,33 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             JsonSerializer.CreateDefault().Serialize(streamWriter, dbMeta);
         }
         
-        public static OsmTiledDbBase LoadDb(string path)
+        public static OsmTiledDbBase LoadDb(string path, long id, Func<long, OsmTiledDbBase> getDb)
         {
-            var meta = OsmTiledDbOperations.LoadDbMeta(path);
+            var dbPath = BuildOsmTiledDbPath(path, id, OsmTiledDbType.Full);
+            OsmTiledDbMeta? meta = null;
+            if (FileSystemFacade.FileSystem.DirectoryExists(dbPath))
+            {
+                // a full db exists, use that one!
+                meta = OsmTiledDbOperations.LoadDbMeta(dbPath);
+            }
+            else
+            {
+                // check for a snapshot.
+                dbPath = BuildOsmTiledDbPath(path, id, OsmTiledDbType.Snapshot);
+                if (FileSystemFacade.FileSystem.DirectoryExists(dbPath))
+                {
+                    meta = OsmTiledDbOperations.LoadDbMeta(dbPath);
+                }
+            }
+            
+            if (meta == null) throw new Exception($"Database {id} requested but not found!");
+             
             switch (meta.Type)
             {
                 case OsmTiledDbType.Snapshot:
-                    return new OsmTiledDbSnapshot(path, meta);
+                    return new OsmTiledDbSnapshot(dbPath, getDb, meta);
                 case OsmTiledDbType.Full:
-                    return new OsmTiledDb(path, meta);
+                    return new OsmTiledDb(dbPath, meta);
             }
             
             throw new Exception("Could not determine db type from meta.");

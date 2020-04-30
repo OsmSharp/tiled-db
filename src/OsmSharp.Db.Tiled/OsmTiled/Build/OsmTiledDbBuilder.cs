@@ -21,8 +21,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="path">The path to store the db at.</param>
         /// <param name="zoom">The zoom.</param>
         /// <param name="settings">The settings.</param>
+        /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
         public static OsmTiledDbMeta Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14,
-            OsmTiledDbBuildSettings? settings = null)
+            OsmTiledDbBuildSettings? settings = null, DateTime? timeStamp = null)
         {
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
             if (path == null) { throw new ArgumentNullException(nameof(path)); }
@@ -32,7 +33,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
             var buffer = new byte[1024];
             
-            var timestamp = DateTime.MinValue;
+            var dataLatestTimeStamp = DateTime.MinValue;
             var nodeToTile = new TileMap();
             var wayToTiles = new TilesMap();
             var relationToTiles = new TilesMap();
@@ -60,9 +61,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 
                 // update timestamp.
                 if (osmGeo.TimeStamp.HasValue &&
-                    osmGeo.TimeStamp > timestamp)
+                    osmGeo.TimeStamp > dataLatestTimeStamp)
                 {
-                    timestamp = osmGeo.TimeStamp.Value;
+                    dataLatestTimeStamp = osmGeo.TimeStamp.Value;
                 }
 
                 mode = osmGeo.Type;
@@ -141,14 +142,17 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             // reverse indexed data and save tile index.
             tiledStream.Flush();
             tiledStream.SerializeIndex(dataTilesIndex);
+            
+            // choose proper timestamp.
+            timeStamp ??= dataLatestTimeStamp;
 
             // save the meta-data.
             var meta = new OsmTiledDbMeta
             {
+                Id = timeStamp.Value.ToUnixTime(),
                 Base = null, // this is a full db.
                 Type = OsmTiledDbType.Full,
-                Zoom = zoom,
-                Timestamp = timestamp
+                Zoom = zoom
             };
             OsmTiledDbOperations.SaveDbMeta(path, meta);
             return meta;
