@@ -9,7 +9,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     /// <summary> 
     /// Represents a snapshot of OSM data at a given point in time represented by a diff relative to a full copy of the data.
     /// </summary>
-    public class OsmTiledDbDiff : OsmTiledDbBase, IDisposable
+    public class OsmTiledDbSnapshot : OsmTiledDbBase, IDisposable
     {
         private readonly OsmTiledIndex _index;
         private readonly OsmTiledLinkedStream _data;
@@ -18,7 +18,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <summary>
         /// Creates a new db using the data at the given path.
         /// </summary>
-        internal OsmTiledDbDiff(string path, OsmTiledDbBase? baseDb = null)
+        internal OsmTiledDbSnapshot(string path, OsmTiledDbBase? baseDb = null)
             : base(path)
         {
             _data = OsmTiledDbOperations.LoadData(this.Path);
@@ -34,7 +34,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _baseDb = OsmTiledDbOperations.LoadDb(this.Base);
         }
 
-        internal OsmTiledDbDiff(string path, OsmTiledDbMeta meta, OsmTiledDbBase? baseDb = null)
+        internal OsmTiledDbSnapshot(string path, OsmTiledDbMeta meta, OsmTiledDbBase? baseDb = null)
             : base(path, meta)
         {
             _data = OsmTiledDbOperations.LoadData(this.Path);
@@ -49,26 +49,50 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             if (this.Base == null) throw new Exception("Cannot instantiate diff db without a the base database.");
             _baseDb = OsmTiledDbOperations.LoadDb(this.Base);
         }
+        
+        /// <inheritdoc/>
+        public override IEnumerable<OsmGeo> Get(IReadOnlyCollection<OsmGeoKey> osmGeoKeys, byte[]? buffer = null)
+        {
+            foreach (var osmGeoKey in osmGeoKeys)
+            {
+                var osmGeo = this.Get(osmGeoKey, buffer);
+                if (osmGeo == null) continue;
+                
+                yield return osmGeo;
+            }
+        }
 
         /// <inheritdoc/>
-        public override OsmGeo? Get(OsmGeoType type, long id, byte[]? buffer = null)
+        public override OsmGeo? Get(OsmGeoKey key, byte[]? buffer = null)
         {
-            var pointer = _index.Get((new OsmGeoKey(type, id)));
+            var pointer = _index.Get(key);
             return pointer switch
             {
                 // object was deleted!
                 -1 => null,
                 // attempt base db.
-                null => _baseDb.Get(type, id, buffer),
+                null => _baseDb.Get(key, buffer),
                 // get data locally.
                 _ => _data.Get(pointer.Value, buffer)
             };
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<(uint x, uint y)> GetTiles(OsmGeoType type, long id)
+        public override IEnumerable<(uint x, uint y, OsmGeoKey key)> GetTiles(IReadOnlyCollection<OsmGeoKey> osmGeoKeys)
+        {
+            foreach (var osmGeoKey in osmGeoKeys)
+            {
+                foreach (var (x, y) in this.GetTiles(osmGeoKey))
+                {
+                    yield return (x, y, osmGeoKey);
+                }
+            }
+        }
+
+        /// <inheritdoc/>
+        public override IEnumerable<(uint x, uint y)> GetTiles(OsmGeoKey key)
         {  
-            var pointer = _index.Get((new OsmGeoKey(type, id)));
+            var pointer = _index.Get(key);
             switch (pointer)
             {
                 case -1:
@@ -77,7 +101,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 case null:
                 {
                     // attempt getting data from base db.
-                    foreach (var osmGeo in _baseDb.GetTiles(type, id))
+                    foreach (var osmGeo in _baseDb.GetTiles(key))
                     {
                         yield return osmGeo;
                     }

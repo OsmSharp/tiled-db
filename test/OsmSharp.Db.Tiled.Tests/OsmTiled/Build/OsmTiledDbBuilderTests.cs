@@ -31,7 +31,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            await osmGeos.Build(@"/data", 14);
+            osmGeos.Build(@"/data", 14);
 
             // check files and paths.
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));
@@ -58,7 +58,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            await osmGeos.Build(@"/original");
+            osmGeos.Build(@"/original");
             var osmTiledDb = new OsmTiledDb(@"/original");
             
             var osmGeo = osmTiledDb.Get(OsmGeoType.Node, 4561327);
@@ -82,7 +82,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            await osmGeos.Build(@"/original");
+            osmGeos.Build(@"/original");
             var osmTiledDb = new OsmTiledDb(@"/original");
 
             var tileOsmGeos = osmTiledDb.Get(new (uint x, uint y)[]
@@ -111,7 +111,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            await osmGeos.Build(@"/original");
+            osmGeos.Build(@"/original");
             var osmTiledDb = new OsmTiledDb(@"/original");
 
             var tileOsmGeos = osmTiledDb.Get(new (uint x, uint y)[]

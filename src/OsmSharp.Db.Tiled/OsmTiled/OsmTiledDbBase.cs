@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
@@ -45,21 +46,43 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         internal string? Base => _meta.Base;
 
         /// <summary>
-        /// Gets the given object.
+        /// Gets the object for the given type/id.
         /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="id">The id.</param>
+        /// <param name="osmGeoKey">The key.</param>
         /// <param name="buffer">The buffer.</param>
         /// <returns>The object if present.</returns>
-        public abstract OsmGeo? Get(OsmGeoType type, long id, byte[]? buffer = null);
+        public virtual OsmGeo? Get(OsmGeoKey osmGeoKey, byte[]? buffer = null)
+        {
+            return this.Get(new[] {osmGeoKey}, buffer).FirstOrDefault();
+        }
+        
+        /// <summary>
+        /// Gets the objects for the given keys.
+        /// </summary>
+        /// <param name="osmGeoKeys">The keys.</param>
+        /// <param name="buffer">The buffer.</param>
+        /// <returns>The object(s) if present.</returns>
+        public abstract IEnumerable<OsmGeo> Get(IReadOnlyCollection<OsmGeoKey> osmGeoKeys, byte[]? buffer = null);
 
         /// <summary>
-        /// Gets the tiles for the given object.
+        /// Get the tile the given object exists in, if any.
         /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="id">The id.</param>
-        /// <returns>All the tiles to object is in.</returns>
-        public abstract IEnumerable<(uint x, uint y)> GetTiles(OsmGeoType type, long id);
+        /// <param name="key">The key.</param>
+        /// <returns>The tiles if any.</returns>
+        public virtual IEnumerable<(uint x, uint y)> GetTiles(OsmGeoKey key)
+        {
+            foreach (var (x, y, _) in this.GetTiles(new[] {key}))
+            {
+                yield return (x, y);
+            }
+        }
+        
+        /// <summary>
+        /// Gets the tiles for the objects with the given keys.
+        /// </summary>
+        /// <param name="osmGeoKeys">The keys.</param>
+        /// <returns>All the tiles to objects are in.</returns>
+        public abstract IEnumerable<(uint x, uint y, OsmGeoKey key)> GetTiles(IReadOnlyCollection<OsmGeoKey> osmGeoKeys);
 
         /// <summary>
         /// Gets all the data in the given tile(s).

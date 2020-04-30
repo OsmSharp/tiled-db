@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using Newtonsoft.Json;
 using OsmSharp.Db.Tiled.IO;
+using OsmSharp.Db.Tiled.OsmTiled;
 
 namespace OsmSharp.Db.Tiled
 {
@@ -15,13 +18,51 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         /// <param name="path">The path.</param>
         /// <param name="dateTime">The date time.</param>
+        /// <param name="type">The type.</param>
         /// <returns>A path.</returns>
-        public static string BuildOsmTiledDbPath(string path, DateTime dateTime)
+        public static string BuildOsmTiledDbPath(string path, DateTime dateTime, string type)
         {
+            var millisecondEpochs = dateTime.ToUnixTime();
+
             return FileSystemFacade.FileSystem.Combine(path,
-                $"{dateTime.Year:0000}-{dateTime.Month:00}-{dateTime.Day:00}_{dateTime.Hour:00}{dateTime.Minute:00}{dateTime.Second:00}_{dateTime.Millisecond:0000}");
+                $"{millisecondEpochs:0000000000000000}_{type}");
         }
-        
+
+        /// <summary>
+        /// Tries to parse the data from the given path, return true if successful.
+        /// </summary>
+        /// <param name="path">The path to parse the date from.</param>
+        /// <param name="dateTime">The date if true.</param>
+        /// <returns>True if successful.</returns>
+        public static bool TryParseOsmTiledDbPath(string path, out DateTime dateTime)
+        {
+            var dateTimeString = FileSystemFacade.FileSystem.LeafDirectoryName(path);
+
+            if (!long.TryParse(dateTimeString, NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
+                out var millisecondEpochs))
+            {
+                dateTime = default;
+                return false;
+            }
+
+            dateTime = millisecondEpochs.FromUnixTime();
+            return true;
+        }
+
+        /// <summary>
+        /// Gets all the osm tiled db paths.
+        /// </summary>
+        /// <returns>An enumeration of all the valid paths.</returns>
+        public static IEnumerable<(string path, DateTime pathTime)> GetOsmTiledDbPaths(string path)
+        {
+            var directories = FileSystemFacade.FileSystem.EnumerateDirectories(path);
+            foreach (var directory in directories)
+            {
+                if (!TryParseOsmTiledDbPath(directory, out var pathTime)) continue;
+
+                yield return (directory, pathTime);
+            }
+        }
         
         /// <summary>
         /// Writes db meta to disk.
@@ -31,11 +72,9 @@ namespace OsmSharp.Db.Tiled
         public static void SaveDbMeta(string path, OsmTiledHistoryDbMeta dbMeta)
         {
             var dbMetaPath = PathToMeta(path);
-            using (var stream = FileSystemFacade.FileSystem.Open(dbMetaPath, FileMode.Create))
-            using (var streamWriter = new StreamWriter(stream))
-            {
-                JsonSerializer.CreateDefault().Serialize(streamWriter, dbMeta);
-            }
+            using var stream = FileSystemFacade.FileSystem.Open(dbMetaPath, FileMode.Create);
+            using var streamWriter = new StreamWriter(stream);
+            JsonSerializer.CreateDefault().Serialize(streamWriter, dbMeta);
         }
 
         /// <summary>

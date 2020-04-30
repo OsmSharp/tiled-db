@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading.Tasks;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.IO;
@@ -44,18 +45,18 @@ namespace OsmSharp.Db.Tiled
         /// <param name="path">The path.</param>
         /// <param name="data">The data.</param>
         /// <returns>The new db.</returns>
-        public static async Task<OsmTiledHistoryDb> Create(string path, IEnumerable<OsmGeo> data)
+        public static OsmTiledHistoryDb Create(string path, IEnumerable<OsmGeo> data)
         {
-            return await Build.OsmTiledHistoryDbBuilder.Build(data, path, 14);
+            return Build.OsmTiledHistoryDbBuilder.Build(data, path, 14);
         }
         
         /// <summary>
         /// Adds a new osm tiled db as latest using the given data.
         /// </summary>
         /// <param name="data">The data.</param>
-        public async Task Update(IEnumerable<OsmGeo> data)
+        public void Update(IEnumerable<OsmGeo> data)
         {
-            var latest = await Build.OsmTiledHistoryDbBuilder.Update(data, this._path);
+            var latest = Build.OsmTiledHistoryDbBuilder.Update(data, this._path);
             
             lock (_diffSync)
             {
@@ -84,15 +85,19 @@ namespace OsmSharp.Db.Tiled
             lock (_diffSync)
             {           
                 // format new path.
-                var tiledOsmDbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(this._path, DateTime.Now);
-                if (!FileSystemFacade.FileSystem.DirectoryExists(tiledOsmDbPath))
-                    FileSystemFacade.FileSystem.CreateDirectory(tiledOsmDbPath);
+                var tempPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(this._path, DateTime.Now, "temp");
+                if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
+                    FileSystemFacade.FileSystem.CreateDirectory(tempPath);
                 
                 // build new db.
-                this.Latest.ApplyChangSet(diff, tiledOsmDbPath);
+                var dbMeta = this.Latest.ApplyChangSet(diff, tempPath);
+                
+                // generate a proper path and move the data there.
+                var dbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(this._path, dbMeta.Timestamp, OsmTiledDbType.Snapshot);
+                FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
                 
                 // update data.
-                this.Latest = new OsmTiledDbDiff(tiledOsmDbPath, this.Latest);
+                this.Latest = new OsmTiledDbSnapshot(dbPath, this.Latest);
                 
                 // update meta data.
                 _meta = new OsmTiledHistoryDbMeta()
@@ -103,24 +108,27 @@ namespace OsmSharp.Db.Tiled
             }
         }
         
-//        /// <summary>
-//        /// Take the last db and convert it into a snapshot.
-//        /// </summary>
-//        public void TakeSnapshot()
-//        {
-//            lock (_diffSync)
-//            {
-//                // update data.
-//                this.Latest = this.Latest.Build();
-//                
-//                // update meta data.
-//                _meta = new OsmDbMeta()
-//                {
-//                    Latest = this.Latest.Path
-//                };
-//                OsmDbOperations.SaveDbMeta(_path, _meta);
-//            }
-//        }
+        /// <summary>
+        /// Gets the database for the given timestamp.
+        ///
+        /// The database that was created on or right before the given timestamp.
+        /// </summary>
+        /// <param name="timestamp">The timestamp.</param>
+        /// <returns>The database closest to the given timestamp.</returns>
+        public OsmTiledDb? GetOn(DateTime timestamp)
+        {
+            throw new NotImplementedException();
+        }
+        
+        /// <summary>
+        /// Groups the data on or right before the given timestamp and the data before in the given timespan.
+        /// </summary>
+        /// <param name="timestamp"></param>
+        /// <param name="timeSpan"></param>
+        public void TakeSnapshot(DateTime timestamp, TimeSpan? timeSpan = null)
+        {
+            throw new NotImplementedException();
+        }
 
         /// <summary>
         /// Try to load an OSM db from the given path.

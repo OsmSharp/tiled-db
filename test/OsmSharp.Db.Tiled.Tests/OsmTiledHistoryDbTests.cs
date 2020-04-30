@@ -34,7 +34,7 @@ namespace OsmSharp.Db.Tiled.Tests
             FileSystemFacade.FileSystem = new MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/data");
 
-            var newDb = await OsmTiledHistoryDb.Create(@"/data", osmGeos);
+            var newDb = OsmTiledHistoryDb.Create(@"/data", osmGeos);
             
             Assert.NotNull(newDb.Latest);
         }
@@ -61,7 +61,7 @@ namespace OsmSharp.Db.Tiled.Tests
             FileSystemFacade.FileSystem = new MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/data");
 
-            var db = await OsmTiledHistoryDb.Create(@"/data", osmGeos);
+            var db = OsmTiledHistoryDb.Create(@"/data", osmGeos);
             
             // reload db.
             Assert.False(db.TryReload());
@@ -73,7 +73,7 @@ namespace OsmSharp.Db.Tiled.Tests
             FileSystemFacade.FileSystem = new MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/data");
 
-            var db = await OsmTiledHistoryDb.Create(@"/data", new OsmGeo[]
+            var db = OsmTiledHistoryDb.Create(@"/data", new OsmGeo[]
             {
                 new Node()
                 {
@@ -90,7 +90,7 @@ namespace OsmSharp.Db.Tiled.Tests
             });
             
             // update db without using the db method (as if it was updated out of process).
-            var tiledDb = await OsmTiledHistoryDbBuilder.Update(new OsmGeo[]
+            var tiledDb = new OsmGeo[]
             {
                 new Node()
                 {
@@ -104,7 +104,8 @@ namespace OsmSharp.Db.Tiled.Tests
                     TimeStamp = DateTime.Now,
                     Version = 2
                 }
-            }, "/data");
+            }.Update("/data");
+            
             // update meta data.
             var meta = new OsmTiledHistoryDbMeta()
             {

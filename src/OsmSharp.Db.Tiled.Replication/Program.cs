@@ -82,7 +82,7 @@ namespace OsmSharp.Db.Tiled.Replication
                     progress.RegisterSource(source);
                     
                     // splitting tiles and writing indexes.
-                    db = await OsmTiledHistoryDb.Create(dbPath, progress);
+                    db = OsmTiledHistoryDb.Create(dbPath, progress);
                     Log.Information("DB built successfully.");
                     Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
                     return;

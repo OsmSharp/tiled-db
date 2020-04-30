@@ -19,24 +19,27 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="path">The path.</param>
         /// <param name="zoom">The zoom.</param>
         /// <returns>A tiled history db.</returns>
-        /// <exception cref="DirectoryNotFoundException"></exception>
-        public static async Task<OsmTiledHistoryDb> Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
+        public static OsmTiledHistoryDb Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
         {
             if (!FileSystemFacade.FileSystem.DirectoryExists(path))
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
 
-            var tiledOsmDbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, DateTime.Now);
-            if (!FileSystemFacade.FileSystem.DirectoryExists(tiledOsmDbPath))
-                FileSystemFacade.FileSystem.CreateDirectory(tiledOsmDbPath);
+            var tempPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, DateTime.Now, "temp");
+            if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
+                FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
             // build the tiled db.
-            await OsmTiled.Build.OsmTiledDbBuilder.Build(source, tiledOsmDbPath, zoom);
+            var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom);
+
+            // generate a proper path and move the data there.
+            var dbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, dbMeta.Timestamp, OsmTiledDbType.Full);
+            FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
 
             // generate and write the path.
             var osmDbMeta = new OsmTiledHistoryDbMeta()
             {
-                Latest = FileSystemFacade.FileSystem.RelativePath(path, tiledOsmDbPath)
+                Latest = FileSystemFacade.FileSystem.RelativePath(path, dbPath)
             };
             OsmTiledHistoryDbOperations.SaveDbMeta(path, osmDbMeta);
 
@@ -52,20 +55,31 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="zoom">The zoom.</param>
         /// <returns>A new osm tiled db.</returns>
         /// <exception cref="DirectoryNotFoundException"></exception>
-        public static async Task<OsmTiledDb> Update(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
+        public static OsmTiledDb Update(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
         {
             if (!FileSystemFacade.FileSystem.DirectoryExists(path))
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
 
-            var tiledOsmDbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, DateTime.Now);
-            if (!FileSystemFacade.FileSystem.DirectoryExists(tiledOsmDbPath))
-                FileSystemFacade.FileSystem.CreateDirectory(tiledOsmDbPath);
+            var tempPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, DateTime.Now, OsmTiledDbType.Full);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
+                FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
             // build the tiled db.
-            await OsmTiled.Build.OsmTiledDbBuilder.Build(source, tiledOsmDbPath, zoom);
+            var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom);
 
-            return new OsmTiledDb(tiledOsmDbPath);
+            // generate a proper path and move the data there.
+            var dbPath = OsmTiledHistoryDbOperations.BuildOsmTiledDbPath(path, dbMeta.Timestamp, OsmTiledDbType.Full);
+            FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
+
+            // generate and write the path.
+            var osmDbMeta = new OsmTiledHistoryDbMeta()
+            {
+                Latest = FileSystemFacade.FileSystem.RelativePath(path, dbPath)
+            };
+            OsmTiledHistoryDbOperations.SaveDbMeta(path, osmDbMeta);
+
+            return new OsmTiledDb(dbPath);
         }
     }
 }

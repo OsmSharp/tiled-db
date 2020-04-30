@@ -65,7 +65,7 @@ namespace OsmSharp.Db.Tiled.Tests.Build
                     Visible = true
                 }
             };
-            await OsmSharp.Db.Tiled.Build.OsmTiledHistoryDbBuilder.Build(
+            OsmSharp.Db.Tiled.Build.OsmTiledHistoryDbBuilder.Build(
                osmGeos, @"/data", 14);
 
             Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));

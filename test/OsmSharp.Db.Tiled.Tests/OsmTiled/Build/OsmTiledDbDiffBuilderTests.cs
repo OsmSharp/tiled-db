@@ -21,7 +21,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
 
             // build the database.
             var osmGeos = new OsmGeo[] { };
-            await osmGeos.Build(@"/original", 14);
+            osmGeos.Build(@"/original", 14);
             var osmTiledDb = new OsmTiledDb(@"/original");
             
             // apply diff.
@@ -45,7 +45,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
             Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.tile.idx"));
             
             // load diff and query.
-            var diffDb = new OsmTiledDbDiff(@"/diff");
+            var diffDb = new OsmTiledDbSnapshot(@"/diff");
             var node = diffDb.Get(OsmGeoType.Node, 4561327);
             Assert.NotNull(node);
         }
@@ -66,7 +66,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            await osmGeos.Build(@"/original", 14);
+            osmGeos.Build(@"/original", 14);
             var osmTiledDb = new OsmTiledDb(@"/original");
             
             // apply diff.
@@ -90,7 +90,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
             Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.tile.idx"));
             
             // load diff and query.
-            var diffDb = new OsmTiledDbDiff(@"/diff");
+            var diffDb = new OsmTiledDbSnapshot(@"/diff");
             var node = diffDb.Get(OsmGeoType.Node, 4561327);
             Assert.Null(node);
         }
@@ -111,7 +111,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            await osmGeos.Build(@"/original");
+            osmGeos.Build(@"/original");
             var osmTiledDb = new OsmTiledDb(@"/original");
             
             // apply diff.
@@ -135,7 +135,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
             Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.tile.idx"));
             
             // load diff and query.
-            var diffDb = new OsmTiledDbDiff(@"/diff");
+            var diffDb = new OsmTiledDbSnapshot(@"/diff");
             var osmGeo = diffDb.Get(OsmGeoType.Node, 4561327);
             Assert.NotNull(osmGeo);
             if (osmGeo is Node node)
@@ -175,7 +175,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            await osmGeos.Build(@"/original");
+            osmGeos.Build(@"/original");
             var osmTiledDb = new OsmTiledDb(@"/original");
             
             // apply diff.
@@ -193,7 +193,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
             osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // load diff and query.
-            var diffDb = new OsmTiledDbDiff(@"/diff");
+            var diffDb = new OsmTiledDbSnapshot(@"/diff");
             var way = diffDb.Get(OsmGeoType.Way, 45327);
             Assert.NotNull(way);
         }
@@ -207,7 +207,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
 
             // build the database.
             var osmGeos = new OsmGeo[] { };
-            await osmGeos.Build(@"/original");
+            osmGeos.Build(@"/original");
             var osmTiledDb = new OsmTiledDb(@"/original");
             
             // apply diff.
@@ -237,7 +237,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
             osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // load diff and query.
-            var diffDb = new OsmTiledDbDiff(@"/diff");
+            var diffDb = new OsmTiledDbSnapshot(@"/diff");
             var way = diffDb.Get(OsmGeoType.Way, 45327);
             Assert.NotNull(way);
         }
@@ -270,7 +270,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Nodes = new [] { 4561327L, 4561328 }
                 }
             };
-            await osmGeos.Build(@"/original");
+            osmGeos.Build(@"/original");
             var osmTiledDb = new OsmTiledDb(@"/original");
             
             // apply diff.
@@ -303,7 +303,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
             osmTiledDb.ApplyChangSet(diff, @"/diff");
             
             // load diff and query.
-            var diffDb = new OsmTiledDbDiff(@"/diff");
+            var diffDb = new OsmTiledDbSnapshot(@"/diff");
             var way = diffDb.Get(OsmGeoType.Way, 45327);
             Assert.NotNull(way);
             

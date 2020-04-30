@@ -41,6 +41,13 @@ namespace OsmSharp.Db.Tiled.IO
         /// Returns true if the given directory exists.
         /// </summary>
         bool DirectoryExists(string directory);
+        
+        /// <summary>
+        /// Moves the given directory to a new location.
+        /// </summary>
+        /// <param name="source">The source.</param>
+        /// <param name="target">The target.</param>
+        void MoveDirectory(string source, string target);
 
         /// <summary>
         /// Returns the directory name of the last directory in the given path.

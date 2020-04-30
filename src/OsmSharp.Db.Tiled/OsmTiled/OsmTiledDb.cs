@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 
@@ -32,23 +33,30 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override OsmGeo? Get(OsmGeoType type, long id, byte[]? buffer = null)
+        public override IEnumerable<OsmGeo> Get(IReadOnlyCollection<OsmGeoKey> osmGeoKeys, byte[]? buffer = null)
         {
-            var pointer = _index.Get((new OsmGeoKey(type, id)));
-            if (!pointer.HasValue) return null;
+            foreach (var osmGeoKey in osmGeoKeys)
+            {
+                var pointer = _index.Get(osmGeoKey);
+                if (pointer == null) continue;
             
-            return _data.Get(pointer.Value, buffer);
+                yield return _data.Get(pointer.Value, buffer);
+            }
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<(uint x, uint y)> GetTiles(OsmGeoType type, long id)
-        {  
-            var pointer = _index.Get((new OsmGeoKey(type, id)));
-            if (!pointer.HasValue) yield break;
-            
-            foreach (var tileId in _data.GetTilesFor(pointer.Value))
+        public override IEnumerable<(uint x, uint y, OsmGeoKey key)> GetTiles(IReadOnlyCollection<OsmGeoKey> osmGeoKeys)
+        {
+            foreach (var osmGeoKey in osmGeoKeys)
             {
-                yield return Tile.FromLocalId(this.Zoom, tileId);
+                var pointer = _index.Get(osmGeoKey);
+                if (pointer == null) continue;
+            
+                foreach (var tileId in _data.GetTilesFor(pointer.Value))
+                {
+                    var tile = Tile.FromLocalId(this.Zoom, tileId);
+                    yield return (tile.x, tile.y, osmGeoKey);
+                }
             }
         }
 

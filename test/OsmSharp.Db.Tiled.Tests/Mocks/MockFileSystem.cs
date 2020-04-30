@@ -23,7 +23,7 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
             return relativePath.Split('\\', '/');
         }
 
-        private Dir FindDir(string directory)
+        private Dir? FindDir(string directory)
         {
             var dirs = this.Get(directory);
             var current = _root;
@@ -31,8 +31,7 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
             {
                 var name = dirs[i];
 
-                Dir subDir;
-                if (!current.SubDirs.TryGetValue(name, out subDir))
+                if (!current.SubDirs.TryGetValue(name, out var subDir))
                 {
                     return null;
                 }
@@ -41,7 +40,7 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
             return current;
         }
 
-        private File FindFile(string fullFileName)
+        private File? FindFile(string fullFileName)
         {
             var dir = FindDir(this.DirectoryForFile(fullFileName));
 
@@ -50,8 +49,7 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
                 return null;
             }
             var fileName = this.FileName(fullFileName);
-            File file;
-            if (dir.Files.TryGetValue(fileName, out file))
+            if (dir.Files.TryGetValue(fileName, out var file))
             {
                 return file;
             }
@@ -78,8 +76,7 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
             {
                 var name = dirs[i];
 
-                Dir subDir;
-                if (!current.SubDirs.TryGetValue(name, out subDir))
+                if (!current.SubDirs.TryGetValue(name, out var subDir))
                 {
                     subDir = new Dir(name);
                     current.SubDirs[name] = subDir;
@@ -87,6 +84,27 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
 
                 current = subDir;
             }
+        }
+
+        public void MoveDirectory(string source, string target)
+        {
+            if (source == target) return;
+            
+            CreateDirectory(target);
+
+            foreach (var file in EnumerateFiles(source))
+            {
+                MoveFile(file, Combine(target, FileName(file)));
+            }
+        }
+
+        public void MoveFile(string source, string target)
+        {
+            var sourceDir = this.FindDir(this.DirectoryForFile(source));
+            var targetDir = this.FindDir(this.DirectoryForFile(target));
+            var sourceFile = this.FileName(source);
+            var targetFile = this.FileName(target);
+            targetDir.Files.Add(targetFile, sourceDir.Files[sourceFile]);
         }
 
         public void Delete(string file)

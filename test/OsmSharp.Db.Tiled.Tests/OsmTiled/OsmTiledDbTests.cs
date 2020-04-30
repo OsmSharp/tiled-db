@@ -93,7 +93,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             };
             
             FileSystemFacade.FileSystem.CreateDirectory(@"/OsmTiledDbTests");
-            await osmGeos.Build(@"/OsmTiledDbTests");
+            osmGeos.Build(@"/OsmTiledDbTests");
             
             var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");
             var node1 = osmTiledDb.Get(OsmGeoType.Node, 456414);
@@ -195,7 +195,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
             };
             
             FileSystemFacade.FileSystem.CreateDirectory(@"/OsmTiledDbTests");
-            await osmGeos.Build(@"/OsmTiledDbTests", 14);
+            osmGeos.Build(@"/OsmTiledDbTests", 14);
             
             // 14/8374/5556.osm.tile
             var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");

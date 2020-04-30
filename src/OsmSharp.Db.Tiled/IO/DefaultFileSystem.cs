@@ -54,6 +54,11 @@ namespace OsmSharp.Db.Tiled.IO
             return Directory.Exists(directory);
         }
 
+        public void MoveDirectory(string source, string target)
+        {
+            Directory.Move(source, target);
+        }
+        
         public string LeafDirectoryName(string directory)
         {
             return (new DirectoryInfo(directory)).Name;

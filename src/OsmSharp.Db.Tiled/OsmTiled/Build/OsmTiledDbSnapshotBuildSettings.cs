@@ -3,7 +3,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
     /// <summary>
     /// Build settings.
     /// </summary>
-    public class OsmTiledDbDiffBuildSettings
+    public class OsmTiledDbSnapshotBuildSettings
     {
         /// <summary>
         /// Include user name flag.

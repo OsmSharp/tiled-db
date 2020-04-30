@@ -14,7 +14,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
     /// <summary>
     /// Builds an OSM tiled db diff from an OSM stream.
     /// </summary>
-    internal static class OsmTiledDbDiffBuilder
+    internal static class OsmTiledDbSnapshotBuilder
     {
         /// <summary>
         /// Builds a new database and write the structure to the given path.
@@ -23,10 +23,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="changeset">The changeset stream.</param>
         /// <param name="path">The path to store the db at.</param>
         /// <param name="settings">The settings.</param>
-        public static void ApplyChangSet(this OsmTiledDbBase osmTiledDb, OsmChange changeset, string path, 
-            OsmTiledDbDiffBuildSettings? settings = null)
+        public static OsmTiledDbMeta ApplyChangSet(this OsmTiledDbBase osmTiledDb, OsmChange changeset, string path, 
+            OsmTiledDbSnapshotBuildSettings? settings = null)
         {
-            settings ??= new OsmTiledDbDiffBuildSettings();
+            settings ??= new OsmTiledDbSnapshotBuildSettings();
              
             var zoom = osmTiledDb.Zoom;
             
@@ -132,17 +132,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             tiledStream.SerializeIndex(dataTilesIndex);
 
             // save the meta-data.
-            var dbMeta = new OsmTiledDbMeta
+            var meta = new OsmTiledDbMeta
             {
                 Base = osmTiledDb.Path, 
-                Type = OsmTiledDbType.Diff,
+                Type = OsmTiledDbType.Snapshot,
                 Zoom = zoom,
                 Timestamp = timestamp
             };
-            OsmTiledDbOperations.SaveDbMeta(path, dbMeta);
+            OsmTiledDbOperations.SaveDbMeta(path, meta);
+            return meta;
         }
 
-        private static void Prepare(this OsmGeo osmGeo, OsmTiledDbDiffBuildSettings settings)
+        private static void Prepare(this OsmGeo osmGeo, OsmTiledDbSnapshotBuildSettings settings)
         {
             if (!settings.IncludeChangeset) osmGeo.ChangeSetId = null;
             if (!settings.IncludeUsername) osmGeo.UserName = null;

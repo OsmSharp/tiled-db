@@ -21,7 +21,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="path">The path to store the db at.</param>
         /// <param name="zoom">The zoom.</param>
         /// <param name="settings">The settings.</param>
-        public static async Task Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14,
+        public static OsmTiledDbMeta Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14,
             OsmTiledDbBuildSettings? settings = null)
         {
             if (source == null) { throw new ArgumentNullException(nameof(source)); }
@@ -143,14 +143,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             tiledStream.SerializeIndex(dataTilesIndex);
 
             // save the meta-data.
-            var dbMeta = new OsmTiledDbMeta
+            var meta = new OsmTiledDbMeta
             {
                 Base = null, // this is a full db.
                 Type = OsmTiledDbType.Full,
                 Zoom = zoom,
                 Timestamp = timestamp
             };
-            OsmTiledDbOperations.SaveDbMeta(path, dbMeta);
+            OsmTiledDbOperations.SaveDbMeta(path, meta);
+            return meta;
         }
 
         private static void Prepare(this OsmGeo osmGeo, OsmTiledDbBuildSettings settings)

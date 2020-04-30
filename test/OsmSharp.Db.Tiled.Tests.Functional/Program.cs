@@ -102,7 +102,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     Log.Information("The DB doesn't exist yet, building...");
                 
                     // splitting tiles and writing indexes.
-                    db = await OsmTiledHistoryDb.Create(args[1], progress);
+                    db = OsmTiledHistoryDb.Create(args[1], progress);
                 }
                 Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
                 
