@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Threading.Tasks;
 using OsmSharp.Changesets;
+using OsmSharp.Db.Tiled.Collections.Search;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.Build;
@@ -16,7 +15,7 @@ namespace OsmSharp.Db.Tiled
     public class OsmTiledHistoryDb
     {
         private readonly string _path;
-        private readonly Dictionary<long, OsmTiledDbBase> _dbs;
+        private readonly SortedList<long, OsmTiledDbBase?> _dbs;
         private OsmTiledHistoryDbMeta _meta;
 
         /// <summary>
@@ -27,15 +26,20 @@ namespace OsmSharp.Db.Tiled
         {
             _path = path;
 
-            _dbs = new Dictionary<long, OsmTiledDbBase>();
+            _dbs = new SortedList<long, OsmTiledDbBase?>();
             _meta = OsmTiledHistoryDbOperations.LoadDbMeta(_path);
+
+            foreach (var (id, _) in OsmTiledHistoryDbOperations.GetOsmTiledDbPaths(_path))
+            {
+                _dbs[id] = null;
+            }
 
             this.Latest = this.GetDb(_meta.Latest);
         }
 
         private OsmTiledDbBase GetDb(long id)
         {
-            if (_dbs.TryGetValue(id, out var osmTiledDbBase)) return osmTiledDbBase;
+            if (_dbs.TryGetValue(id, out var osmTiledDbBase) && osmTiledDbBase != null) return osmTiledDbBase;
             
             osmTiledDbBase = OsmTiledDbOperations.LoadDb(this._path, id, this.GetDb);
             _dbs[id] = osmTiledDbBase;
@@ -73,6 +77,7 @@ namespace OsmSharp.Db.Tiled
             {
                 // update data.
                 this.Latest = latest;
+                _dbs[this.Latest.Id] = this.Latest;
                 
                 // update meta data.
                 _meta = new OsmTiledHistoryDbMeta()
@@ -107,6 +112,7 @@ namespace OsmSharp.Db.Tiled
                 
                 // update data.
                 this.Latest = new OsmTiledDbSnapshot(dbPath, this.GetDb);
+                _dbs[this.Latest.Id] = this.Latest;
                 
                 // update meta data.
                 _meta = new OsmTiledHistoryDbMeta()
@@ -124,9 +130,27 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         /// <param name="timestamp">The timestamp.</param>
         /// <returns>The database closest to the given timestamp.</returns>
-        public OsmTiledDb? GetOn(DateTime timestamp)
+        public OsmTiledDbBase? GetOn(DateTime timestamp)
         {
-            throw new NotImplementedException();
+            var id = -1L;
+            lock (_diffSync)
+            {
+                id = timestamp.ToUnixTime();
+                if (id > this.Latest.Id) return null;
+                
+                var index = _dbs.Keys.BinarySearch(id);
+
+                if (index < 0)
+                {
+                    index = -index;
+                    index -= 1;
+                    if (index > _dbs.Keys.Count) return null;
+                }
+
+                id = _dbs.Keys[index];
+            }
+
+            return GetDb(id);
         }
         
         /// <summary>
@@ -136,6 +160,10 @@ namespace OsmSharp.Db.Tiled
         /// <param name="timeSpan"></param>
         public void TakeSnapshot(DateTime timestamp, TimeSpan? timeSpan = null)
         {
+            var osmTiledDb = this.GetOn(timestamp);
+            
+            
+            
             throw new NotImplementedException();
         }
 

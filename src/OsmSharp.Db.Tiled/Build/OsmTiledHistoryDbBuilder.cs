@@ -62,7 +62,7 @@ namespace OsmSharp.Db.Tiled.Build
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
 
-            var tempPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, DateTime.Now.ToUnixTime(), OsmTiledDbType.Full);
+            var tempPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, DateTime.Now.ToUnixTime(), "temp");
             if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 

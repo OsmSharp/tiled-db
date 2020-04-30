@@ -13,25 +13,28 @@ namespace OsmSharp.Db.Tiled
     /// </summary>
     internal static class OsmTiledHistoryDbOperations
     {
-
         /// <summary>
         /// Tries to parse the data from the given path, return true if successful.
         /// </summary>
         /// <param name="path">The path to parse the date from.</param>
-        /// <param name="dateTime">The date if true.</param>
+        /// <param name="id">The id if true.</param>
         /// <returns>True if successful.</returns>
-        public static bool TryParseOsmTiledDbPath(string path, out DateTime dateTime)
+        public static bool TryParseOsmTiledDbPath(string path, out long id)
         {
+            id = default;
             var dateTimeString = FileSystemFacade.FileSystem.LeafDirectoryName(path);
-
-            if (!long.TryParse(dateTimeString, NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
+            if (!(dateTimeString.EndsWith(OsmTiledDbType.Full) || dateTimeString.EndsWith(OsmTiledDbType.Snapshot))) return false;
+            if(dateTimeString == null) return false;
+            var lastIndexOf= dateTimeString.LastIndexOf("_", StringComparison.Ordinal);
+            if (lastIndexOf <= 0) return false;
+            
+            if (!long.TryParse(dateTimeString.Substring(0, lastIndexOf), NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
                 out var millisecondEpochs))
             {
-                dateTime = default;
                 return false;
             }
 
-            dateTime = millisecondEpochs.FromUnixTime();
+            id = millisecondEpochs;
             return true;
         }
 
@@ -39,14 +42,14 @@ namespace OsmSharp.Db.Tiled
         /// Gets all the osm tiled db paths.
         /// </summary>
         /// <returns>An enumeration of all the valid paths.</returns>
-        public static IEnumerable<(string path, DateTime pathTime)> GetOsmTiledDbPaths(string path)
+        public static IEnumerable<(long id, string path)> GetOsmTiledDbPaths(string path)
         {
             var directories = FileSystemFacade.FileSystem.EnumerateDirectories(path);
             foreach (var directory in directories)
             {
-                if (!TryParseOsmTiledDbPath(directory, out var pathTime)) continue;
+                if (!TryParseOsmTiledDbPath(directory, out var id)) continue;
 
-                yield return (directory, pathTime);
+                yield return (id, directory);
             }
         }
         
