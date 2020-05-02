@@ -117,19 +117,26 @@ namespace OsmSharp.Db.Tiled.Replication
                 
                 if (db == null) throw new Exception("Db loading failed!");
                 Log.Information("DB loaded successfully.");
-                
-                // start catch up until we reach hours/days.
-                var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.EndTimestamp.AddSeconds(1));
+
+                // collect minutely diffs.
+                var minuteEnumerator =
+                    await OsmSharp.Replication.ReplicationConfig.Minutely.GetDiffEnumerator(
+                        db.Latest.EndTimestamp.AddSeconds(1));
+                if (minuteEnumerator == null)
+                {
+                    Log.Information("No new changes.");
+                    return;
+                }
                 var changeSets = new List<OsmChange>();
                 var timestamp = DateTime.MinValue;
-                while (await catchupEnumerator.MoveNext())
+                while (await minuteEnumerator.MoveNext())
                 {
-                    Log.Verbose($"Downloading diff: {catchupEnumerator.State}");
-                    changeSets.Add(await catchupEnumerator.Diff());
-                    if (timestamp < catchupEnumerator.State.EndTimestamp)
-                        timestamp = catchupEnumerator.State.EndTimestamp;
+                    Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
+                    changeSets.Add(await minuteEnumerator.Diff());
+                    if (timestamp < minuteEnumerator.State.EndTimestamp)
+                        timestamp = minuteEnumerator.State.EndTimestamp;
                     
-                    break;
+                    if (changeSets.Count >= 10) break;
                 }
 
                 // apply changes.
@@ -139,12 +146,15 @@ namespace OsmSharp.Db.Tiled.Replication
                     return;
                 }
 
+                // squash changes.
                 var changeSet = changeSets[0];
                 if (changeSets.Count > 1)
                 {
                     Log.Verbose($"Squashing changes...");
                     changeSet = changeSets.Squash();
                 }
+                
+                // apply diff.
                 Log.Information($"Applying changes...");
                 db.ApplyDiff(changeSet, timestamp);
                 Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");

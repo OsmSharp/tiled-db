@@ -116,7 +116,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 // write all tiles.
                 Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
                 var latest = db.Latest;
-                foreach (var tile in latest.GetModifiedTiles())
+                foreach (var tile in latest.GetTiles())
                 {
                     Log.Information($" {latest.Get(tile, completeWays: false).Count()} objects in {tile}");
                 }

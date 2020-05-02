@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
@@ -67,58 +66,32 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// Gets the base.
         /// </summary>
         internal long? Base => _meta.Base;
-
-        /// <summary>
-        /// Gets the object for the given type/id.
-        /// </summary>
-        /// <param name="osmGeoKey">The key.</param>
-        /// <param name="buffer">The buffer.</param>
-        /// <returns>The object if present.</returns>
-        public virtual OsmGeo? Get(OsmGeoKey osmGeoKey, byte[]? buffer = null)
-        {
-            return this.Get(new[] {osmGeoKey}, buffer).FirstOrDefault();
-        }
         
         /// <summary>
-        /// Gets the objects for the given keys.
+        /// Gets the data for the given keys.
         /// </summary>
-        /// <param name="osmGeoKeys">The keys.</param>
-        /// <param name="buffer">The buffer.</param>
+        /// <param name="osmGeoKeys">The keys, gets all data when null.</param>
         /// <returns>The object(s) if present.</returns>
-        public abstract IEnumerable<OsmGeo> Get(IReadOnlyCollection<OsmGeoKey> osmGeoKeys, byte[]? buffer = null);
+        public abstract IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<OsmGeoKey>? osmGeoKeys = null);
 
         /// <summary>
-        /// Gets all the tiles that have data, for a snapshot these are only the modified tiles.
+        /// Gets all the data in the given tile(s).
         /// </summary>
-        /// <returns>The tiles if any.</returns>
-        public abstract IEnumerable<(uint x, uint y)> GetModifiedTiles();
+        /// <param name="tiles">The tile(s).</param>
+        /// <returns>All objects in the given tile(s).</returns>
+        public abstract IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles);
 
         /// <summary>
-        /// Get the tile the given object exists in, if any.
+        /// Get the tiles that have data, if any.
         /// </summary>
-        /// <param name="key">The key.</param>
         /// <returns>The tiles if any.</returns>
-        public virtual IEnumerable<(uint x, uint y)> GetTiles(OsmGeoKey key)
-        {
-            foreach (var (x, y, _) in this.GetTiles(new[] {key}))
-            {
-                yield return (x, y);
-            }
-        }
+        public abstract IEnumerable<(uint x, uint y)> GetTiles(bool modifiedOnly = false);
         
         /// <summary>
         /// Gets the tiles for the objects with the given keys.
         /// </summary>
         /// <param name="osmGeoKeys">The keys.</param>
         /// <returns>All the tiles to objects are in.</returns>
-        public abstract IEnumerable<(uint x, uint y, OsmGeoKey key)> GetTiles(IReadOnlyCollection<OsmGeoKey> osmGeoKeys);
-
-        /// <summary>
-        /// Gets all the data in the given tile(s).
-        /// </summary>
-        /// <param name="tiles">The tile(s).</param>
-        /// <param name="buffer">The buffer.</param>
-        /// <returns>All objects in the given tile(s).</returns>
-        public abstract IEnumerable<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles)> Get(IReadOnlyCollection<(uint x, uint y)> tiles, byte[]? buffer = null);
+        public abstract IEnumerable<(OsmGeoKey key, IEnumerable<(uint x, uint y)> tiles)> GetTilesFor(IEnumerable<OsmGeoKey> osmGeoKeys);
     }
 }

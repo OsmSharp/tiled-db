@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 
@@ -36,7 +37,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <summary>
         /// Gets the base db.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The base database this snapshot depends on.</returns>
         /// <exception cref="Exception"></exception>
         public  OsmTiledDbBase GetBaseDb()
         {
@@ -44,61 +45,76 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             return _baseDb ??= _getBaseDb(this.Base.Value);
         }
 
-        /// <summary>
-        /// Gets the modified tiles.
-        /// </summary>
-        /// <returns>The modified tiles if any.</returns>
-        public override IEnumerable<(uint x, uint y)> GetModifiedTiles()
+        /// <inheritdoc/>
+        public override IEnumerable<(uint x, uint y)> GetTiles(bool modifiedOnly = false)
         {
-            foreach (var tileId in this.GetData().GetTiles())
+            if (modifiedOnly)
             {
-                yield return Tile.FromLocalId(this.Zoom, tileId);
+                foreach (var tileId in this.GetData().GetTiles())
+                {
+                    yield return Tile.FromLocalId(this.Zoom, tileId);
+                }
+            }
+            else
+            {
+                var baseTiles = this.GetBaseDb().GetTiles().Select(x => Tile.ToLocalId(x.x, x.y, this.Zoom));
+                foreach (var tileId in baseTiles.MergeWhenSorted(this.GetData().GetTiles()))
+                {
+                    yield return Tile.FromLocalId(this.Zoom, tileId);
+                }
             }
         }
         
         /// <inheritdoc/>
-        public override IEnumerable<OsmGeo> Get(IReadOnlyCollection<OsmGeoKey> osmGeoKeys, byte[]? buffer = null)
+        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<OsmGeoKey>? osmGeoKeys = null)
         {
-            foreach (var osmGeoKey in osmGeoKeys)
-            {
-                var osmGeo = this.Get(osmGeoKey, buffer);
-                if (osmGeo == null) continue;
-                
-                yield return osmGeo;
-            }
-        }
-
-        /// <inheritdoc/>
-        public override OsmGeo? Get(OsmGeoKey key, byte[]? buffer = null)
-        {
-            var index = this.GetIndex();
+            var buffer = new byte[1024];
             
-            var pointer = index.Get(key);
-            return pointer switch
+            if (osmGeoKeys == null)
             {
-                // object was deleted!
-                -1 => null,
-                // attempt base db.
-                null => this.GetBaseDb().Get(key, buffer),
-                // get data locally.
-                _ => this.GetData().Get(pointer.Value, buffer)
-            };
-        }
-
-        /// <inheritdoc/>
-        public override IEnumerable<(uint x, uint y, OsmGeoKey key)> GetTiles(IReadOnlyCollection<OsmGeoKey> osmGeoKeys)
-        {
-            foreach (var osmGeoKey in osmGeoKeys)
-            {
-                foreach (var (x, y) in this.GetTiles(osmGeoKey))
+                var allHere = this.GetData().Get(buffer)
+                    .Select(x => (x.osmGeo, x.tile
+                        .Select(t => Tile.FromLocalId(this.Zoom, t))));
+                var allBase = this.GetBaseDb().Get();
+                var merged = allBase.MergeWhenSorted(allHere, (o1, o2) => 
+                    (new OsmGeoKey(o1.osmGeo).CompareTo(new OsmGeoKey(o2.osmGeo))));
+                foreach (var merge in merged)
                 {
-                    yield return (x, y, osmGeoKey);
+                    yield return merge;
+                }
+                yield break;
+            }
+            
+            var index = this.GetIndex();
+            foreach (var osmGeoKey in osmGeoKeys)
+            {            
+                var pointer = index.Get(osmGeoKey);
+                if (pointer < 0) continue;
+
+                if (pointer == null)
+                {
+                    var baseData = this.GetBaseDb().Get(osmGeoKey);
+                    if (baseData == null) continue;
+                    yield return baseData.Value;
+                }
+                else
+                {
+                    yield return (this.GetData().Get(pointer.Value, buffer), 
+                        this.GetData().GetTilesFor(pointer.Value).Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
                 }
             }
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<(uint x, uint y)> GetTiles(OsmGeoKey key)
+        public override IEnumerable<(OsmGeoKey key, IEnumerable<(uint x, uint y)> tiles)> GetTilesFor(IEnumerable<OsmGeoKey> osmGeoKeys)
+        {
+            foreach (var osmGeoKey in osmGeoKeys)
+            {
+                yield return (osmGeoKey, this.GetTilesFor(osmGeoKey));
+            }
+        }
+
+        private IEnumerable<(uint x, uint y)> GetTilesFor(OsmGeoKey key)
         {  
             var pointer = this.GetIndex().Get(key);
             switch (pointer)
@@ -109,9 +125,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 case null:
                 {
                     // attempt getting data from base db.
-                    foreach (var osmGeo in this.GetBaseDb().GetTiles(key))
+                    foreach (var osmGeo in this.GetBaseDb().GetTilesFor(new [] { key }))
                     {
-                        yield return osmGeo;
+                        foreach (var tile in osmGeo.tiles)
+                        {
+                            yield return tile;
+                        }
                     }
 
                     break;
@@ -130,13 +149,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles)> Get(IReadOnlyCollection<(uint x, uint y)> tiles, byte[]? buffer = null)
+        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles)
         {
-            buffer ??= new byte[1024];
+            var buffer = new byte[1024];
+            
             var data = this.GetData();
-            if (tiles.Count == 1)
+            if (tiles.HasOne(out var only))
             {
-                var tileId = Tile.ToLocalId(tiles.First(), this.Zoom);
+                var tileId = Tile.ToLocalId(only, this.Zoom);
                 var tileIsLocal = data.HasTile(tileId);
                 if (tileIsLocal)
                 {
@@ -149,7 +169,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 else
                 {
                     // tile is not in diff.
-                    foreach (var t in this.GetBaseDb().Get(tiles, buffer))
+                    foreach (var t in this.GetBaseDb().Get(tiles))
                     {
                         yield return t;
                     }
@@ -157,8 +177,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
             else
             {
-                var localTiles = new List<(uint x, uint y)>(tiles.Count);
-                var otherTiles = new List<(uint x, uint y)>(tiles.Count);
+                var localTiles = new List<(uint x, uint y)>();
+                var otherTiles = new List<(uint x, uint y)>();
                 foreach (var tile in tiles)
                 {
                     if (data.HasTile(Tile.ToLocalId(tile, this.Zoom)))
@@ -174,7 +194,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (localTiles.Count == 0)
                 {
                     // no tiles is in this diff.
-                    foreach (var t in this.GetBaseDb().Get(otherTiles, buffer))
+                    foreach (var t in this.GetBaseDb().Get(otherTiles))
                     {
                         yield return t;
                     }
@@ -197,7 +217,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 }
 
                 // data in both, merge the two.
-                using var baseEnumerator = this.GetBaseDb().Get(otherTiles, buffer).GetEnumerator();
+                using var baseEnumerator = this.GetBaseDb().Get(otherTiles).GetEnumerator();
                 using var thisEnumerator = data.GetForTiles(localTiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
                     buffer).GetEnumerator();
                 var baseHasNext = baseEnumerator.MoveNext();

@@ -52,8 +52,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             // loop over all tiles and their objects affected and apply the mutations.
             var buffer = new byte[1024];
             using var existingStream = osmTiledDb.Get(modifiedTiles
-                    .Select(x => Tile.FromLocalId(osmTiledDb.Zoom, x)).ToArray(), buffer)
-                .Select<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo
+                    .Select(x => Tile.FromLocalId(osmTiledDb.Zoom, x)).ToArray())
+                .Select<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo
                     osmGeo)>(x => (
                     x.tiles.Select(t => Tile.ToLocalId(t, osmTiledDb.Zoom)), x.osmGeo)).GetEnumerator();
             using var modifiedStream = modifications.GetEnumerator();
@@ -126,7 +126,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
                 // append to output.
                 var tiles = next.Value.tiles.ToList();
-                var location = tiledStream.Append(tiles, next.Value.osmGeo);
+                var location = tiledStream.Append(tiles, next.Value.osmGeo, buffer);
                 idIndex.Append(new OsmGeoKey(next.Value.osmGeo), location);
             }
 
@@ -189,8 +189,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
             // loop over all tiles and their objects affected and apply the mutations.
             var buffer = new byte[1024];
-            using var existingStream = osmTiledDb.Get(tiles, buffer)
-                .Select<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo osmGeo)>(x => ( 
+            using var existingStream = osmTiledDb.Get(tiles)
+                .Select<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo osmGeo)>(x => ( 
                     x.tiles.Select(t => Tile.ToLocalId(t, osmTiledDb.Zoom)), x.osmGeo)).GetEnumerator();
             var existingHasNext = existingStream.MoveNext();
 
@@ -217,7 +217,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
                 // append to output.
                 var osmGeoTiles = next.tiles.ToList();
-                var location = tiledStream.Append(osmGeoTiles, next.osmGeo);
+                var location = tiledStream.Append(osmGeoTiles, next.osmGeo, buffer);
                 idIndex.Append(new OsmGeoKey(next.osmGeo), location);
             }
 

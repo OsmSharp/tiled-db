@@ -11,11 +11,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <param name="db">The db.</param>
         /// <param name="type">The type.</param>
         /// <param name="id">The id.</param>
-        /// <param name="buffer">The buffer.</param>
         /// <returns>The object if present.</returns>
-        public static OsmGeo? Get(this OsmTiledDbBase db, OsmGeoType type, long id, byte[]? buffer = null)
+        public static OsmGeo? Get(this OsmTiledDbBase db, OsmGeoType type, long id)
         {
-            return db.Get(new OsmGeoKey(type, id), buffer);
+            var result =  db.Get(new OsmGeoKey(type, id));
+            return result?.osmGeo;
         }
         
         /// <summary>
@@ -27,7 +27,35 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// <returns>The tiles, if any.</returns>
         public static IEnumerable<(uint x, uint y)> GetTiles(this OsmTiledDbBase db, OsmGeoType type, long id)
         {
-            return db.GetTiles(new OsmGeoKey(type, id));
+            return db.GetTilesFor(new OsmGeoKey(type, id));
+        }
+        
+        /// <summary>
+        /// Gets the object and the tiles it's in for the given type/id.
+        /// </summary>
+        /// <param name="db">The db.</param>
+        /// <param name="osmGeoKey">The key.</param>
+        /// <returns>The object if present.</returns>
+        public static (OsmGeo osmGeo, IEnumerable<(uint x, uint y)>)? Get(this OsmTiledDbBase db, OsmGeoKey osmGeoKey)
+        {
+            return db.Get(new[] {osmGeoKey}).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Get the tile the given object exists in, if any.
+        /// </summary>
+        /// <param name="db">The db.</param>
+        /// <param name="key">The key.</param>
+        /// <returns>The tiles if any.</returns>
+        public static IEnumerable<(uint x, uint y)> GetTilesFor(this OsmTiledDbBase db, OsmGeoKey key)
+        {
+            var tiles = db.GetTilesFor(new[] {key}).FirstOrDefault().tiles;
+            if (tiles == null) yield break;
+            
+            foreach (var (x, y) in tiles)
+            {
+                yield return (x, y);
+            }
         }
 
         /// <summary>
@@ -35,14 +63,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// </summary>
         /// <param name="db">The db.</param>
         /// <param name="tile">The tile.</param>
-        /// <param name="buffer">The buffer.</param>
         /// <param name="completeWays">When true all way nodes will be included, if found.</param>
         /// <param name="completeRelations">When true all relation members will be included, if found.</param>
         /// <returns>All objects in the given tile(s).</returns>
-        public static IEnumerable<OsmGeo> Get(this OsmTiledDbBase db,(uint x, uint y) tile, byte[]? buffer = null, 
+        public static IEnumerable<OsmGeo> Get(this OsmTiledDbBase db,(uint x, uint y) tile, 
             bool completeWays = false, bool completeRelations = false)
         {
-            var data = db.Get(new [] {tile}, buffer).Select(x => x.osmGeo);
+            var data = db.Get(new [] {tile}).Select(x => x.osmGeo);
             
             if (completeWays || completeRelations)
             {
@@ -75,7 +102,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                             
                             var member = db.Get(key);
                             if (member == null) continue;
-                            sortedList.Add(new OsmGeoKey(member), member);
+                            sortedList.Add(new OsmGeoKey(member.Value.osmGeo), member.Value.osmGeo);
                         }
                     }
                 }

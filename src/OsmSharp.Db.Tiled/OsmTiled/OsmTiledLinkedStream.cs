@@ -68,10 +68,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _nextDelayedPointer = 0;
         }
 
-        public OsmGeo Get(long pointer, byte[]? buffer = null)
+        public OsmGeo Get(long pointer, byte[] buffer)
         {
-            if (buffer?.Length < 1024) buffer = null;
-            buffer ??= new byte[1024];
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
             
             _data.Seek(pointer, SeekOrigin.Begin);
 
@@ -117,8 +116,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        public long Append(uint tile, OsmGeo osmGeo, byte[]? buffer = null)
+        public long Append(uint tile, OsmGeo osmGeo, byte[] buffer)
         {
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
             if (_previousPointers == null) throw new InvalidOperationException("Stream is not writeable.");
             
             _pointers.EnsureMinimumSize(tile + 1);
@@ -177,8 +177,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             return pointer;
         }
 
-        public long Append(IReadOnlyCollection<uint> tiles, OsmGeo osmGeo, byte[]? buffer = null)
+        public long Append(IReadOnlyCollection<uint> tiles, OsmGeo osmGeo, byte[] buffer)
         {
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
             if (_previousPointers == null) throw new InvalidOperationException("Stream is not writeable.");
             
             var c = (uint) tiles.Count;
@@ -289,9 +290,49 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             return _pointers[tile] != NoData;
         }
 
+        public IEnumerable<(OsmGeo osmGeo, List<uint> tile)> Get(byte[] buffer)
+        {
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
+            var tilesToReturn = new List<uint>();
+
+            _data.Seek(0, SeekOrigin.Begin);
+            _data.ReadUInt32();
+            var pointer = _data.Position;
+            while (pointer < _data.Length)
+            {
+                // read tile count.
+                var c = _data.ReadVarUInt32();
+                var isNode = c == 1;
+                if (c > 1) c -= 1;
+
+                // find tile(s).
+                tilesToReturn.Clear();
+                if (!isNode)
+                {
+                    for (var t = 0; t < c; t++)
+                    {
+                        var currentTile = _data.ReadVarUInt32();
+                        tilesToReturn.Add(currentTile);
+                    }
+                }
+
+                if (isNode)
+                {
+                    if (!(_data.ReadOsmGeo(buffer) is Node node)) throw new InvalidDataException("Node expected.");
+
+                    tilesToReturn.Add(ToTile(node));
+                    yield return (node, tilesToReturn);
+                }
+                else
+                {
+                    yield return (_data.ReadOsmGeo(buffer), tilesToReturn);
+                }
+            }
+        }
+        
         public IEnumerable<OsmGeo> GetForTile(uint tile, byte[] buffer)
         {
-            if (buffer?.Length < 1024) Array.Resize(ref buffer, 1024); 
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024); 
             
             using var enumerator = this.GetForTileInternal(tile, buffer).GetEnumerator();
             if (!enumerator.MoveNext()) yield break;

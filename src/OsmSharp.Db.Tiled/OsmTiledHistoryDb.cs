@@ -171,7 +171,7 @@ namespace OsmSharp.Db.Tiled
             var snapshots = 0;
             while (osmTiledDb is OsmTiledDbSnapshot nextSnapshot)
             {
-                tiles.UnionWith(nextSnapshot.GetModifiedTiles());
+                tiles.UnionWith(nextSnapshot.GetTiles(true));
 
                 if (osmTiledDb.Base == null) throw new InvalidDataException("Snapshot should have a valid base db.");
                 osmTiledDb = this.GetDb(osmTiledDb.Base.Value);
