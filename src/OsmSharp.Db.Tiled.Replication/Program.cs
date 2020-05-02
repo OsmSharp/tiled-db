@@ -124,8 +124,6 @@ namespace OsmSharp.Db.Tiled.Replication
                 var timestamp = DateTime.MinValue;
                 while (await catchupEnumerator.MoveNext())
                 {
-                    if ((catchupEnumerator.State.EndTimestamp - db.Latest.EndTimestamp).TotalHours > 2) break;
-                    
                     Log.Verbose($"Downloading diff: {catchupEnumerator.State}");
                     changeSets.Add(await catchupEnumerator.Diff());
                     if (timestamp < catchupEnumerator.State.EndTimestamp)

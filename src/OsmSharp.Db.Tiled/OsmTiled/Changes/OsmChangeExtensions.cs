@@ -17,7 +17,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
             // collect all affected tiles and tile mutations.
             var modifications = new SortedDictionary<OsmGeoKey, (IEnumerable<uint>? tiles, OsmGeo? osmGeo)>();
             var modifiedTiles = new HashSet<uint>();
-
+            var tilesCache = new Dictionary<OsmGeoKey, List<uint>>();
+            
             IEnumerable<uint> GetTilesFor(OsmGeoKey key)
             {
                 if (modifications == null) throw new InvalidOperationException();
@@ -26,8 +27,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
                     if (modification.tiles == null) return Enumerable.Empty<uint>();
                     return modification.tiles;
                 }
-                
-                return getTiles(key).ToList();
+
+                if (tilesCache == null) throw new InvalidOperationException();
+                if (tilesCache.TryGetValue(key, out var cachedTiles)) return cachedTiles;
+                    
+                cachedTiles = getTiles(key).ToList();
+                tilesCache[key] = cachedTiles;
+                return cachedTiles;
             }
             
             // NOTE: the changeset is expected to 'squashed' already and in order (nodes, ways and relations sorted).

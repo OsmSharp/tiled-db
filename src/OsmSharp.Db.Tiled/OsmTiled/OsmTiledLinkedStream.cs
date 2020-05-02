@@ -284,7 +284,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         public bool HasTile(uint tile)
         {
-            if (_pointers.Length < tile) return false;
+            if (_pointers.Length <= tile) return false;
 
             return _pointers[tile] != NoData;
         }
