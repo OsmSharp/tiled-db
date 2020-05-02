@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Collections.Search;
 using OsmSharp.Db.Tiled.IO;
+using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.Build;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
@@ -16,7 +19,8 @@ namespace OsmSharp.Db.Tiled
     {
         private readonly string _path;
         private readonly SortedList<long, OsmTiledDbBase?> _dbs;
-        private OsmTiledHistoryDbMeta _meta;
+        private readonly object DiffSync = new object();
+        private long _latestId;
 
         /// <summary>
         /// Creates a new OSM db.
@@ -27,32 +31,36 @@ namespace OsmSharp.Db.Tiled
             _path = path;
 
             _dbs = new SortedList<long, OsmTiledDbBase?>();
-            _meta = OsmTiledHistoryDbOperations.LoadDbMeta(_path);
-
-            foreach (var (id, _) in OsmTiledHistoryDbOperations.GetOsmTiledDbPaths(_path))
+            foreach (var (_, id, _) in OsmTiledDbOperations.GetDbPaths(_path))
             {
                 _dbs[id] = null;
             }
-
-            this.Latest = this.GetDb(_meta.Latest);
+            if (_dbs.Count == 0) throw new Exception("No databases found!");
+            _latestId = _dbs.Keys[_dbs.Count - 1];
         }
 
         private OsmTiledDbBase GetDb(long id)
         {
-            if (_dbs.TryGetValue(id, out var osmTiledDbBase) && osmTiledDbBase != null) return osmTiledDbBase;
-            
-            osmTiledDbBase = OsmTiledDbOperations.LoadDb(this._path, id, this.GetDb);
-            _dbs[id] = osmTiledDbBase;
+            lock (DiffSync)
+            {
+                if (_dbs.TryGetValue(id, out var osmTiledDbBase) && osmTiledDbBase != null) return osmTiledDbBase;
 
-            return osmTiledDbBase;
+                osmTiledDbBase = OsmTiledDbOperations.LoadDb(this._path, id, this.GetDb);
+                _dbs[id] = osmTiledDbBase;
+
+                return osmTiledDbBase;
+            }
         }
+
+        /// <summary>
+        /// Gets the location of this db.
+        /// </summary>
+        public string Path => _path;
 
         /// <summary>
         /// Gets the latest snapshot db.
         /// </summary>
-        public OsmTiledDbBase Latest { get; private set; }
-
-        private readonly object _diffSync = new object();
+        public OsmTiledDbBase Latest => this.GetDb(_latestId);
 
         /// <summary>
         /// Creates a new db.
@@ -71,20 +79,14 @@ namespace OsmSharp.Db.Tiled
         /// <param name="data">The data.</param>
         public void Update(IEnumerable<OsmGeo> data)
         {
+            // update.
             var latest = Build.OsmTiledHistoryDbBuilder.Update(data, this._path);
+            _latestId = latest.Id;
             
-            lock (_diffSync)
+            lock (DiffSync)
             {
                 // update data.
-                this.Latest = latest;
-                _dbs[this.Latest.Id] = this.Latest;
-                
-                // update meta data.
-                _meta = new OsmTiledHistoryDbMeta()
-                {
-                    Latest = latest.Id
-                };
-                OsmTiledHistoryDbOperations.SaveDbMeta(_path, _meta);
+                _dbs[latest.Id] = latest;
             }
         }
 
@@ -95,34 +97,29 @@ namespace OsmSharp.Db.Tiled
         /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
         public void ApplyDiff(OsmChange diff, DateTime? timeStamp = null)
         {
-            lock (_diffSync)
-            {           
-                // format new path.
-                var tempPath = OsmTiledDbOperations.BuildOsmTiledDbPath(this._path, DateTime.Now.ToUnixTime(), "temp");
-                if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
-                    FileSystemFacade.FileSystem.CreateDirectory(tempPath);
-                
-                // build new db.
-                var dbMeta = this.Latest.ApplyChangSet(diff, tempPath);
-                timeStamp ??= dbMeta.Timestamp;
-                
-                // generate a proper path and move the data there.
-                var dbPath = OsmTiledDbOperations.BuildOsmTiledDbPath(this._path, timeStamp.Value.ToUnixTime(), OsmTiledDbType.Snapshot);
-                FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
-                
-                // update data.
-                this.Latest = new OsmTiledDbSnapshot(dbPath, this.GetDb);
-                _dbs[this.Latest.Id] = this.Latest;
-                
-                // update meta data.
-                _meta = new OsmTiledHistoryDbMeta()
-                {
-                    Latest = this.Latest.Id
-                };
-                OsmTiledHistoryDbOperations.SaveDbMeta(_path, _meta);
+            // format new path.
+            var tempPath = OsmTiledDbOperations.BuildTempDbPath(this._path);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
+                FileSystemFacade.FileSystem.CreateDirectory(tempPath);
+
+            // build new db.
+            var dbMeta = this.Latest.ApplyChangSet(diff, tempPath, timeStamp: timeStamp);
+            if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
+
+            // generate a proper path and move the data there.
+            var dbPath = OsmTiledDbOperations.BuildDbPath(this._path, dbMeta.Id, dbMeta.Timespan.Value,
+                OsmTiledDbType.Snapshot);
+            FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
+
+            // update data.
+            var latest = new OsmTiledDbSnapshot(dbPath, this.GetDb);
+            _latestId = latest.Id;
+            lock (DiffSync)
+            {
+                _dbs[latest.Id] = latest;
             }
         }
-        
+
         /// <summary>
         /// Gets the database for the given timestamp.
         ///
@@ -132,8 +129,8 @@ namespace OsmSharp.Db.Tiled
         /// <returns>The database closest to the given timestamp.</returns>
         public OsmTiledDbBase? GetOn(DateTime timestamp)
         {
-            var id = -1L;
-            lock (_diffSync)
+            long id;
+            lock (DiffSync)
             {
                 id = timestamp.ToUnixTime();
                 if (id > this.Latest.Id) return null;
@@ -156,15 +153,63 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Groups the data on or right before the given timestamp and the data before in the given timespan.
         /// </summary>
-        /// <param name="timestamp"></param>
-        /// <param name="timeSpan"></param>
-        public void TakeSnapshot(DateTime timestamp, TimeSpan? timeSpan = null)
+        /// <param name="timeStamp">The timestamp, if none given uses latest.</param>
+        /// <param name="timeSpan">The timespan, if none given uses one day.</param>
+        public OsmTiledDbBase? TakeSnapshot(DateTime? timeStamp, TimeSpan? timeSpan = null)
         {
-            var osmTiledDb = this.GetOn(timestamp);
+            timeSpan ??= new TimeSpan(TimeSpan.TicksPerDay);
+            timeStamp ??= this.Latest.EndTimestamp;
             
+            var osmTiledDb = this.GetOn(timeStamp.Value);
+            if (osmTiledDb == null) return null;
             
+            // collect all tiles that have changed.
+            var latestDb = osmTiledDb;
+            var earliest = timeStamp - timeSpan.Value;
             
-            throw new NotImplementedException();
+            var tiles = new HashSet<(uint x, uint y)>();
+            var snapshots = 0;
+            while (osmTiledDb is OsmTiledDbSnapshot nextSnapshot)
+            {
+                tiles.UnionWith(nextSnapshot.GetModifiedTiles());
+
+                if (osmTiledDb.Base == null) throw new InvalidDataException("Snapshot should have a valid base db.");
+                osmTiledDb = this.GetDb(osmTiledDb.Base.Value);
+                if (osmTiledDb == null) throw new InvalidDataException("Snapshot should have a valid base db.");
+                
+                if (osmTiledDb.EndTimestamp <= earliest) break;
+
+                snapshots++;
+            }
+
+            if (snapshots <= 1)
+            {
+                Log.Default.Verbose("No need to snapshot, already there.");
+                return latestDb;
+            }
+            
+            // format new path.
+            var tempPath = OsmTiledDbOperations.BuildTempDbPath(this._path);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
+                FileSystemFacade.FileSystem.CreateDirectory(tempPath);
+                
+            // build new db.
+            var dbMeta = latestDb.Snapshot(tiles.ToArray(), tempPath, latestDb.Id);
+            dbMeta.Base = osmTiledDb.Id;
+            if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
+                
+            // generate a proper path and move the data there.
+            var dbPath = OsmTiledDbOperations.BuildDbPath(this._path, dbMeta.Id, dbMeta.Timespan.Value, OsmTiledDbType.Snapshot);
+            FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
+                
+            // update data.
+            var snapshot = new OsmTiledDbSnapshot(dbPath, this.GetDb);
+            lock (DiffSync)
+            {
+                _dbs[snapshot.Id] = snapshot;
+            }
+
+            return snapshot;
         }
 
         /// <summary>
@@ -175,15 +220,17 @@ namespace OsmSharp.Db.Tiled
         /// <returns>True if a db was loaded, false otherwise.</returns>
         public static bool TryLoad(string path, out OsmTiledHistoryDb? osmDb)
         {
-            if (FileSystemFacade.FileSystem.Exists(
-                OsmTiledDbOperations.PathToMeta(path)))
+            var dbs = new SortedList<long, OsmTiledDbBase?>();
+            foreach (var (_, id, _) in OsmTiledDbOperations.GetDbPaths(path))
             {
-                osmDb = new OsmTiledHistoryDb(path);
-                return true;
+                dbs[id] = null;
             }
 
             osmDb = null;
-            return false;
+            if (dbs.Count == 0) return false;
+            
+            osmDb = new OsmTiledHistoryDb(path);
+            return true;
         }
 
         /// <summary>
@@ -194,15 +241,32 @@ namespace OsmSharp.Db.Tiled
         {
             try
             {
-                var meta = OsmTiledHistoryDbOperations.LoadDbMeta(_path);
-                lock (_diffSync)
+                var dbs = new SortedList<long, OsmTiledDbBase?>();
+                foreach (var (_, id, _) in OsmTiledDbOperations.GetDbPaths(_path))
                 {
-                    if (meta.Latest != _meta.Latest)
+                    dbs[id] = null;
+                }
+
+                if (dbs.Count == 0) return false;
+                var latestId = dbs.Keys[dbs.Count - 1];
+
+                if (latestId != _latestId)
+                {
+                    lock (DiffSync)
                     {
-                        this.Latest = this.GetDb(meta.Latest);
-                        _meta = meta;
-                        return true;
+                        foreach (var id in dbs.Keys)
+                        {
+                            if (!_dbs.TryGetValue(id, out _))
+                            {
+                                _dbs[id] = null;
+                            }
+                        }
+                        
+                        if (_dbs.Count == 0) throw new Exception("No databases found!");
+                        _latestId = _dbs.Keys[_dbs.Count - 1];
                     }
+
+                    return true;
                 }
             }
             catch (Exception)
@@ -216,7 +280,7 @@ namespace OsmSharp.Db.Tiled
         /// <inheritdoc/>
         public override string ToString()
         {
-            return $"{_path}: {this.Latest.Path}@{this.Latest.Timestamp}";
+            return $"{_path}: {this.Latest.Path}@{this.Latest.EndTimestamp}";
         }
     }
 }

@@ -1,11 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using Serilog;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using OsmSharp.Changesets;
+using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.Build;
+using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Logging;
 using OsmSharp.Streams;
@@ -21,7 +25,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/media/xivk/2T-SSD-EXT/planet/belgium-2020-04-27.osm.pbf",
+                    @"/data/work/data/OSM/lille-latest.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests",
                     @"14"
                 };
@@ -56,6 +60,10 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 }
             };
 
+            var result = OsmTiledDbOperations.BuildDbPath("", new DateTime(2020, 04, 22, 20, 59, 02, DateTimeKind.Utc).ToUnixTime(),
+                null, "full");
+            
+            
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
                 .WriteTo.Console()
@@ -104,20 +112,14 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     // splitting tiles and writing indexes.
                     db = OsmTiledHistoryDb.Create(args[1], progress);
                 }
-                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
                 
-                // apply changes.
-                ticks = DateTime.Now.Ticks;
-                Log.Information($"Applying changes");
-                var serializer = new XmlSerializer(typeof(OsmChange));
-                await using var diffStream = File.OpenRead(@"/media/xivk/2T-SSD-EXT/planet/planet-786.osc.gz");
-                await using (var decompressed = new GZipStream(diffStream, CompressionMode.Decompress))
-                using (var streamReader = new StreamReader(decompressed))
+                // write all tiles.
+                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                var latest = db.Latest;
+                foreach (var tile in latest.GetModifiedTiles())
                 {
-                    if (serializer.Deserialize(streamReader) is OsmChange osmChange) db.ApplyDiff(osmChange);
+                    Log.Information($" {latest.Get(tile, completeWays: false).Count()} objects in {tile}");
                 }
-                
-                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
             }
             catch (Exception e)
             {

@@ -135,17 +135,19 @@ namespace OsmSharp.Db.Tiled.Tests.Mocks
             return directory.Substring(directory.LastIndexOf('/') + 1);
         }
 
-        public IEnumerable<string> EnumerateDirectories(string directory)
+        public IEnumerable<string> EnumerateDirectories(string directory, string? startsWith = null)
         {
             var dir = this.FindDir(directory);
             if (dir == null)
             {
                 throw new Exception("Directory not found.");
             }
-            return dir.SubDirs.Select(x => Path.Combine(directory, x.Value.Name));
+            return dir.SubDirs
+                .Where(x => startsWith == null || x.Key.StartsWith(startsWith))
+                .Select(x => Path.Combine(directory, x.Value.Name));
         }
 
-        public IEnumerable<string> EnumerateFiles(string directory, string mask = null)
+        public IEnumerable<string> EnumerateFiles(string directory, string? mask = null)
         {
             var dir = this.FindDir(directory);
             if (dir == null)

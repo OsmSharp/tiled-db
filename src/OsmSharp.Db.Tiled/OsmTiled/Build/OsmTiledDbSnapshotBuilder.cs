@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.IO;
+using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.OsmTiled.Changes;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
@@ -24,13 +25,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="path">The path to store the db at.</param>
         /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
         /// <param name="settings">The settings.</param>
-        public static OsmTiledDbMeta ApplyChangSet(this OsmTiledDbBase osmTiledDb, OsmChange changeset, string path, 
+        /// <returns>Meta data on the new tiled db.</returns>
+        public static OsmTiledDbMeta ApplyChangSet(this OsmTiledDbBase osmTiledDb, OsmChange changeset, string path,
             OsmTiledDbSnapshotBuildSettings? settings = null, DateTime? timeStamp = null)
         {
             settings ??= new OsmTiledDbSnapshotBuildSettings();
-             
+
             var zoom = osmTiledDb.Zoom;
-            
+
             // collect all affected tiles and tile mutations.
             // build a modifications stream, a sorted stream augmented with tile ids. 
             var (modifiedTimeStamp, modifiedTiles, modifications) = changeset.BuildTiledStream(zoom,
@@ -43,22 +45,29 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 OsmTiledDbOperations.PathToTileIndex(path), FileMode.Create);
             using var dataIdIndex = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToIdIndex(path), FileMode.Create);
-            
+
             var tiledStream = new OsmTiledLinkedStream(data);
             var idIndex = new OsmTiledIndex(dataIdIndex);
 
             // loop over all tiles and their objects affected and apply the mutations.
             var buffer = new byte[1024];
             using var existingStream = osmTiledDb.Get(modifiedTiles
-                .Select(x => Tile.FromLocalId(osmTiledDb.Zoom, x)).ToArray(), buffer)
-                .Select<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo osmGeo)>(x => ( 
+                    .Select(x => Tile.FromLocalId(osmTiledDb.Zoom, x)).ToArray(), buffer)
+                .Select<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo
+                    osmGeo)>(x => (
                     x.tiles.Select(t => Tile.ToLocalId(t, osmTiledDb.Zoom)), x.osmGeo)).GetEnumerator();
             using var modifiedStream = modifications.GetEnumerator();
             var existingHasNext = existingStream.MoveNext();
             var modifiedHasNext = modifiedStream.MoveNext();
 
+            var i = 0L;
+            var progress = Log.Default.ProgressAbsolute(TraceEventType.Verbose,
+                (p) => $"Processed {p}...", 10000);
             while (existingHasNext || modifiedHasNext)
             {
+                progress.Progress(i);
+                i++;
+
                 (IEnumerable<uint>? tiles, OsmGeo? osmGeo, OsmGeoKey key)? next = null;
                 if (existingHasNext && modifiedHasNext)
                 {
@@ -81,7 +90,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                         modifiedHasNext = modifiedStream.MoveNext();
                     }
                     else
-                    { // overwrite existing if equal.
+                    {
+                        // overwrite existing if equal.
                         // move modified.
                         next = (modified.tiles?.ToList(), modified.osmGeo, modified.key);
                         modifiedHasNext = modifiedStream.MoveNext();
@@ -105,25 +115,26 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
                 if (next == null) throw new InvalidDataException("Next object cannot be null.");
                 if (next?.osmGeo == null || next?.tiles == null)
-                { // this object was delete, add it as such to the index.
+                {
+                    // this object was delete, add it as such to the index.
                     idIndex.Append(next.Value.key, -1);
                     continue;
                 }
-                
+
                 // apply settings.
                 Prepare(next.Value.osmGeo, settings);
-                
+
                 // append to output.
                 var tiles = next.Value.tiles.ToList();
                 var location = tiledStream.Append(tiles, next.Value.osmGeo);
                 idIndex.Append(new OsmGeoKey(next.Value.osmGeo), location);
             }
-            
+
             // set empty tiles if any.
             foreach (var tile in modifiedTiles)
             {
                 if (tiledStream.HasTile(tile)) continue;
-                
+
                 // tile was set as modified but it wasn't written to, it has to be empty.
                 tiledStream.SetAsEmpty(tile);
             }
@@ -134,11 +145,90 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
             // update timestamp properly.
             timeStamp ??= modifiedTimeStamp;
+
+            var id = timeStamp.Value.ToUnixTime();
+            if (id == osmTiledDb.Id) throw new Exception("Timestamp has not moved!");
+
+            // save the meta-data.
+            var meta = new OsmTiledDbMeta
+            {
+                Id = id,
+                Base = osmTiledDb.Id,
+                Type = OsmTiledDbType.Snapshot,
+                Zoom = zoom,
+            };
+            OsmTiledDbOperations.SaveDbMeta(path, meta);
+            return meta;
+        }
+
+        /// <summary>
+        /// Writes a snapshot from the sorted osm geo.
+        /// </summary>
+        /// <param name="osmTiledDb">The db to snapshot.</param>
+        /// <param name="tiles">The tiles to snapshot for.</param>
+        /// <param name="path">The path to store the db at.</param>
+        /// <param name="id">The id of the new database.</param>
+        /// <param name="settings">The settings.</param>
+        /// <returns>Meta data on the new tiled db.</returns>
+        public static OsmTiledDbMeta Snapshot(this OsmTiledDbBase osmTiledDb, IReadOnlyCollection<(uint x, uint y)> tiles, string path, 
+            long id, OsmTiledDbSnapshotBuildSettings? settings = null)
+        {            
+            settings ??= new OsmTiledDbSnapshotBuildSettings();
+             
+            var zoom = osmTiledDb.Zoom;
+
+            using var data = FileSystemFacade.FileSystem.Open(
+                OsmTiledDbOperations.PathToData(path), FileMode.Create);
+            using var dataTilesIndex = FileSystemFacade.FileSystem.Open(
+                OsmTiledDbOperations.PathToTileIndex(path), FileMode.Create);
+            using var dataIdIndex = FileSystemFacade.FileSystem.Open(
+                OsmTiledDbOperations.PathToIdIndex(path), FileMode.Create);
+            
+            var tiledStream = new OsmTiledLinkedStream(data, pointersCacheSize: OsmTiledLinkedStream.PointerCacheSizeDefault);
+            var idIndex = new OsmTiledIndex(dataIdIndex);
+
+            // loop over all tiles and their objects affected and apply the mutations.
+            var buffer = new byte[1024];
+            using var existingStream = osmTiledDb.Get(tiles, buffer)
+                .Select<(OsmGeo osmGeo, IReadOnlyCollection<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo osmGeo)>(x => ( 
+                    x.tiles.Select(t => Tile.ToLocalId(t, osmTiledDb.Zoom)), x.osmGeo)).GetEnumerator();
+            var existingHasNext = existingStream.MoveNext();
+
+            while (existingHasNext)
+            {
+                // compare and take first.
+                var existing = existingStream.Current;
+                if (existing.osmGeo.Id == null) throw new InvalidDataException("Object found without an id.");
+                var existingId = OsmGeoCoder.Encode(existing.osmGeo.Type, existing.osmGeo.Id.Value);
+                // move existing.
+                (IEnumerable<uint>? tiles, OsmGeo? osmGeo, OsmGeoKey key) next = 
+                    (existing.tiles.ToList(), existing.osmGeo, new OsmGeoKey(existing.osmGeo));
+                existingHasNext = existingStream.MoveNext();
+
+                if (next.osmGeo == null || next.tiles == null)
+                {
+                    // this object was delete, add it as such to the index.
+                    idIndex.Append(next.key, -1);
+                    continue;
+                }
+
+                // apply settings.
+                Prepare(next.osmGeo, settings);
+
+                // append to output.
+                var osmGeoTiles = next.tiles.ToList();
+                var location = tiledStream.Append(osmGeoTiles, next.osmGeo);
+                idIndex.Append(new OsmGeoKey(next.osmGeo), location);
+            }
+
+            // reverse indexed data and save tile index.
+            tiledStream.Flush();
+            tiledStream.SerializeIndex(dataTilesIndex);
             
             // save the meta-data.
             var meta = new OsmTiledDbMeta
             {
-                Id = timeStamp.Value.ToUnixTime(),
+                Id = id,
                 Base = osmTiledDb.Id, 
                 Type = OsmTiledDbType.Snapshot,
                 Zoom = zoom,

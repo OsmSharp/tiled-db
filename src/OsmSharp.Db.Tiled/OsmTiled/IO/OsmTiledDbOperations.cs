@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
 using Newtonsoft.Json;
@@ -7,10 +9,83 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
 {
     internal static class OsmTiledDbOperations
     {
-        public static string BuildOsmTiledDbPath(string path, long id, string type)
+        public static IEnumerable<(string path, long id, long? timespan)> GetDbPaths(string path, string? startsWith = null)
         {
+            var directories = FileSystemFacade.FileSystem.EnumerateDirectories(path, startsWith);
+            foreach (var directory in directories)
+            {
+                if (!OsmTiledDbOperations.TryParseDbPath(directory, out var id, out var timespan)) continue;
+
+                yield return (directory, id, timespan);
+            }
+        }
+
+        public static string BuildTempDbPath(string path)
+        {
+            return FileSystemFacade.FileSystem.Combine(path, "." + Guid.NewGuid().ToString());
+        }
+
+        public static string BuildDbPath(string path, long id, long? timespan, string type)
+        {
+            var guid = Guid.NewGuid();
+            if (timespan == null) return FileSystemFacade.FileSystem.Combine(path,
+                    $"{id:0000000000000000}_{type}");
             return FileSystemFacade.FileSystem.Combine(path,
-                $"{id:0000000000000000}_{type}");
+                $"{id:0000000000000000}_{timespan:00000000000}_{type}");
+        }
+
+        public static bool TryParseDbPath(string path, out long id, out long? timespan)
+        {
+            timespan = null;
+            id = default;
+            
+            // check path, needs to end with type.
+            var dateTimeString = FileSystemFacade.FileSystem.LeafDirectoryName(path);
+            if (!(dateTimeString.EndsWith(OsmTiledDbType.Full) || dateTimeString.EndsWith(OsmTiledDbType.Snapshot))) return false;
+            if(dateTimeString == null) return false;
+            
+            // check first '_' index.
+            var firstIndexOf = dateTimeString.IndexOf("_", StringComparison.Ordinal);
+            if (firstIndexOf  <= 0) return false;
+            
+            // parse timestamp.
+            if (!long.TryParse(dateTimeString.Substring(0, firstIndexOf ), NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
+                out var millisecondEpochs))
+            {
+                return false;
+            }
+
+            // parse timespan.
+            var lastIndexOf = dateTimeString.IndexOf("_", StringComparison.Ordinal);
+            if (lastIndexOf > firstIndexOf)
+            {
+                if (!long.TryParse(dateTimeString.Substring(firstIndexOf + 1, lastIndexOf - firstIndexOf - 1), NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
+                    out var millisecondSpan))
+                {
+                    timespan = millisecondSpan;
+                }
+            }
+            
+            id = millisecondEpochs;
+            return true;
+        }
+
+        public static string? LoadLongestSnapshotDb(string path, long id)
+        {
+            var potentialDbs = GetDbPaths(path,
+                $"{id:0000000000000000}");
+            (string? path, long id, long? timespan) best = (null, long.MinValue, null);
+            foreach (var potentialDb in potentialDbs)
+            {
+                if (best.timespan == null || 
+                    (potentialDb.timespan != null &&
+                    best.timespan.Value < potentialDb.timespan.Value))
+                {
+                    best = potentialDb;
+                }
+            }
+
+            return best.path;
         }
         
         public static void SaveDbMeta(string path, OsmTiledDbMeta dbMeta)
@@ -23,24 +98,25 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         
         public static OsmTiledDbBase LoadDb(string path, long id, Func<long, OsmTiledDbBase> getDb)
         {
-            var dbPath = BuildOsmTiledDbPath(path, id, OsmTiledDbType.Full);
+            var dbPath = BuildDbPath(path, id, null, OsmTiledDbType.Full);
             OsmTiledDbMeta? meta = null;
             if (FileSystemFacade.FileSystem.DirectoryExists(dbPath))
             {
                 // a full db exists, use that one!
-                meta = OsmTiledDbOperations.LoadDbMeta(dbPath);
+                meta = LoadDbMeta(dbPath);
             }
             else
             {
                 // check for a snapshot.
-                dbPath = BuildOsmTiledDbPath(path, id, OsmTiledDbType.Snapshot);
-                if (FileSystemFacade.FileSystem.DirectoryExists(dbPath))
+                dbPath = LoadLongestSnapshotDb(path, id);
+                if (dbPath != null &&
+                    FileSystemFacade.FileSystem.DirectoryExists(dbPath))
                 {
                     meta = OsmTiledDbOperations.LoadDbMeta(dbPath);
                 }
             }
             
-            if (meta == null) throw new Exception($"Database {id} requested but not found!");
+            if (dbPath == null || meta == null) throw new Exception($"Database {id} requested but not found!");
              
             switch (meta.Type)
             {

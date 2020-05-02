@@ -32,10 +32,28 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         private OsmTiledDbBase? _baseDb;
-        private OsmTiledDbBase GetBaseDb()
+        
+        /// <summary>
+        /// Gets the base db.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public  OsmTiledDbBase GetBaseDb()
         {
             if (this.Base == null) throw new Exception($"A {nameof(OsmTiledDbSnapshot)} always needs a base db.");
             return _baseDb ??= _getBaseDb(this.Base.Value);
+        }
+
+        /// <summary>
+        /// Gets the modified tiles.
+        /// </summary>
+        /// <returns>The modified tiles if any.</returns>
+        public override IEnumerable<(uint x, uint y)> GetModifiedTiles()
+        {
+            foreach (var tileId in this.GetData().GetTiles())
+            {
+                yield return Tile.FromLocalId(this.Zoom, tileId);
+            }
         }
         
         /// <inheritdoc/>

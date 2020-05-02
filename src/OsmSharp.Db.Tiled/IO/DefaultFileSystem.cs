@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using Serilog;
 
 namespace OsmSharp.Db.Tiled.IO
 {
@@ -64,9 +61,9 @@ namespace OsmSharp.Db.Tiled.IO
             return (new DirectoryInfo(directory)).Name;
         }
 
-        public IEnumerable<string> EnumerateDirectories(string directory)
+        public IEnumerable<string> EnumerateDirectories(string directory, string? startsWith = null)
         {
-            return Directory.EnumerateDirectories(directory);
+            return Directory.EnumerateDirectories(directory, startsWith + "*");
         }
 
         public IEnumerable<string> EnumerateFiles(string directory, string? searchPattern = null)

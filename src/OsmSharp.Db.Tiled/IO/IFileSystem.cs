@@ -62,7 +62,7 @@ namespace OsmSharp.Db.Tiled.IO
         /// <summary>
         /// Enumerates directories.
         /// </summary>
-        IEnumerable<string> EnumerateDirectories(string directory);
+        IEnumerable<string> EnumerateDirectories(string directory, string? startsWith = null);
 
         /// <summary>
         /// Enumerates files.

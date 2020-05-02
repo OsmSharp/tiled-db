@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Build;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
@@ -106,13 +107,6 @@ namespace OsmSharp.Db.Tiled.Tests
                 }
             }.Update("/data");
             
-            // update meta data.
-            var meta = new OsmTiledHistoryDbMeta()
-            {
-                Latest =  tiledDb.Id
-            };
-            OsmTiledHistoryDbOperations.SaveDbMeta("/data", meta);
-            
             // reload db.
             Assert.True(db.TryReload());
         }
@@ -194,6 +188,75 @@ namespace OsmSharp.Db.Tiled.Tests
             Assert.NotNull(tiledDb);
             Assert.AreEqual(new DateTime(2020, 01, 01, 0, 0, 0, DateTimeKind.Utc).ToUnixTime(),
                 tiledDb.Id);
+        }
+        
+        [Test]
+        public void OsmTiledHistoryDb_TakeSnapshot_ShouldCreateSnapshot()
+        {
+            FileSystemFacade.FileSystem = new MockFileSystem(@"/");
+            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+
+            var db = OsmTiledHistoryDb.Create(@"/data", new OsmGeo[]
+            {
+                new Node()
+                {
+                    Id = 456414,
+                    Latitude = 50,
+                    Longitude = 4,
+                    ChangeSetId = 1,
+                    UserId = 1,
+                    UserName = "Ben",
+                    Visible = true,
+                    TimeStamp = new DateTime(2020, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+                    Version = 1
+                }
+            });
+            
+            // update db without using the db method (as if it was updated out of process).
+            db.ApplyDiff(new OsmChange()
+            {
+                Modify =
+                    new OsmGeo[]
+                    {
+                        new Node()
+                        {
+                            Id = 456414,
+                            Latitude = 50,
+                            Longitude = 4,
+                            ChangeSetId = 1,
+                            UserId = 1,
+                            UserName = "Ben",
+                            Visible = true,
+                            TimeStamp = new DateTime(2020, 01, 01, 1, 0, 0, DateTimeKind.Utc),
+                            Version = 2
+                        }
+                    }
+            });
+            
+            // update db without using the db method (as if it was updated out of process).
+            db.ApplyDiff(new OsmChange()
+            {
+                Modify =
+                    new OsmGeo[]
+                    {
+                        new Node()
+                        {
+                            Id = 456414,
+                            Latitude = 50,
+                            Longitude = 4,
+                            ChangeSetId = 1,
+                            UserId = 1,
+                            UserName = "Ben",
+                            Visible = true,
+                            TimeStamp = new DateTime(2020, 01, 01, 2, 0, 0, DateTimeKind.Utc),
+                            Version = 3
+                        }
+                    }
+            });
+            
+            // take a snapshot.
+            var snapshot = db.TakeSnapshot(new DateTime(2020, 01, 01, 2, 0, 0, DateTimeKind.Utc), 
+                new TimeSpan(1, 30, 0));
         }
     }
 }

@@ -33,6 +33,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
+        public override IEnumerable<(uint x, uint y)> GetModifiedTiles()
+        {
+            foreach (var tileId in _data.GetTiles())
+            {
+                yield return Tile.FromLocalId(this.Zoom, tileId);
+            }
+        }
+
+        /// <inheritdoc/>
         public override IEnumerable<OsmGeo> Get(IReadOnlyCollection<OsmGeoKey> osmGeoKeys, byte[]? buffer = null)
         {
             foreach (var osmGeoKey in osmGeoKeys)

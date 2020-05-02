@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Build;
+using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Logging;
 using OsmSharp.Replication;
 using OsmSharp.Streams;
@@ -39,6 +42,30 @@ namespace OsmSharp.Db.Tiled.Replication
                         break;
                     default:
                         Log.Debug(formattedMessage);
+                        break;
+                }
+            };
+            OsmSharp.Db.Tiled.Logging.Log.LogAction = (type, message) =>
+            {
+                switch (type)
+                {
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Critical:
+                        Log.Fatal(message);
+                        break;
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Error:
+                        Log.Error(message);
+                        break;
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Warning:
+                        Log.Warning(message);
+                        break;
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Verbose:
+                        Log.Verbose(message);
+                        break;
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Information:
+                        Log.Information(message);
+                        break;
+                    default:
+                        Log.Debug(message);
                         break;
                 }
             };
@@ -87,15 +114,24 @@ namespace OsmSharp.Db.Tiled.Replication
                     Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
                     return;
                 }
+                
+                if (db == null) throw new Exception("Db loading failed!");
                 Log.Information("DB loaded successfully.");
                 
                 // start catch up until we reach hours/days.
-                var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.Timestamp.AddSeconds(1));
+                var catchupEnumerator = new CatchupReplicationDiffEnumerator(db.Latest.EndTimestamp.AddSeconds(1));
                 var changeSets = new List<OsmChange>();
+                var timestamp = DateTime.MinValue;
                 while (await catchupEnumerator.MoveNext())
                 {
+                    if ((catchupEnumerator.State.EndTimestamp - db.Latest.EndTimestamp).TotalHours > 2) break;
+                    
                     Log.Verbose($"Downloading diff: {catchupEnumerator.State}");
                     changeSets.Add(await catchupEnumerator.Diff());
+                    if (timestamp < catchupEnumerator.State.EndTimestamp)
+                        timestamp = catchupEnumerator.State.EndTimestamp;
+                    
+                    break;
                 }
 
                 // apply changes.
@@ -112,7 +148,7 @@ namespace OsmSharp.Db.Tiled.Replication
                     changeSet = changeSets.Squash();
                 }
                 Log.Information($"Applying changes...");
-                db.ApplyDiff(changeSet);
+                db.ApplyDiff(changeSet, timestamp);
                 Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
             }
             catch (Exception e)

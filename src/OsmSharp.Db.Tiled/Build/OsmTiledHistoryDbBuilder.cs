@@ -26,7 +26,7 @@ namespace OsmSharp.Db.Tiled.Build
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
 
-            var tempPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, DateTime.Now.ToUnixTime(), "temp");
+            var tempPath = OsmTiledDbOperations.BuildTempDbPath(path);
             if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
@@ -34,15 +34,8 @@ namespace OsmSharp.Db.Tiled.Build
             var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom);
 
             // generate a proper path and move the data there.
-            var dbPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, dbMeta.Id, OsmTiledDbType.Full);
+            var dbPath = OsmTiledDbOperations.BuildDbPath(path, dbMeta.Id, null, OsmTiledDbType.Full);
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
-
-            // generate and write the path.
-            var osmDbMeta = new OsmTiledHistoryDbMeta()
-            {
-                Latest = dbMeta.Id
-            };
-            OsmTiledHistoryDbOperations.SaveDbMeta(path, osmDbMeta);
 
             // return the osm db.
             return new OsmTiledHistoryDb(path);
@@ -62,7 +55,7 @@ namespace OsmSharp.Db.Tiled.Build
                 throw new DirectoryNotFoundException(
                     $"Cannot create OSM db: {path} not found.");
 
-            var tempPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, DateTime.Now.ToUnixTime(), "temp");
+            var tempPath = FileSystemFacade.FileSystem.Combine(path, Guid.NewGuid().ToString());
             if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
@@ -70,15 +63,8 @@ namespace OsmSharp.Db.Tiled.Build
             var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom);
 
             // generate a proper path and move the data there.
-            var dbPath = OsmTiledDbOperations.BuildOsmTiledDbPath(path, dbMeta.Id, OsmTiledDbType.Full);
+            var dbPath = OsmTiledDbOperations.BuildDbPath(path, dbMeta.Id, null, OsmTiledDbType.Full);
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
-
-            // generate and write the path.
-            var osmDbMeta = new OsmTiledHistoryDbMeta()
-            {
-                Latest = dbMeta.Id
-            };
-            OsmTiledHistoryDbOperations.SaveDbMeta(path, osmDbMeta);
 
             return new OsmTiledDb(dbPath);
         }

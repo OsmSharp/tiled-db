@@ -46,7 +46,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             using var dataIdIndex = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToIdIndex(path), FileMode.Create);
             
-            var tiledStream = new OsmTiledLinkedStream(data, usePointersCache: true);
+            var tiledStream = new OsmTiledLinkedStream(data, pointersCacheSize: OsmTiledLinkedStream.PointerCacheSizeDefault);
             var idIndex = new OsmTiledIndex(dataIdIndex);
             var tileSet = new HashSet<uint>();
             var mode = OsmGeoType.Node;

@@ -4,10 +4,10 @@ using System.IO;
 using System.Linq;
 using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.IO;
+using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
-using Serilog;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
 {
@@ -23,7 +23,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         private const long NoData = long.MaxValue;
         private const long EmptyTile = long.MaxValue - 1;
 
-        public OsmTiledLinkedStream(Stream data, uint zoom = 14, bool usePointersCache = false)
+        public const int PointerCacheSizeDefault = 1024 * 1024 * 32;
+
+        public OsmTiledLinkedStream(Stream data, uint zoom = 14, int pointersCacheSize = 0)
         {
             _data = data;
             _zoom = zoom;
@@ -32,10 +34,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             
             _pointers = new SparseArray(0, emptyDefault: NoData);
             _previousPointers = new SparseArray(0, emptyDefault: NoData);
-            if (usePointersCache)
+            if (pointersCacheSize > 0)
             {
-                _pointers1 = new long[1024 * 1024 * 32];
-                _pointers2 = new long[1024 * 1024 * 32];
+                _pointers1 = new long[pointersCacheSize];
+                _pointers2 = new long[pointersCacheSize];
             }
         }
 
@@ -54,7 +56,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             
             Array.Sort(_pointers1, _pointers2, 0, (int)_nextDelayedPointer);
 
-            Log.Verbose($"Flushing {_nextDelayedPointer}...");
+            Log.Default.Verbose($"Flushing {_nextDelayedPointer}...");
             var before = _data.Position;
             for (var i = 0; i < _nextDelayedPointer; i++)
             {
@@ -179,7 +181,6 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             if (_previousPointers == null) throw new InvalidOperationException("Stream is not writeable.");
             
-            var position = _data.Position;
             var c = (uint) tiles.Count;
 
             if (c == 1)
@@ -188,6 +189,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
             
             // write count with one off.
+            var position = _data.Position;
             if (c == 0)
             {
                 _data.WriteVarUInt32(0);
@@ -375,6 +377,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                             tileFlags[t] = false;
                         }
                     }
+                }
+                else
+                {
+                    tileFlags[0] = true;
                 }
 
                 // queue next tiles.

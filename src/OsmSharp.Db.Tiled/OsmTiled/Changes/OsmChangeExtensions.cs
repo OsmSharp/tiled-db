@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using OsmSharp.Changesets;
+using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.Tiles;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Changes
@@ -37,8 +38,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
             // process all deletions.
             if (changeset.Delete != null)
             {
-                foreach (var deleted in changeset.Delete)
+                var progress = Log.Default.ProgressRelative(getMessage: (p) => $"Deleting {p}%");
+                for (var i = 0; i < changeset.Delete.Length; i++)
                 {
+                    progress.Progress(i, changeset.Delete.Length);
+                    
+                    var deleted = changeset.Delete[i];
                     if (deleted == null) continue;
                 
                     // update timestamp.
@@ -59,13 +64,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
 
                     modifications[key] = (null, null);
                 }
+                progress.Done();
             }
 
             // first process all node modification/creations.
             if (changeset.Create != null)
             {
-                foreach (var create in changeset.Create)
+                var progress = Log.Default.ProgressRelative(getMessage: (p) => $"Creating nodes {p}%");
+                for (var i = 0; i < changeset.Create.Length; i++)
                 {
+                    progress.Progress(i, changeset.Create.Length);
+                    
+                    var create = changeset.Create[i];
                     if (create == null) continue;
                 
                     // update timestamp.
@@ -93,11 +103,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
                     // save the tiles, this key is new.
                     modifications[key] = (tileSet, create);
                 }
+                progress.Done();
             }
             if (changeset.Modify != null)
             {
-                foreach (var modify in changeset.Modify)
+                var progress = Log.Default.ProgressRelative(getMessage: (p) => $"Modifying nodes {p}%");
+                for (var i = 0; i < changeset.Modify.Length; i++)
                 {
+                    progress.Progress(i, changeset.Modify.Length);
+
+                    var modify = changeset.Modify[i];
                     if (modify == null) continue;
                 
                     // update timestamp.
@@ -133,13 +148,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
                     // save the tiles, the set has changed.
                     modifications[key] = (tileSet, modify);
                 }
+                progress.Done();
             }
             
             // process all the rest.
             if (changeset.Create != null)
             {
-                foreach (var create in changeset.Create)
+                var progress = Log.Default.ProgressRelative(getMessage: (p) => $"Creating ways & relations {p}%");
+                for (var i = 0; i < changeset.Create.Length; i++)
                 {
+                    progress.Progress(i, changeset.Create.Length);
+                    
+                    var create = changeset.Create[i];
                     if (create == null) continue;
                 
                     // update timestamp.
@@ -193,11 +213,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
                     // save the tiles, this key is new.
                     modifications[key] = (tileSet, create);
                 }
+                progress.Done();
             }
             if (changeset.Modify != null)
             {
-                foreach (var modify in changeset.Modify)
+                var progress = Log.Default.ProgressRelative(getMessage: (p) => $"Modifying ways and relations {p}%");
+                for (var i = 0; i < changeset.Modify.Length; i++)
                 {
+                    progress.Progress(i, changeset.Modify.Length);
+
+                    var modify = changeset.Modify[i];
                     if (modify == null) continue;
                 
                     // update timestamp.
@@ -259,6 +284,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
                     // save the tiles, the set has changed.
                     modifications[key] = (tileSet, modify);
                 }
+                progress.Done();
             }
 
             return (timestamp, modifiedTiles, modifications.Select(x => (x.Key, x.Value.tiles, x.Value.osmGeo)));

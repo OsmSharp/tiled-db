@@ -31,5 +31,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// Gets or sets the 
         /// </summary>
         public DateTime Timestamp => this.Id.FromUnixTime();
+
+        /// <summary>
+        /// Gets or sets the timespan.
+        /// </summary>
+        public long? Timespan
+        {
+            get
+            {
+                if (this.Base == null) return null;
+
+                return this.Id - this.Base.Value;
+            }
+        }
     }
 }
