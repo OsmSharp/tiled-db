@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using OsmSharp.Changesets;
-using OsmSharp.Db.Tiled.Build;
-using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Logging;
 using OsmSharp.Replication;
 using OsmSharp.Streams;
@@ -118,46 +114,63 @@ namespace OsmSharp.Db.Tiled.Replication
                 if (db == null) throw new Exception("Db loading failed!");
                 Log.Information("DB loaded successfully.");
 
-                // collect minutely diffs.
-                var minuteEnumerator =
-                    await OsmSharp.Replication.ReplicationConfig.Minutely.GetDiffEnumerator(
-                        db.Latest.EndTimestamp.AddSeconds(1));
-                if (minuteEnumerator == null)
+                // keep going until caught up.
+                while (true)
                 {
-                    Log.Information("No new changes.");
-                    return;
-                }
-                var changeSets = new List<OsmChange>();
-                var timestamp = DateTime.MinValue;
-                while (await minuteEnumerator.MoveNext())
-                {
-                    Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
-                    changeSets.Add(await minuteEnumerator.Diff());
-                    if (timestamp < minuteEnumerator.State.EndTimestamp)
-                        timestamp = minuteEnumerator.State.EndTimestamp;
+                    ticks = DateTime.Now.Ticks;
+                    // collect minutely diffs.
+                    var minuteEnumerator =
+                        await ReplicationConfig.Minutely.GetDiffEnumerator(
+                            db.Latest.EndTimestamp.AddSeconds(1));
+                    if (minuteEnumerator == null)
+                    {
+                        Log.Information("No new changes.");
+                        return;
+                    }
+
+                    var changeSets = new List<OsmChange>();
+                    var timestamp = DateTime.MinValue;
+                    while (await minuteEnumerator.MoveNext())
+                    {
+                        Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
+                        changeSets.Add(await minuteEnumerator.Diff());
+                        if (timestamp < minuteEnumerator.State.EndTimestamp)
+                            timestamp = minuteEnumerator.State.EndTimestamp;
+                        
+                        if (timestamp.Day != db.Latest.EndTimestamp.Day) break;
+                        if (changeSets.Count >= 10) break;
+                    }
+                    var dayCrossed = (timestamp.Day != db.Latest.EndTimestamp.Day);
+
+                    // apply changes.
+                    if (changeSets.Count == 0)
+                    {
+                        Log.Information("No new changes.");
+                        return;
+                    }
+
+                    // squash changes.
+                    var changeSet = changeSets[0];
+                    if (changeSets.Count > 1)
+                    {
+                        Log.Verbose($"Squashing changes...");
+                        changeSet = changeSets.Squash();
+                    }
+
+                    // apply diff.
+                    Log.Information($"Applying changes...");
+                    db.ApplyDiff(changeSet, timestamp);
+                    Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
                     
-                    if (changeSets.Count >= 10) break;
+                    // take snapshot at each hour crossing.
+                    if (dayCrossed)
+                    {
+                        ticks = DateTime.Now.Ticks;
+                        Log.Information($"Day crossing, taking snapshot...");
+                        db.TakeSnapshot(timeSpan: new TimeSpan(1, 0, 0));
+                        Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                    }
                 }
-
-                // apply changes.
-                if (changeSets.Count == 0)
-                {
-                    Log.Information("No new changes.");
-                    return;
-                }
-
-                // squash changes.
-                var changeSet = changeSets[0];
-                if (changeSets.Count > 1)
-                {
-                    Log.Verbose($"Squashing changes...");
-                    changeSet = changeSets.Squash();
-                }
-                
-                // apply diff.
-                Log.Information($"Applying changes...");
-                db.ApplyDiff(changeSet, timestamp);
-                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
             }
             catch (Exception e)
             {

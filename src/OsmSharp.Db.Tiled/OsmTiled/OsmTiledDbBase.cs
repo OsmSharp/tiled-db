@@ -71,15 +71,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// Gets the data for the given keys.
         /// </summary>
         /// <param name="osmGeoKeys">The keys, gets all data when null.</param>
+        /// <param name="buffer">The buffer.</param>
         /// <returns>The object(s) if present.</returns>
-        public abstract IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<OsmGeoKey>? osmGeoKeys = null);
+        public abstract IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<OsmGeoKey>? osmGeoKeys,
+            byte[]? buffer = null);
 
         /// <summary>
         /// Gets all the data in the given tile(s).
         /// </summary>
         /// <param name="tiles">The tile(s).</param>
+        /// <param name="buffer">The buffer.</param>
         /// <returns>All objects in the given tile(s).</returns>
-        public abstract IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles);
+        public abstract IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles, byte[]? buffer = null);
 
         /// <summary>
         /// Get the tiles that have data, if any.

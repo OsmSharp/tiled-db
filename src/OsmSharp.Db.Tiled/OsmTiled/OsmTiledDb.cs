@@ -42,12 +42,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<OsmGeoKey>? osmGeoKeys = null)
+        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<OsmGeoKey>? osmGeoKeys, byte[]? buffer = null)
         {
-            var buffer = new byte[1024];
+            buffer ??= new byte[1024];
             if (osmGeoKeys == null)
             {
-                
+                foreach (var (osmGeo, tiles) in this._data.Get(buffer))
+                {
+                    yield return (osmGeo, tiles.Select((t) => Tile.FromLocalId(this.Zoom, t)));
+                }
             }
             else
             {
@@ -77,9 +80,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles)
+        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles, byte[]? buffer = null)
         {
-            var buffer = new byte[1024];
+            buffer ??= new byte[1024];
             
             if (tiles.HasOne(out var only))
             {

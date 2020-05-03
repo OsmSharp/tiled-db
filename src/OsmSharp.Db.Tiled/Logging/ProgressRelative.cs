@@ -8,7 +8,7 @@ namespace OsmSharp.Db.Tiled.Logging
         private readonly TraceEventType _type;
         private readonly Func<int, string>? _getMessage = null;
         private readonly int _increments = 10;
-        private readonly int _minimum = 1000;
+        private readonly int _minimum = 10000;
         
         public ProgressRelative(Log log, TraceEventType type = TraceEventType.Verbose,
             Func<int, string>? getMessage = null)

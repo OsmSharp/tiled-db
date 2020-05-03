@@ -380,6 +380,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (_pointers.Length < tile) continue;
                 var pointer = _pointers[tile];
                 if (pointer == NoData) continue;
+                if (pointer == EmptyTile) continue;
                 
                 queue.Push(pointer);
             }
@@ -393,7 +394,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 previousPointer = pointer;
                 
                 // seek to object.
-                _data.Seek(pointer, SeekOrigin.Begin);
+                try
+                {
+                    _data.Seek(pointer, SeekOrigin.Begin);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(pointer);
+                    Console.WriteLine(e);
+                    throw;
+                }
                 
                 // read tile count.
                 var c = _data.ReadVarUInt32();

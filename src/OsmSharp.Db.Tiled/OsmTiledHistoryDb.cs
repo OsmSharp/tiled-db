@@ -155,7 +155,7 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         /// <param name="timeStamp">The timestamp, if none given uses latest.</param>
         /// <param name="timeSpan">The timespan, if none given uses one day.</param>
-        public OsmTiledDbBase? TakeSnapshot(DateTime? timeStamp, TimeSpan? timeSpan = null)
+        public OsmTiledDbBase? TakeSnapshot(DateTime? timeStamp = null, TimeSpan? timeSpan = null)
         {
             timeSpan ??= new TimeSpan(TimeSpan.TicksPerDay);
             timeStamp ??= this.Latest.EndTimestamp;
@@ -194,7 +194,7 @@ namespace OsmSharp.Db.Tiled
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
                 
             // build new db.
-            var dbMeta = latestDb.Snapshot(tiles.ToArray(), tempPath, latestDb.Id);
+            var dbMeta = latestDb.Snapshot(tiles.ToArray(), tempPath, latestDb.Id, osmTiledDb.Id);
             dbMeta.Base = osmTiledDb.Id;
             if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
                 

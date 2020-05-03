@@ -52,7 +52,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             // loop over all tiles and their objects affected and apply the mutations.
             var buffer = new byte[1024];
             using var existingStream = osmTiledDb.Get(modifiedTiles
-                    .Select(x => Tile.FromLocalId(osmTiledDb.Zoom, x)).ToArray())
+                    .Select(x => Tile.FromLocalId(osmTiledDb.Zoom, x)).ToArray(), buffer)
                 .Select<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo
                     osmGeo)>(x => (
                     x.tiles.Select(t => Tile.ToLocalId(t, osmTiledDb.Zoom)), x.osmGeo)).GetEnumerator();
@@ -62,7 +62,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
             var i = 0L;
             var progress = Log.Default.ProgressAbsolute(TraceEventType.Verbose,
-                (p) => $"Processed {p}...", 10000);
+                (p) => $"Processed {p}...", 1000000);
             while (existingHasNext || modifiedHasNext)
             {
                 progress.Progress(i);
@@ -168,10 +168,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="tiles">The tiles to snapshot for.</param>
         /// <param name="path">The path to store the db at.</param>
         /// <param name="id">The id of the new database.</param>
+        /// <param name="baseId">The id of the new base.</param>
         /// <param name="settings">The settings.</param>
         /// <returns>Meta data on the new tiled db.</returns>
         public static OsmTiledDbMeta Snapshot(this OsmTiledDbBase osmTiledDb, IReadOnlyCollection<(uint x, uint y)> tiles, string path, 
-            long id, OsmTiledDbSnapshotBuildSettings? settings = null)
+            long id, long baseId, OsmTiledDbSnapshotBuildSettings? settings = null)
         {            
             settings ??= new OsmTiledDbSnapshotBuildSettings();
              
@@ -189,7 +190,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
             // loop over all tiles and their objects affected and apply the mutations.
             var buffer = new byte[1024];
-            using var existingStream = osmTiledDb.Get(tiles)
+            using var existingStream = osmTiledDb.Get(tiles, buffer)
                 .Select<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles), (IEnumerable<uint> tiles, OsmGeo osmGeo)>(x => ( 
                     x.tiles.Select(t => Tile.ToLocalId(t, osmTiledDb.Zoom)), x.osmGeo)).GetEnumerator();
             var existingHasNext = existingStream.MoveNext();
@@ -229,7 +230,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             var meta = new OsmTiledDbMeta
             {
                 Id = id,
-                Base = osmTiledDb.Id, 
+                Base = baseId, 
                 Type = OsmTiledDbType.Snapshot,
                 Zoom = zoom,
             };

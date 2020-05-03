@@ -66,16 +66,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
         
         /// <inheritdoc/>
-        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<OsmGeoKey>? osmGeoKeys = null)
+        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<OsmGeoKey>? osmGeoKeys, byte[]? buffer = null)
         {
-            var buffer = new byte[1024];
+            buffer ??= new byte[1024];
             
             if (osmGeoKeys == null)
             {
                 var allHere = this.GetData().Get(buffer)
                     .Select(x => (x.osmGeo, x.tile
                         .Select(t => Tile.FromLocalId(this.Zoom, t))));
-                var allBase = this.GetBaseDb().Get();
+                var allBase = this.GetBaseDb().Get((IEnumerable<OsmGeoKey>?)null, buffer);
                 var merged = allBase.MergeWhenSorted(allHere, (o1, o2) => 
                     (new OsmGeoKey(o1.osmGeo).CompareTo(new OsmGeoKey(o2.osmGeo))));
                 foreach (var merge in merged)
@@ -93,7 +93,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
                 if (pointer == null)
                 {
-                    var baseData = this.GetBaseDb().Get(osmGeoKey);
+                    var baseData = this.GetBaseDb().Get(osmGeoKey, buffer);
                     if (baseData == null) continue;
                     yield return baseData.Value;
                 }
@@ -149,9 +149,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles)
+        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles, byte[]? buffer = null)
         {
-            var buffer = new byte[1024];
+            buffer ??= new byte[1024];
             
             var data = this.GetData();
             if (tiles.HasOne(out var only))
@@ -169,7 +169,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 else
                 {
                     // tile is not in diff.
-                    foreach (var t in this.GetBaseDb().Get(tiles))
+                    foreach (var t in this.GetBaseDb().Get(tiles, buffer))
                     {
                         yield return t;
                     }
@@ -194,7 +194,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (localTiles.Count == 0)
                 {
                     // no tiles is in this diff.
-                    foreach (var t in this.GetBaseDb().Get(otherTiles))
+                    foreach (var t in this.GetBaseDb().Get(otherTiles, buffer))
                     {
                         yield return t;
                     }
@@ -217,7 +217,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 }
 
                 // data in both, merge the two.
-                using var baseEnumerator = this.GetBaseDb().Get(otherTiles).GetEnumerator();
+                using var baseEnumerator = this.GetBaseDb().Get(otherTiles, buffer).GetEnumerator();
                 using var thisEnumerator = data.GetForTiles(localTiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
                     buffer).GetEnumerator();
                 var baseHasNext = baseEnumerator.MoveNext();

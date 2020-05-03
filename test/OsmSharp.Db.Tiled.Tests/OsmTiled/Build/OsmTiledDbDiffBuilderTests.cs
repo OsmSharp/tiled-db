@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -33,7 +34,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     {
                         Id = 4561327,
                         Latitude = 50,
-                        Longitude = 4
+                        Longitude = 4,
+                        TimeStamp = DateTime.Now
                     }
                 }
             };
@@ -63,7 +65,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                 {
                     Id = 4561327,
                     Latitude = 50,
-                    Longitude = 4
+                    Longitude = 4,
+                    TimeStamp = DateTime.Now
                 }
             };
             osmGeos.Build(@"/original", 14);
@@ -78,7 +81,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     {
                         Id = 4561327,
                         Latitude = 50,
-                        Longitude = 4
+                        Longitude = 4,
+                        TimeStamp = DateTime.Now.AddDays(1)
                     }
                 }
             };
@@ -108,7 +112,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                 {
                     Id = 4561327,
                     Latitude = 50,
-                    Longitude = 4
+                    Longitude = 4,
+                    TimeStamp = DateTime.Now
                 }
             };
             osmGeos.Build(@"/original");
@@ -123,7 +128,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     {
                         Id = 4561327,
                         Latitude = 4,
-                        Longitude = 50
+                        Longitude = 50,
+                        TimeStamp = DateTime.Now.AddDays(1)
                     }
                 }
             };
@@ -166,13 +172,15 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                 {
                     Id = 4561327,
                     Latitude = 50,
-                    Longitude = 4
+                    Longitude = 4,
+                    TimeStamp = DateTime.Now
                 },
                 new Node()
                 {
                     Id = 4561328,
                     Latitude = 50,
-                    Longitude = 4
+                    Longitude = 4,
+                    TimeStamp = DateTime.Now
                 }
             };
             osmGeos.Build(@"/original");
@@ -186,7 +194,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     new Way()
                     {
                         Id = 45327,
-                        Nodes = new [] { 4561327L, 4561328 }
+                        Nodes = new [] { 4561327L, 4561328 },
+                        TimeStamp = DateTime.Now.AddDays(1)
                     }
                 }
             };
@@ -219,18 +228,21 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     {
                         Id = 4561327,
                         Latitude = 50,
-                        Longitude = 4
+                        Longitude = 4,
+                        TimeStamp = DateTime.Now
                     },
                     new Node()
                     {
                         Id = 4561328,
                         Latitude = 50,
-                        Longitude = 4
+                        Longitude = 4,
+                        TimeStamp = DateTime.Now
                     },
                     new Way()
                     {
                         Id = 45327,
-                        Nodes = new [] { 4561327L, 4561328 }
+                        Nodes = new [] { 4561327L, 4561328 },
+                        TimeStamp = DateTime.Now
                     }
                 }
             };
@@ -256,18 +268,21 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                 {
                     Id = 4561327,
                     Latitude = 50,
-                    Longitude = 4
+                    Longitude = 4,
+                    TimeStamp = DateTime.Now
                 },
                 new Node()
                 {
                     Id = 4561328,
                     Latitude = 50,
-                    Longitude = 4
+                    Longitude = 4,
+                    TimeStamp = DateTime.Now
                 },
                 new Way()
                 {
                     Id = 45327,
-                    Nodes = new [] { 4561327L, 4561328 }
+                    Nodes = new [] { 4561327L, 4561328 },
+                    TimeStamp = DateTime.Now
                 }
             };
             osmGeos.Build(@"/original");
@@ -282,13 +297,15 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     {
                         Id = 4561327,
                         Latitude = 4,
-                        Longitude = 50
+                        Longitude = 50,
+                        TimeStamp = DateTime.Now.AddDays(1)
                     },
                     new Node()
                     {
                         Id = 4561328,
                         Latitude = 4,
-                        Longitude = 50
+                        Longitude = 50,
+                        TimeStamp = DateTime.Now.AddDays(1)
                     }
                 },
                 Create =  new OsmGeo[]
@@ -296,7 +313,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     new Way()
                     {
                         Id = 45327,
-                        Nodes = new [] { 4561327L, 4561328 }
+                        Nodes = new [] { 4561327L, 4561328 },
+                        TimeStamp = DateTime.Now.AddDays(1)
                     }
                 }
             };
