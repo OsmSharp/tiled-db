@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using OsmSharp.Changesets;
+using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.OsmTiled.Changes;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
@@ -32,8 +33,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             // build up the entire stream in memory, we need all the tiles have have been modified.
             var modifiedTimeStamp = DateTime.MinValue;
             var modifications = new List<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)>();
-            foreach (var modification in changeset.BuildTiledDiffStream(zoom,
-                (key) => osmTiledDb.GetTiles(key.Type, key.Id)))
+            foreach (var modification in changeset.BuildTiledDiffStream(zoom, osmTiledDb, buffer))
             {
                 // update timestamp.
                 if (modification.osmGeo.TimeStamp.HasValue &&
@@ -50,6 +50,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             }
 
             // write the data.
+            Log.Default.Verbose($"Writing {modifications.Count} modifications...");
             modifications.Write(path, zoom, saveDeleted: true, buffer: buffer);
 
             // update timestamp properly.

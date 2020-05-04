@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
 namespace OsmSharp.Db.Tiled.OsmTiled

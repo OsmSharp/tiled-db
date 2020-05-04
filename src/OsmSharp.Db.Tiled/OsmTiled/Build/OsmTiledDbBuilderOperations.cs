@@ -40,7 +40,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 
                 // write delete state if needed.
                 if (lastDeleted.Id != long.MaxValue &&
-                    lastDeleted.Id == osmGeo.Id.Value)
+                    lastDeleted.Id != osmGeo.Id.Value)
                 {
                     // the last object was deleted, write as such.
                     idIndex.Append(new OsmGeoKey(osmGeo), -1);

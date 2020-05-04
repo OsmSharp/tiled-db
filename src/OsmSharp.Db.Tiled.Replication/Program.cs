@@ -114,15 +114,18 @@ namespace OsmSharp.Db.Tiled.Replication
                 if (db == null) throw new Exception("Db loading failed!");
                 Log.Information("DB loaded successfully.");
 
-                // keep going until caught up.
-                while (true)
+                // keep going for 5 diffs of max 10 mins.
+                var diffs = 10;
+                while (diffs > 0)
                 {
+                    diffs--;
+                    
                     ticks = DateTime.Now.Ticks;
                     // collect minutely diffs.
-                    var minuteEnumerator =
-                        await ReplicationConfig.Minutely.GetDiffEnumerator(
+                    var diffEnumerator =
+                        await ReplicationConfig.Hourly.GetDiffEnumerator(
                             db.Latest.EndTimestamp.AddSeconds(1));
-                    if (minuteEnumerator == null)
+                    if (diffEnumerator == null)
                     {
                         Log.Information("No new changes.");
                         return;
@@ -130,17 +133,18 @@ namespace OsmSharp.Db.Tiled.Replication
 
                     var changeSets = new List<OsmChange>();
                     var timestamp = DateTime.MinValue;
-                    while (await minuteEnumerator.MoveNext())
+                    while (await diffEnumerator.MoveNext())
                     {
-                        Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
-                        changeSets.Add(await minuteEnumerator.Diff());
-                        if (timestamp < minuteEnumerator.State.EndTimestamp)
-                            timestamp = minuteEnumerator.State.EndTimestamp;
+                        Log.Verbose($"Downloading diff: {diffEnumerator.State}");
+                        changeSets.Add(await diffEnumerator.Diff());
+                        if (timestamp < diffEnumerator.State.EndTimestamp)
+                            timestamp = diffEnumerator.State.EndTimestamp;
                         
                         if (timestamp.Day != db.Latest.EndTimestamp.Day) break;
-                        if (changeSets.Count >= 10) break;
+                        if (changeSets.Count >= 0) break;
                     }
-                    var dayCrossed = (timestamp.Day != db.Latest.EndTimestamp.Day);
+
+                    var dayCrossed = false; //(timestamp.Day != db.Latest.EndTimestamp.Day);
 
                     // apply changes.
                     if (changeSets.Count == 0)

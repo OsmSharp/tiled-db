@@ -266,7 +266,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         }
         
         [Test]
-        public void OsmTiledDbSnapshotBuilder_ModifyWayToNewTile_ShouldMoveWayToNewTile()
+        public void OsmTiledDbSnapshotBuilder_MoveNodesNewTile_ShouldMoveWayToNewTile()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/original");

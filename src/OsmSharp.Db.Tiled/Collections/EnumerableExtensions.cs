@@ -1,7 +1,4 @@
-
-
 using System;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace OsmSharp.Db.Tiled.Collections
@@ -37,7 +34,7 @@ namespace OsmSharp.Db.Tiled.Collections
             using var recentEnumerator = recentEnumerable.GetEnumerator();
 
             var baseHasNext = baseEnumerator.MoveNext();
-            var recentHasNext = baseEnumerator.MoveNext();
+            var recentHasNext = recentEnumerator.MoveNext();
             while (baseHasNext || recentHasNext)
             {
                 if (baseHasNext && recentHasNext)

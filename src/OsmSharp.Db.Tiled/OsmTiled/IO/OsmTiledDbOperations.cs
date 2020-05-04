@@ -4,19 +4,20 @@ using System.Globalization;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
 using Newtonsoft.Json;
+using OsmSharp.Db.Tiled.Logging;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.IO
 {
     internal static class OsmTiledDbOperations
     {
-        public static IEnumerable<(string path, long id, long? timespan)> GetDbPaths(string path, string? startsWith = null)
+        public static IEnumerable<(string path, long id, long? timespan, string type)> GetDbPaths(string path, string? startsWith = null)
         {
             var directories = FileSystemFacade.FileSystem.EnumerateDirectories(path, startsWith);
             foreach (var directory in directories)
             {
-                if (!OsmTiledDbOperations.TryParseDbPath(directory, out var id, out var timespan)) continue;
+                if (!OsmTiledDbOperations.TryParseDbPath(directory, out var id, out var timespan, out var type)) continue;
 
-                yield return (directory, id, timespan);
+                yield return (directory, id, timespan, type);
             }
         }
 
@@ -34,14 +35,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
                 $"{id:0000000000000000}_{timespan:00000000000}_{type}");
         }
 
-        public static bool TryParseDbPath(string path, out long id, out long? timespan)
+        public static bool TryParseDbPath(string path, out long id, out long? timespan, out string type)
         {
             timespan = null;
             id = default;
+            type = string.Empty;
             
             // check path, needs to end with type.
             var dateTimeString = FileSystemFacade.FileSystem.LeafDirectoryName(path);
-            if (!(dateTimeString.EndsWith(OsmTiledDbType.Full) || dateTimeString.EndsWith(OsmTiledDbType.Snapshot))) return false;
+            if (!(dateTimeString.EndsWith(OsmTiledDbType.Full) || dateTimeString.EndsWith(OsmTiledDbType.Snapshot) || dateTimeString.EndsWith(OsmTiledDbType.Diff))) return false;
             if(dateTimeString == null) return false;
             
             // check first '_' index.
@@ -56,16 +58,26 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             }
 
             // parse timespan.
-            var lastIndexOf = dateTimeString.IndexOf("_", StringComparison.Ordinal);
+            var lastIndexOf = dateTimeString.LastIndexOf("_", StringComparison.Ordinal);
             if (lastIndexOf > firstIndexOf)
             {
-                if (!long.TryParse(dateTimeString.Substring(firstIndexOf + 1, lastIndexOf - firstIndexOf - 1), NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
+                if (long.TryParse(dateTimeString.Substring(firstIndexOf + 1, lastIndexOf - firstIndexOf - 1), NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
                     out var millisecondSpan))
                 {
                     timespan = millisecondSpan;
                 }
             }
             
+            // parse type.
+            var typeParse = dateTimeString.Substring(lastIndexOf + 1);
+            if (typeParse != OsmTiledDbType.Diff &&
+                typeParse != OsmTiledDbType.Full &&
+                typeParse != OsmTiledDbType.Snapshot)
+            {
+                return false;
+            }
+
+            type = typeParse;
             id = millisecondEpochs;
             return true;
         }
@@ -74,12 +86,34 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         {
             var potentialDbs = GetDbPaths(path,
                 $"{id:0000000000000000}");
-            (string? path, long id, long? timespan) best = (null, long.MinValue, null);
+            (string? path, long id, long? timespan, string type) best = (null, long.MinValue, null, string.Empty);
             foreach (var potentialDb in potentialDbs)
             {
+                if (potentialDb.type != OsmTiledDbType.Snapshot) continue;
+                
                 if (best.timespan == null || 
                     (potentialDb.timespan != null &&
                     best.timespan.Value < potentialDb.timespan.Value))
+                {
+                    best = potentialDb;
+                }
+            }
+
+            return best.path;
+        }
+
+        public static string? LoadLongestDiffDb(string path, long id)
+        {
+            var potentialDbs = GetDbPaths(path,
+                $"{id:0000000000000000}");
+            (string? path, long id, long? timespan, string type) best = (null, long.MinValue, null, string.Empty);
+            foreach (var potentialDb in potentialDbs)
+            {
+                if (potentialDb.type != OsmTiledDbType.Diff) continue;
+                
+                if (best.timespan == null || 
+                    (potentialDb.timespan != null &&
+                     best.timespan.Value < potentialDb.timespan.Value))
                 {
                     best = potentialDb;
                 }
@@ -114,6 +148,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
                 {
                     meta = OsmTiledDbOperations.LoadDbMeta(dbPath);
                 }
+                else
+                {
+                    // check for a diff.
+                    dbPath = LoadLongestDiffDb(path, id);
+                    if (dbPath != null &&
+                        FileSystemFacade.FileSystem.DirectoryExists(dbPath))
+                    {
+                        meta = OsmTiledDbOperations.LoadDbMeta(dbPath);
+                    }
+                }
             }
             
             if (dbPath == null || meta == null) throw new Exception($"Database {id} requested but not found!");
@@ -122,6 +166,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             {
                 case OsmTiledDbType.Snapshot:
                     return new OsmTiledDbSnapshot(dbPath, getDb, meta);
+                case OsmTiledDbType.Diff:
+                    return new OsmTiledDbDiff(dbPath, getDb, meta);
                 case OsmTiledDbType.Full:
                     return new OsmTiledDb(dbPath, meta);
             }
@@ -143,13 +189,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             return FileSystemFacade.FileSystem.Combine(path, "data.id.idx");
         }
 
+        private const long MaxInMemorySize = 1024 * 1024 * 20;
+
         public static OsmTiledIndex LoadIndex(string path)
         {
             var stream = FileSystemFacade.FileSystem.OpenRead(
-                PathToIdIndex(path));
+                PathToIdIndex(path)).ToMemoryStreamSmall(MaxInMemorySize);
             return new OsmTiledIndex(stream);
         }
-
+        
         public static string PathToData(string path)
         {
             return FileSystemFacade.FileSystem.Combine(path, "data.db");
@@ -163,9 +211,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         public static OsmTiledLinkedStream LoadData(string path)
         {
             using var indexStream = FileSystemFacade.FileSystem.OpenRead(
-                PathToTileIndex(path));
+                PathToTileIndex(path)).ToMemoryStreamSmall(MaxInMemorySize);;
             var stream = FileSystemFacade.FileSystem.OpenRead(
-                PathToData(path));
+                PathToData(path)).ToMemoryStreamSmall(MaxInMemorySize);;
             
             return OsmTiledLinkedStream.Deserialize(indexStream, stream);
         }

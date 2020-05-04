@@ -42,7 +42,12 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
         
         private long _size;
         private long _nextBlock = 0;
-        
+
+        /// <summary>
+        /// Gets the default.
+        /// </summary>
+        public uint Default => _default;
+
         /// <summary>
         /// Gets or sets the item at the given index.
         /// </summary>

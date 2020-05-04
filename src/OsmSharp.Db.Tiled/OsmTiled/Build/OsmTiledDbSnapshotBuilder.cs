@@ -37,8 +37,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             var modifiedTimeStamp = DateTime.MinValue;
             var modifiedTiles = new HashSet<(uint x, uint y)>();
             var modifications = new List<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)>? tiles)>();
-            foreach (var modification in changeset.BuildTiledDiffStream(zoom,
-                (key) => osmTiledDb.GetTiles(key.Type, key.Id)))
+            foreach (var modification in changeset.BuildTiledDiffStream(zoom, osmTiledDb, buffer))
             {
                 // update timestamp.
                 if (modification.osmGeo.TimeStamp.HasValue &&

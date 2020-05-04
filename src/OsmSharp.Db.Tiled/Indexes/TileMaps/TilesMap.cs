@@ -71,6 +71,11 @@ namespace OsmSharp.Db.Tiled.Indexes.TileMaps
             _wayToFirstTile[id] = next;
         }
 
+        public bool Has(long id)
+        {
+            return _wayToFirstTile[id] != 0;
+        }
+        
         public IEnumerable<uint> Get(long id)
         {
             var idOrPointer = _wayToFirstTile[id];

@@ -279,7 +279,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         }
         
         [Test]
-        public void OsmTiledDbDiffBuilder_ModifyWayToNewTile_ShouldMoveWayToNewTile()
+        public void OsmTiledDbDiffBuilder_MoveNodesNewTile_ShouldMoveWayToNewTile()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/original");

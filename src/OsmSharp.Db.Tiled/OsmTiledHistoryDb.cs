@@ -31,7 +31,7 @@ namespace OsmSharp.Db.Tiled
             _path = path;
 
             _dbs = new SortedList<long, OsmTiledDbBase?>();
-            foreach (var (_, id, _) in OsmTiledDbOperations.GetDbPaths(_path))
+            foreach (var (_, id, _, _) in OsmTiledDbOperations.GetDbPaths(_path))
             {
                 _dbs[id] = null;
             }
@@ -108,7 +108,7 @@ namespace OsmSharp.Db.Tiled
 
             // generate a proper path and move the data there.
             var dbPath = OsmTiledDbOperations.BuildDbPath(this._path, dbMeta.Id, dbMeta.Timespan.Value,
-                OsmTiledDbType.Snapshot);
+                OsmTiledDbType.Diff);
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
 
             // update data.
@@ -221,7 +221,7 @@ namespace OsmSharp.Db.Tiled
         public static bool TryLoad(string path, out OsmTiledHistoryDb? osmDb)
         {
             var dbs = new SortedList<long, OsmTiledDbBase?>();
-            foreach (var (_, id, _) in OsmTiledDbOperations.GetDbPaths(path))
+            foreach (var (_, id, _, _) in OsmTiledDbOperations.GetDbPaths(path))
             {
                 dbs[id] = null;
             }
@@ -242,7 +242,7 @@ namespace OsmSharp.Db.Tiled
             try
             {
                 var dbs = new SortedList<long, OsmTiledDbBase?>();
-                foreach (var (_, id, _) in OsmTiledDbOperations.GetDbPaths(_path))
+                foreach (var (_, id, _, _) in OsmTiledDbOperations.GetDbPaths(_path))
                 {
                     dbs[id] = null;
                 }

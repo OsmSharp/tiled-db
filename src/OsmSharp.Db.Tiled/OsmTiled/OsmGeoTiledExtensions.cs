@@ -5,7 +5,7 @@ using OsmSharp.Db.Tiled.Tiles;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
 {
-    internal static class OsmGeoExtensions
+    internal static class OsmGeoTiledExtensions
     {
         public static (uint x, uint y) GetTile(this Node node, uint zoom)
         {

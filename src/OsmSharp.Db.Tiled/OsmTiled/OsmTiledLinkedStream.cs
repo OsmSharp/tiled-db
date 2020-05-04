@@ -343,37 +343,23 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             if (buffer.Length < 1024) Array.Resize(ref buffer, 1024); 
             
-            using var enumerator = this.GetForTileInternal(tile, buffer).GetEnumerator();
-            if (!enumerator.MoveNext()) yield break;
-            var osmGeo1 = enumerator.Current;
-            if (!enumerator.MoveNext()) 
+            foreach (var (osmGeoPointer, _) in this.GetForTilePointers(tile))
             {
-                yield return osmGeo1; // just one object, no need to reverse.
-                yield break;
+                _data.Seek(osmGeoPointer, SeekOrigin.Begin);
+                yield return _data.ReadOsmGeo(buffer);
             }
-            var osmGeo2 = enumerator.Current;
-
-            if (osmGeo1?.Id == null) throw new InvalidDataException($"Object that's null or without an id.");
-            if (osmGeo2?.Id == null) throw new InvalidDataException($"Object that's null or without an id.");
-            if (OsmGeoCoder.Encode(osmGeo1.Type, osmGeo1.Id.Value) > OsmGeoCoder.Encode(osmGeo2.Type, osmGeo2.Id.Value))
+        }
+        
+        public IEnumerable<OsmGeoKey> GetKeysForTile(uint tile, byte[] buffer)
+        {
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024); 
+            
+            foreach (var (osmGeoPointer, _) in this.GetForTilePointers(tile))
             {
-                var osmGeos = new List<OsmGeo>(this.GetForTileInternal(tile, buffer));
-                osmGeos.Reverse();
-
-                foreach (var osmGeo in osmGeos)
-                {
-                    yield return osmGeo;
-                }
-
-                yield break;
-            }
-
-            yield return osmGeo1;
-            yield return osmGeo2;
-
-            while (enumerator.MoveNext())
-            {
-                yield return enumerator.Current;
+                _data.Seek(osmGeoPointer, SeekOrigin.Begin);
+                var (type, id) = _data.ReadOsmGeoKey();
+                if (id == null) continue;
+                yield return new OsmGeoKey(type, id.Value);
             }
         }
 
@@ -403,16 +389,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 previousPointer = pointer;
                 
                 // seek to object.
-                try
-                {
-                    _data.Seek(pointer, SeekOrigin.Begin);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(pointer);
-                    Console.WriteLine(e);
-                    throw;
-                }
+                _data.Seek(pointer, SeekOrigin.Begin);
                 
                 // read tile count.
                 var c = _data.ReadVarUInt32();
@@ -471,12 +448,91 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        private IEnumerable<OsmGeo> GetForTileInternal(uint tile, byte[]? buffer)
+        public IEnumerable<(OsmGeoKey osmGeoKey, List<uint> tile)> GetKeysForTiles(IEnumerable<uint> tiles, byte[] buffer)
         {
-            foreach (var (osmGeoPointer, _) in this.GetForTilePointers(tile))
+            if (buffer?.Length < 1024) Array.Resize(ref buffer, 1024);
+            var tilesToReturn = new List<uint>();
+            
+            var queue = new BinaryHeap();
+            var tilesSet = new HashSet<uint>(tiles);
+            foreach (var tile in tilesSet)
             {
-                _data.Seek(osmGeoPointer, SeekOrigin.Begin);
-                yield return _data.ReadOsmGeo(buffer);
+                if (_pointers.Length < tile) continue;
+                var pointer = _pointers[tile];
+                if (pointer == NoData) continue;
+                if (pointer == EmptyTile) continue;
+                
+                queue.Push(pointer);
+            }
+
+            var tileFlags = new bool[1024];
+            var previousPointer = -1L;
+            while (queue.Count > 0)
+            {
+                var pointer = queue.Pop();
+                if (previousPointer == pointer) continue;
+                previousPointer = pointer;
+                
+                // seek to object.
+                _data.Seek(pointer, SeekOrigin.Begin);
+                
+                // read tile count.
+                var c = _data.ReadVarUInt32();
+                var isNode = c == 1;
+                if (c > 1) c -= 1;
+                if (tileFlags.Length < c) Array.Resize(ref tileFlags, (int)c);
+
+                // find tile(s).
+                tilesToReturn.Clear();
+                if (!isNode)
+                {
+                    for (var t = 0; t < c; t++)
+                    {
+                        var currentTile = _data.ReadVarUInt32();
+                        if (tilesSet.Contains(currentTile))
+                        {
+                            tileFlags[t] = true;
+                            tilesToReturn.Add(currentTile);
+                        }
+                        else
+                        {
+                            tileFlags[t] = false;
+                        }
+                    }
+                }
+                else
+                {
+                    tileFlags[0] = true;
+                }
+
+                // queue next tiles.
+                for (var t = 0; t < c; t++)
+                {
+                    var nextPointer = _data.ReadInt64();
+                    if (nextPointer == NoData) continue;
+
+                    if (tileFlags[t])
+                    {
+                        queue.Push(nextPointer);
+                    }
+                }
+
+                if (isNode)
+                {
+                    if (!(_data.ReadOsmGeo(buffer) is Node node)) throw new InvalidDataException("Node expected.");
+
+                    var tileId = ToTile(node);
+                    if (!tileId.HasValue) throw new InvalidDataException("Expected node with a valid location and tile.");
+                    tilesToReturn.Add(tileId.Value);
+                    if (!node.Id.HasValue) throw new InvalidDataException("Expected node with a valid id.");
+                    yield return (new OsmGeoKey(OsmGeoType.Node, node.Id.Value), tilesToReturn);
+                }
+                else
+                {
+                    var (type, id) = _data.ReadOsmGeoKey();
+                    if (!id.HasValue) throw new InvalidDataException("Expected object with a valid id.");
+                    yield return (new OsmGeoKey(type, id.Value), tilesToReturn);
+                }
             }
         }
 

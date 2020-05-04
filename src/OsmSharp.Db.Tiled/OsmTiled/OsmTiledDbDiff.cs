@@ -110,7 +110,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 }
             }
         }
-
+        
         /// <inheritdoc/>
         public override IEnumerable<(OsmGeoKey key, IEnumerable<(uint x, uint y)> tiles)> GetTilesFor(IEnumerable<OsmGeoKey> osmGeoKeys)
         {
