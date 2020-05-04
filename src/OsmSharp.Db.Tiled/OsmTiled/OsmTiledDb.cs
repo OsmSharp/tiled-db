@@ -13,8 +13,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     /// </summary>
     public class OsmTiledDb : OsmTiledDbBase, IDisposable
     {
-        private readonly OsmTiledDbOsmGeoIndex _dbOsmGeoIndex;
+        private readonly OsmTiledDbOsmGeoIndex _osmGeoIndex;
         private readonly OsmTiledLinkedStream _data;
+        private readonly IOsmTiledDbTileIndexReadOnly _tileIndex;
         
         /// <summary>
         /// Creates a new db using the data at the given path.
@@ -23,20 +24,22 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             : base(path)
         {
             _data = OsmTiledDbOperations.LoadData(this.Path);
-            _dbOsmGeoIndex = OsmTiledDbOperations.LoadIndex(this.Path);
+            _osmGeoIndex = OsmTiledDbOperations.LoadOsmGeoIndex(this.Path);
+            _tileIndex = OsmTiledDbOperations.LoadTileIndex(this.Path);
         }
 
         internal OsmTiledDb(string path, OsmTiledDbMeta meta)
             : base(path, meta)
         {
             _data = OsmTiledDbOperations.LoadData(this.Path);
-            _dbOsmGeoIndex = OsmTiledDbOperations.LoadIndex(this.Path);
+            _osmGeoIndex = OsmTiledDbOperations.LoadOsmGeoIndex(this.Path);
+            _tileIndex = OsmTiledDbOperations.LoadTileIndex(this.Path);
         }
 
         /// <inheritdoc/>
         public override IEnumerable<(uint x, uint y)> GetTiles(bool modifiedOnly = false)
         {
-            foreach (var tileId in _data.GetTiles())
+            foreach (var tileId in _tileIndex.GetTiles())
             {
                 yield return Tile.FromLocalId(this.Zoom, tileId);
             }
@@ -57,7 +60,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             {
                 foreach (var osmGeoKey in osmGeoKeys)
                 {
-                    var pointer = _dbOsmGeoIndex.Get(osmGeoKey);
+                    var pointer = _osmGeoIndex.Get(osmGeoKey);
                     if (pointer == null) continue;
             
                     yield return (_data.Get(pointer.Value, buffer), 
@@ -71,7 +74,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             foreach (var osmGeoKey in osmGeoKeys)
             {
-                var pointer = _dbOsmGeoIndex.Get(osmGeoKey);
+                var pointer = _osmGeoIndex.Get(osmGeoKey);
                 if (pointer == null) continue;
 
                 var tiles = _data.GetTilesFor(pointer.Value)
@@ -85,17 +88,20 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             buffer ??= new byte[1024];
             
+            var lowestTilePointer = _tileIndex.LowestPointerFor(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)));
+            if (lowestTilePointer == null) yield break;
+            
             if (tiles.HasOne(out var only))
             {
                 var tileId = Tile.ToLocalId(only, this.Zoom);
-                foreach (var osmGeo in _data.GetForTile(tileId, buffer))
+                foreach (var osmGeo in _data.GetForTile(lowestTilePointer.Value, tileId, buffer))
                 {
                     yield return (osmGeo, tiles);
                 }
             }
             else
             {
-                foreach (var (osmGeo, osmGeoTiles) in _data.GetForTiles(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)), 
+                foreach (var (osmGeo, osmGeoTiles) in _data.GetForTiles(lowestTilePointer.Value, tiles.Select(x => Tile.ToLocalId(x, this.Zoom)), 
                     buffer))
                 {
                     yield return (osmGeo, osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());

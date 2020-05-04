@@ -5,15 +5,17 @@ using OsmSharp.Db.Tiled.IO;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Data
 {
-    internal class OsmTiledDbTileIndexArray
+    internal class OsmTiledDbTileIndex : IOsmTiledDbTileIndexReadOnly
     {
         private long[][] _blocks;
         private readonly int _blockSize; // Holds the maximum array size, always needs to be a power of 2.
         private readonly int _arrayPow;
         private long _size; // the total size of this array.
         private readonly long _default = default;
+        
+        internal const long EmptyTile = long.MaxValue - 1;
             
-        public OsmTiledDbTileIndexArray(long size, int blockSize = 1 << 16,
+        public OsmTiledDbTileIndex(long size = 0, int blockSize = 1 << 16,
             long emptyDefault = default)
         {
             if (size < 0)
@@ -41,7 +43,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             _blocks = new long[blockCount][];
         }
 
-        private OsmTiledDbTileIndexArray(long[][] blocks, long size, int blockSize, long emptyDefault)
+        private OsmTiledDbTileIndex(long[][] blocks, long size, int blockSize, long emptyDefault)
         {           
             _default = emptyDefault;
             _blockSize = blockSize;
@@ -49,6 +51,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             _arrayPow = ExpOf2(blockSize);
             _blocks = blocks;
         }
+
+        public long Default => _default;
 
         private static int ExpOf2(int powerOf2)
         {
@@ -60,6 +64,43 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             }
 
             return ExpOf2(powerOf2 / 2) + 1;
+        }
+
+        public long Get(uint tile)
+        {
+            if (this.Length < tile) return _default;
+            
+            return this[tile];
+        }
+        
+        public IEnumerable<uint> GetTiles()
+        {
+            for (uint t = 0; t < this.Length; t++)
+            {
+                var pointer = this[t];
+                if (pointer == _default) continue;
+        
+                yield return t;
+            }
+        }
+
+        public void SetTilesIfNotSet(IEnumerable<uint> tiles, long pointer)
+        {
+            foreach (var t in tiles)
+            {
+                this.EnsureMinimumSize(t + 1);
+                var tilePointer = this[t];
+                if (tilePointer != _default) continue;
+
+                this[t] = pointer;
+            }
+        }
+        
+        public void SetAsEmpty(uint tile)
+        {
+            this.EnsureMinimumSize(tile + 1);
+        
+            this[tile] = EmptyTile;
         }
 
         /// <summary>
@@ -237,10 +278,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             return stream.Position - pos;
         }
 
-        public static OsmTiledDbTileIndexArray Deserialize(Stream stream)
+        public static IOsmTiledDbTileIndexReadOnly DeserializeReadonly(Stream stream)
         {
             var version = stream.ReadByte();
-
             if (version == 1)
             {
                 var size = stream.ReadInt64();
@@ -263,7 +303,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
                     b = stream.ReadInt64();
                 }
 
-                return new OsmTiledDbTileIndexArray(blocks, size, blockSize, emptyDefault);
+                return new OsmTiledDbTileIndex(blocks, size, blockSize, emptyDefault);
             }
             else if (version == 2)
             {                
@@ -299,7 +339,75 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
                     b = stream.ReadVarInt64();
                 }
 
-                return new OsmTiledDbTileIndexArray(blocks, size, blockSize, emptyDefault);
+                return new OsmTiledDbTileIndex(blocks, size, blockSize, emptyDefault);
+            }
+            
+            return new OsmTiledDbTileIndexReadOnly(stream);
+        }
+
+        public static OsmTiledDbTileIndex Deserialize(Stream stream)
+        {
+            var version = stream.ReadByte();
+
+            if (version == 1)
+            {
+                var size = stream.ReadInt64();
+                var blockSize = stream.ReadInt32();
+                var emptyDefault = stream.ReadInt64();
+
+                var b = stream.ReadInt64();
+                var blockCount = (long) Math.Ceiling((double) size / blockSize);
+                var blocks = new long[blockCount][];
+                while (b != long.MaxValue)
+                {
+                    var block = new long[blockSize];
+                    for (var i = 0; i < block.Length; i++)
+                    {
+                        block[i] = stream.ReadInt64();
+                    }
+
+                    blocks[b] = block;
+
+                    b = stream.ReadInt64();
+                }
+
+                return new OsmTiledDbTileIndex(blocks, size, blockSize, emptyDefault);
+            }
+            else if (version == 2)
+            {                
+                var size = stream.ReadVarInt64();
+                var blockSize = stream.ReadVarInt32();
+                var emptyDefault = stream.ReadVarInt64();
+                
+                var blockCount = (long) Math.Ceiling((double) size / blockSize);
+                var blocks = new long[blockCount][];
+
+                var b = stream.ReadVarInt64();
+                while (b != long.MaxValue)
+                {
+                    var block = new long[blockSize];
+                    var min = stream.ReadVarInt32();
+                    var max = stream.ReadVarInt32() + min;
+
+                    for (var i = 0; i < min; i++)
+                    {
+                        block[i] = emptyDefault;
+                    }
+                    for (var i = min; i <= max; i++)
+                    {
+                        block[i] = stream.ReadInt64();
+                    }
+                    for (var i = max + 1; i < block.Length; i++)
+                    {
+                        block[i] = emptyDefault;
+                    }
+
+                    blocks[b] = block;
+
+                    b = stream.ReadVarInt64();
+                }
+
+                return new OsmTiledDbTileIndex(blocks, size, blockSize, emptyDefault);
             }
             else if(version == 3)
             {
@@ -308,7 +416,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
                 var blockSize = stream.ReadVarInt32();
                 var emptyDefault = stream.ReadVarInt64();
                 
-                var sparseArray = new OsmTiledDbTileIndexArray(size, blockSize,emptyDefault);
+                var sparseArray = new OsmTiledDbTileIndex(size, blockSize,emptyDefault);
                 while (nonDefaultCount > 0)
                 {
                     var tile = stream.ReadUInt32();
@@ -327,7 +435,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
 
     internal static class SparseArrayExtensions
     {
-        internal static void EnsureMinimumSize(this OsmTiledDbTileIndexArray array, long i)
+        internal static void EnsureMinimumSize(this OsmTiledDbTileIndex array, long i)
         {
             if (array.Length <= i)
             {

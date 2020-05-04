@@ -20,13 +20,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             
             using var data = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToData(path), FileMode.Create);
-            using var dataTilesIndex = FileSystemFacade.FileSystem.Open(
+            using var tileIndexStream = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToTileIndex(path), FileMode.Create);
-            using var dataIdIndex = FileSystemFacade.FileSystem.Open(
+            using var osmGeoIndexStream = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToIdIndex(path), FileMode.Create);
 
             var tiledStream = new OsmTiledLinkedStream(data);
-            var idIndex = new OsmTiledDbOsmGeoIndex(dataIdIndex);
+            var osmGeoIndex = new OsmTiledDbOsmGeoIndex(osmGeoIndexStream);
+            var tileIndex = new OsmTiledDbTileIndex();
 
             // append to the stream.
             var tilesList = new List<uint>();
@@ -44,14 +45,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     lastDeleted.Id != osmGeo.Id.Value)
                 {
                     // the last object was deleted, write as such.
-                    idIndex.Append(new OsmGeoKey(osmGeo), -1);
+                    osmGeoIndex.Append(new OsmGeoKey(osmGeo), -1);
                 }
                 lastDeleted = new OsmGeoKey(OsmGeoType.Relation, long.MaxValue);
 
                 var isDeleted = osmGeo.IsDeleted();
                 if (isDeleted)
                 {
-                    if (saveDeleted) tiledStream.Append(tilesList, osmGeo, buffer);
+                    if (saveDeleted)
+                    {
+                        var location = tiledStream.Append(tilesList, osmGeo, buffer);
+                        tileIndex.SetTilesIfNotSet(tilesList, location);
+                    }
                     
                     // when deleted delay the write.
                     lastDeleted = new OsmGeoKey(osmGeo);
@@ -60,9 +65,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 {
                     // append data.
                     var location =  tiledStream.Append(tilesList, osmGeo, buffer);
+                    tileIndex.SetTilesIfNotSet(tilesList, location);
                     
                     // when not deleted, append.
-                    idIndex.Append(new OsmGeoKey(osmGeo), location);
+                    osmGeoIndex.Append(new OsmGeoKey(osmGeo), location);
                 }
             }
             
@@ -70,7 +76,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             if (lastDeleted.Id != long.MaxValue)
             {
                 // the last object was deleted, write as such.
-                idIndex.Append(lastDeleted, -1);
+                osmGeoIndex.Append(lastDeleted, -1);
             }
 
             if (tiles != null)
@@ -79,16 +85,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 foreach (var tile in tiles)
                 {
                     var localId = Tile.ToLocalId(tile, zoom);
-                    if (!tiledStream.HasTile(localId))
+                    if (!tileIndex.HasTile(localId))
                     {
-                        tiledStream.SetAsEmpty(localId);
+                        tileIndex.SetAsEmpty(localId);
                     }
                 }
             }
 
             // reverse indexed data and save tile index.
             tiledStream.Flush();
-            tiledStream.SerializeIndex(dataTilesIndex);
+            tileIndex.Serialize(tileIndexStream);
         }
     }
 }

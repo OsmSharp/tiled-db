@@ -192,7 +192,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
 
         private const long MaxInMemorySize = 1024 * 1024 * 20;
 
-        public static OsmTiledDbOsmGeoIndex LoadIndex(string path)
+        public static OsmTiledDbOsmGeoIndex LoadOsmGeoIndex(string path)
         {
             var stream = FileSystemFacade.FileSystem.OpenRead(
                 PathToIdIndex(path)).ToMemoryStreamSmall(MaxInMemorySize);
@@ -211,12 +211,18 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         
         public static OsmTiledLinkedStream LoadData(string path)
         {
-            using var indexStream = FileSystemFacade.FileSystem.OpenRead(
-                PathToTileIndex(path)).ToMemoryStreamSmall(MaxInMemorySize);;
             var stream = FileSystemFacade.FileSystem.OpenRead(
                 PathToData(path)).ToMemoryStreamSmall(MaxInMemorySize);;
             
-            return OsmTiledLinkedStream.Deserialize(indexStream, stream);
+            return OsmTiledLinkedStream.Deserialize(stream);
+        }
+        
+        public static IOsmTiledDbTileIndexReadOnly LoadTileIndex(string path)
+        {
+            var stream = FileSystemFacade.FileSystem.OpenRead(
+                PathToTileIndex(path)).ToMemoryStreamSmall(MaxInMemorySize);
+            
+            return OsmTiledDbTileIndex.DeserializeReadonly(stream);
         }
         
         public static string PathToMeta(string path)

@@ -141,7 +141,7 @@ namespace OsmSharp.Db.Tiled.Replication
                             timestamp = diffEnumerator.State.EndTimestamp;
                         
                         if (timestamp.Day != db.Latest.EndTimestamp.Day) break;
-                        if (changeSets.Count >= 0) break;
+                        if (changeSets.Count >= 60) break;
                     }
 
                     var dayCrossed = false; //(timestamp.Day != db.Latest.EndTimestamp.Day);

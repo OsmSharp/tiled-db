@@ -22,12 +22,21 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _getBaseDb = getBaseDb;
         }
 
-        private OsmTiledDbOsmGeoIndex? _index;
-        private OsmTiledDbOsmGeoIndex DbOsmGeoIndex
+        private OsmTiledDbOsmGeoIndex? _osmGeoIndex;
+        private OsmTiledDbOsmGeoIndex OsmGeoIndex
         {
             get
             {
-                return _index ??= OsmTiledDbOperations.LoadIndex(this.Path);
+                return _osmGeoIndex ??= OsmTiledDbOperations.LoadOsmGeoIndex(this.Path);
+            }
+        }
+
+        private IOsmTiledDbTileIndexReadOnly? _tileIndex;
+        private IOsmTiledDbTileIndexReadOnly TileIndex
+        {
+            get
+            {
+                return _tileIndex ??= OsmTiledDbOperations.LoadTileIndex(this.Path);
             }
         }
 
@@ -58,7 +67,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             if (modifiedOnly)
             {
-                foreach (var tileId in this.Data.GetTiles())
+                foreach (var tileId in this.TileIndex.GetTiles())
                 {
                     yield return Tile.FromLocalId(this.Zoom, tileId);
                 }
@@ -66,7 +75,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             else
             {
                 var baseTiles = this.GetBaseDb().GetTiles().Select(x => Tile.ToLocalId(x.x, x.y, this.Zoom));
-                foreach (var tileId in baseTiles.MergeWhenSorted(this.Data.GetTiles()))
+                foreach (var tileId in baseTiles.MergeWhenSorted(this.TileIndex.GetTiles()))
                 {
                     yield return Tile.FromLocalId(this.Zoom, tileId);
                 }
@@ -92,7 +101,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 yield break;
             }
 
-            var index = this.DbOsmGeoIndex;
+            var index = this.OsmGeoIndex;
             foreach (var osmGeoKey in osmGeoKeys)
             {            
                 var pointer = index.Get(osmGeoKey);
@@ -123,7 +132,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         private IEnumerable<(uint x, uint y)> GetTilesFor(OsmGeoKey key)
         {  
-            var pointer = this.DbOsmGeoIndex.Get(key);
+            var pointer = this.OsmGeoIndex.Get(key);
             switch (pointer)
             {
                 case -1:
@@ -163,9 +172,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
             var data = this.Data;
 
+            var lowestTilePointer = this.TileIndex.LowestPointerFor(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)));
+            if (lowestTilePointer == null) yield break;
+            
             // always assume data in both, merge the two.
             using var baseEnumerator = this.GetBaseDb().Get(tiles, buffer).GetEnumerator();
-            using var thisEnumerator = data.GetForTiles(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
+            using var thisEnumerator = data.GetForTiles(lowestTilePointer.Value, tiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
                 buffer).GetEnumerator();
             var baseHasNext = baseEnumerator.MoveNext();
             var thisHasNext = thisEnumerator.MoveNext();
