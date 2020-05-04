@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.OsmTiled.Changes;
+using OsmSharp.Db.Tiled.OsmTiled.Data;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 
@@ -21,8 +22,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _getBaseDb = getBaseDb;
         }
 
-        private OsmTiledIndex? _index;
-        private OsmTiledIndex Index
+        private OsmTiledDbOsmGeoIndex? _index;
+        private OsmTiledDbOsmGeoIndex DbOsmGeoIndex
         {
             get
             {
@@ -91,7 +92,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 yield break;
             }
 
-            var index = this.Index;
+            var index = this.DbOsmGeoIndex;
             foreach (var osmGeoKey in osmGeoKeys)
             {            
                 var pointer = index.Get(osmGeoKey);
@@ -122,7 +123,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         private IEnumerable<(uint x, uint y)> GetTilesFor(OsmGeoKey key)
         {  
-            var pointer = this.Index.Get(key);
+            var pointer = this.DbOsmGeoIndex.Get(key);
             switch (pointer)
             {
                 case -1:

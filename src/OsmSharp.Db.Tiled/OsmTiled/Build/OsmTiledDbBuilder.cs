@@ -7,6 +7,7 @@ using OsmSharp.Db.Tiled.Indexes.TileMaps;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.Changes;
+using OsmSharp.Db.Tiled.OsmTiled.Data;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Build
@@ -50,7 +51,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
             var tiledStream =
                 new OsmTiledLinkedStream(data, pointersCacheSize: OsmTiledLinkedStream.PointerCacheSizeDefault);
-            var idIndex = new OsmTiledIndex(dataIdIndex);
+            var idIndex = new OsmTiledDbOsmGeoIndex(dataIdIndex);
             var tileSet = new HashSet<uint>();
             var mode = OsmGeoType.Node;
             foreach (var osmGeo in source)

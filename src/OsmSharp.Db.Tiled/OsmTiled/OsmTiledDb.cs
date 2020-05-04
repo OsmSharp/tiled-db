@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OsmSharp.Db.Tiled.Collections;
+using OsmSharp.Db.Tiled.OsmTiled.Data;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 
@@ -12,7 +13,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
     /// </summary>
     public class OsmTiledDb : OsmTiledDbBase, IDisposable
     {
-        private readonly OsmTiledIndex _index;
+        private readonly OsmTiledDbOsmGeoIndex _dbOsmGeoIndex;
         private readonly OsmTiledLinkedStream _data;
         
         /// <summary>
@@ -22,14 +23,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             : base(path)
         {
             _data = OsmTiledDbOperations.LoadData(this.Path);
-            _index = OsmTiledDbOperations.LoadIndex(this.Path);
+            _dbOsmGeoIndex = OsmTiledDbOperations.LoadIndex(this.Path);
         }
 
         internal OsmTiledDb(string path, OsmTiledDbMeta meta)
             : base(path, meta)
         {
             _data = OsmTiledDbOperations.LoadData(this.Path);
-            _index = OsmTiledDbOperations.LoadIndex(this.Path);
+            _dbOsmGeoIndex = OsmTiledDbOperations.LoadIndex(this.Path);
         }
 
         /// <inheritdoc/>
@@ -56,7 +57,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             {
                 foreach (var osmGeoKey in osmGeoKeys)
                 {
-                    var pointer = _index.Get(osmGeoKey);
+                    var pointer = _dbOsmGeoIndex.Get(osmGeoKey);
                     if (pointer == null) continue;
             
                     yield return (_data.Get(pointer.Value, buffer), 
@@ -70,7 +71,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             foreach (var osmGeoKey in osmGeoKeys)
             {
-                var pointer = _index.Get(osmGeoKey);
+                var pointer = _dbOsmGeoIndex.Get(osmGeoKey);
                 if (pointer == null) continue;
 
                 var tiles = _data.GetTilesFor(pointer.Value)

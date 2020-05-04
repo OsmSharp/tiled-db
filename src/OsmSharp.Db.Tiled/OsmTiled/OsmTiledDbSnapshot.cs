@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OsmSharp.Db.Tiled.Collections;
+using OsmSharp.Db.Tiled.OsmTiled.Data;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 
@@ -20,8 +21,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _getBaseDb = getBaseDb;
         }
 
-        private OsmTiledIndex? _index;
-        private OsmTiledIndex GetIndex()
+        private OsmTiledDbOsmGeoIndex? _index;
+        private OsmTiledDbOsmGeoIndex GetIndex()
         {
             return _index ??= OsmTiledDbOperations.LoadIndex(this.Path);
         }

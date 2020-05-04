@@ -5,6 +5,7 @@ using OsmSharp.Db.Tiled.IO;
 using System.IO;
 using Newtonsoft.Json;
 using OsmSharp.Db.Tiled.Logging;
+using OsmSharp.Db.Tiled.OsmTiled.Data;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.IO
 {
@@ -191,11 +192,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
 
         private const long MaxInMemorySize = 1024 * 1024 * 20;
 
-        public static OsmTiledIndex LoadIndex(string path)
+        public static OsmTiledDbOsmGeoIndex LoadIndex(string path)
         {
             var stream = FileSystemFacade.FileSystem.OpenRead(
                 PathToIdIndex(path)).ToMemoryStreamSmall(MaxInMemorySize);
-            return new OsmTiledIndex(stream);
+            return new OsmTiledDbOsmGeoIndex(stream);
         }
         
         public static string PathToData(string path)

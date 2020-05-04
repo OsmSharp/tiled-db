@@ -2,13 +2,13 @@ using System.IO;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
-namespace OsmSharp.Db.Tiled.OsmTiled
+namespace OsmSharp.Db.Tiled.OsmTiled.Data
 {
-    internal class OsmTiledIndex
+    internal class OsmTiledDbOsmGeoIndex
     {
         private readonly Stream _data;
 
-        public OsmTiledIndex(Stream data)
+        public OsmTiledDbOsmGeoIndex(Stream data)
         {
             _data = data;
         }

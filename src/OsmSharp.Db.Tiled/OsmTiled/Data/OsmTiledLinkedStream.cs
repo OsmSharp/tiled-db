@@ -5,17 +5,16 @@ using System.Linq;
 using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.Logging;
-using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Binary;
 
-namespace OsmSharp.Db.Tiled.OsmTiled
+namespace OsmSharp.Db.Tiled.OsmTiled.Data
 {
     internal class OsmTiledLinkedStream : IDisposable
     {
         private readonly Stream _data;
-        private readonly SparseArray _pointers;
-        private readonly SparseArray? _previousPointers;
+        private readonly OsmTiledDbTileIndexArray _pointers;
+        private readonly OsmTiledDbTileIndexArray? _previousPointers;
         private readonly long[]? _pointers1;
         private readonly long[]? _pointers2;
         private readonly uint _zoom;
@@ -32,8 +31,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             
             _data.WriteUInt32(zoom);
             
-            _pointers = new SparseArray(0, emptyDefault: NoData);
-            _previousPointers = new SparseArray(0, emptyDefault: NoData);
+            _pointers = new OsmTiledDbTileIndexArray(0, emptyDefault: NoData);
+            _previousPointers = new OsmTiledDbTileIndexArray(0, emptyDefault: NoData);
             if (pointersCacheSize > 0)
             {
                 _pointers1 = new long[pointersCacheSize];
@@ -41,7 +40,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        private OsmTiledLinkedStream(SparseArray pointers, Stream data, uint zoom)
+        private OsmTiledLinkedStream(OsmTiledDbTileIndexArray pointers, Stream data, uint zoom)
         {
             _data = data;
             _pointers = pointers;
@@ -600,7 +599,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             var version = indexStream.ReadByte();
             if (version != 1) throw new InvalidDataException("Invalid version, cannot read index.");
 
-            var pointers = SparseArray.Deserialize(indexStream);
+            var pointers = OsmTiledDbTileIndexArray.Deserialize(indexStream);
 
             var zoom = stream.ReadUInt32();
             

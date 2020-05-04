@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.Changes;
+using OsmSharp.Db.Tiled.OsmTiled.Data;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
@@ -25,7 +26,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 OsmTiledDbOperations.PathToIdIndex(path), FileMode.Create);
 
             var tiledStream = new OsmTiledLinkedStream(data);
-            var idIndex = new OsmTiledIndex(dataIdIndex);
+            var idIndex = new OsmTiledDbOsmGeoIndex(dataIdIndex);
 
             // append to the stream.
             var tilesList = new List<uint>();

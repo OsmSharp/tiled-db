@@ -123,7 +123,7 @@ namespace OsmSharp.Db.Tiled.Replication
                     ticks = DateTime.Now.Ticks;
                     // collect minutely diffs.
                     var diffEnumerator =
-                        await ReplicationConfig.Hourly.GetDiffEnumerator(
+                        await ReplicationConfig.Minutely.GetDiffEnumerator(
                             db.Latest.EndTimestamp.AddSeconds(1));
                     if (diffEnumerator == null)
                     {

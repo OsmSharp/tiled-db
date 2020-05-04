@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
-using OsmSharp.Db.Tiled.OsmTiled;
+using OsmSharp.Db.Tiled.OsmTiled.Data;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.IO.Xml;
 
-namespace OsmSharp.Db.Tiled.Tests.OsmTiled
+namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Data
 {
     [TestFixture]
     public class OsmTiledLinkedStreamTests
