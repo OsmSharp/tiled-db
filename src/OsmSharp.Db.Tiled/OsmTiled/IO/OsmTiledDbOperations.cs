@@ -98,7 +98,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         
         public static OsmTiledDbBase LoadDb(string path, long id, Func<long, OsmTiledDbBase> getDb)
         {
-            var dbPath = BuildDbPath(path, id, null, OsmTiledDbType.Full);
+            string? dbPath = BuildDbPath(path, id, null, OsmTiledDbType.Full);
             OsmTiledDbMeta? meta = null;
             if (FileSystemFacade.FileSystem.DirectoryExists(dbPath))
             {

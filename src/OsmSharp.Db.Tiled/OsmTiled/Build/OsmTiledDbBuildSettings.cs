@@ -24,5 +24,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// Include visible flag.
         /// </summary>
         public bool IncludeVisible { get; set; } = false;
+
+        internal void Prepare(OsmGeo osmGeo)
+        {
+            if (!this.IncludeChangeset) osmGeo.ChangeSetId = null;
+            if (!this.IncludeUsername) osmGeo.UserName = null;
+            if (!this.IncludeUserId) osmGeo.UserId = null;
+            if (!this.IncludeVisible) osmGeo.Visible = null;
+        }
     }
 }

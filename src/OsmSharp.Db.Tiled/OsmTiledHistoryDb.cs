@@ -103,7 +103,7 @@ namespace OsmSharp.Db.Tiled
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
             // build new db.
-            var dbMeta = this.Latest.ApplyChangSet(diff, tempPath, timeStamp: timeStamp);
+            var dbMeta = this.Latest.BuildDiff(diff, tempPath, timeStamp: timeStamp);
             if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
 
             // generate a proper path and move the data there.
@@ -112,7 +112,7 @@ namespace OsmSharp.Db.Tiled
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
 
             // update data.
-            var latest = new OsmTiledDbSnapshot(dbPath, this.GetDb);
+            var latest = new OsmTiledDbDiff(dbPath, this.GetDb);
             _latestId = latest.Id;
             lock (DiffSync)
             {
@@ -194,7 +194,7 @@ namespace OsmSharp.Db.Tiled
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
                 
             // build new db.
-            var dbMeta = latestDb.Snapshot(tiles.ToArray(), tempPath, latestDb.Id, osmTiledDb.Id);
+            var dbMeta = latestDb.BuildSnapshot(tiles.ToArray(), tempPath, latestDb.Id, osmTiledDb.Id);
             dbMeta.Base = osmTiledDb.Id;
             if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
                 

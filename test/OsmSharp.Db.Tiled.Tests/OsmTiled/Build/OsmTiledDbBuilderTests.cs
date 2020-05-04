@@ -16,7 +16,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         /// Tests building a database.
         /// </summary>
         [Test]
-        public async Task OsmTiledDbBuilder_OneNode_Build_ShouldCreateOneNodeTile()
+        public void OsmTiledDbBuilder_OneNode_Build_ShouldCreateOneNodeTile()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/data");
@@ -27,6 +27,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                 new Node()
                 {
                     Id = 4561327,
+                    Version = 1,
                     Latitude = 50,
                     Longitude = 4
                 }
@@ -43,7 +44,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         }
         
         [Test]
-        public async Task OsmTiledDbBuilder_OneNode_DbShouldContainNode()
+        public void OsmTiledDbBuilder_OneNode_DbShouldContainNode()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/original");
@@ -54,6 +55,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                 new Node()
                 {
                     Id = 4561327,
+                    Version = 1,
                     Latitude = 50,
                     Longitude = 4
                 }
@@ -67,7 +69,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         }
         
         [Test]
-        public async Task OsmTiledDbBuilder_OneNode_DbShouldContainNodeInTile()
+        public void OsmTiledDbBuilder_OneNode_DbShouldContainNodeInTile()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/original");
@@ -78,6 +80,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                 new Node()
                 {
                     Id = 4561327,
+                    Version = 1,
                     Latitude = 50,
                     Longitude = 4
                 }
@@ -96,7 +99,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         }
         
         [Test]
-        public async Task OsmTiledDbBuilder_OneNode_DbShouldContainNodeInTiles()
+        public void OsmTiledDbBuilder_OneNode_DbShouldContainNodeInTiles()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
             FileSystemFacade.FileSystem.CreateDirectory(@"/original");
@@ -107,6 +110,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                 new Node()
                 {
                     Id = 4561327,
+                    Version = 1,
                     Latitude = 50,
                     Longitude = 4
                 }

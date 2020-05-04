@@ -12,7 +12,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
     public class OsmTiledDbTests
     {
         [Test]
-        public async Task OsmTiledDb_Get_ShouldGetObjects()
+        public void OsmTiledDb_Get_ShouldGetObjects()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
 
@@ -114,7 +114,7 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
         }
         
         [Test]
-        public async Task OsmTiledDb_GetTile_ShouldGetAllObjectsInTile()
+        public void OsmTiledDb_GetTile_ShouldGetAllObjectsInTile()
         {
             FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
 

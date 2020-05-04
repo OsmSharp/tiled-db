@@ -104,7 +104,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 // TODO: find a way to only read lat/lon.
                 if (!(_data.ReadOsmGeo() is Node node)) throw new InvalidDataException("Expected node.");
 
-                yield return ToTile(node);
+                var tileId = ToTile(node);
+                if (!tileId.HasValue) throw new InvalidDataException("Expected node with a valid location and tile.");
+                yield return tileId.Value;
                 yield break;
             }
 
@@ -124,12 +126,17 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _pointers.EnsureMinimumSize(tile + 1);
             _previousPointers.EnsureMinimumSize(tile + 1);
 
-            var isNode = false;
+            var isNodeInOneTile = false;
             if (osmGeo is Node node)
             {
-                isNode = true;
+                isNodeInOneTile = true;
                 var nodeTileId = ToTile(node);
-                if (nodeTileId != tile) throw new InvalidDataException("Node is not in correct tile.");
+                if (nodeTileId == null ||
+                    nodeTileId.Value != tile)
+                {
+                    // when node is not in the correct tile, store it as a way with one tile.
+                    isNodeInOneTile = false;
+                }
             }
 
             var previousPointer = _previousPointers[tile];
@@ -139,7 +146,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
 
             var pointer = _data.Position;
-            if (isNode)
+            if (isNodeInOneTile)
             {
                 _data.WriteVarUInt32(1);
             }
@@ -255,9 +262,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             return position;
         }
 
-        private uint ToTile(Node node)
+        private uint? ToTile(Node node)
         {
-            if (!node.Longitude.HasValue || !node.Latitude.HasValue) throw new InvalidDataException("Not without latitude or longitude cannot be read.");
+            if (!node.Longitude.HasValue || !node.Latitude.HasValue) return null;
             var tile = Tile.FromWorld(node.Longitude.Value, node.Latitude.Value, _zoom);
             return Tile.ToLocalId(tile, _zoom);
         }
@@ -320,7 +327,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 {
                     if (!(_data.ReadOsmGeo(buffer) is Node node)) throw new InvalidDataException("Node expected.");
 
-                    tilesToReturn.Add(ToTile(node));
+                    var tileId = ToTile(node);
+                    if (!tileId.HasValue) throw new InvalidDataException("Expected node with a valid location and tile.");
+                    tilesToReturn.Add(tileId.Value);
                     yield return (node, tilesToReturn);
                 }
                 else
@@ -450,7 +459,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 {
                     if (!(_data.ReadOsmGeo(buffer) is Node node)) throw new InvalidDataException("Node expected.");
 
-                    tilesToReturn.Add(ToTile(node));
+                    var tileId = ToTile(node);
+                    if (!tileId.HasValue) throw new InvalidDataException("Expected node with a valid location and tile.");
+                    tilesToReturn.Add(tileId.Value);
                     yield return (node, tilesToReturn);
                 }
                 else

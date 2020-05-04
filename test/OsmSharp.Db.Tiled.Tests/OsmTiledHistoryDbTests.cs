@@ -14,7 +14,7 @@ namespace OsmSharp.Db.Tiled.Tests
     public class OsmTiledHistoryDbTests
     {
         [Test]
-        public async Task OsmTiledHistoryDb_Create_ShouldCreateNew()
+        public void OsmTiledHistoryDb_Create_ShouldCreateNew()
         {
             var osmGeos = new OsmGeo[]
             {
@@ -41,7 +41,7 @@ namespace OsmSharp.Db.Tiled.Tests
         }
         
         [Test]
-        public async Task OsmTiledHistoryDb_TryReload_NoNewData_ShouldDoNothingAndReturnFalse()
+        public void OsmTiledHistoryDb_TryReload_NoNewData_ShouldDoNothingAndReturnFalse()
         {
             var osmGeos = new OsmGeo[]
             {

@@ -10,10 +10,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// </summary>
         public const string Full = "full";
         
-        // /// <summary>
-        // /// A diff snapshot.
-        // /// </summary>
-        // public const string Diff = "diff";
+        /// <summary>
+        /// A diff snapshot.
+        /// </summary>
+        public const string Diff = "diff";
         
         /// <summary>
         /// A snapshot snapshot.
