@@ -23,7 +23,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
 
         public const int PointerCacheSizeDefault = 1024 * 1024 * 32;
 
-        public OsmTiledLinkedStream(Stream data, uint zoom = 14, int pointersCacheSize = 0)
+        public OsmTiledLinkedStream(Stream data, uint zoom = 14, int pointersCacheSize = PointerCacheSizeDefault)
         {
             _data = data;
             _zoom = zoom;
