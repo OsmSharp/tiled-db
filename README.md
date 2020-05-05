@@ -4,9 +4,9 @@
 
 A tiled OSM database that supports:
 
-- Optimized (meaning fast!) access by ID: query nodes/ways/relations by their ID.
-- Optimized (meaning fast!) access by bbox/tile: query nodes/ways/relations by their location.
-- Handles the entire planet if that's your thing!
+- Optimized access :fire: by ID: query nodes/ways/relations by their ID.
+- Optimized access :fire: by bbox/tile: query nodes/ways/relations by their location.
+- Handles the entire :earth_africa: if that's your thing!
 
 Next to that applying diffs from the OSM replication system is fast enough to catch up planet file. Minutely diffs can be applied within 1 second on a decent machine.
 
