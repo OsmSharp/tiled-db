@@ -10,7 +10,7 @@ A tiled OSM database that supports:
 
 Next to that applying diffs from the OSM replication system is fast enough to catch up planet file. Minutely diffs can be applied within 1 second on a decent machine.
 
-This was built withing the [open planner team](https://github.com/openplannerteam) by [ANYWAYS](https://www.anyways.eu/) to provide the awesome [routeable tiles](https://github.com/openplannerteam/routable-tiles) with live updates.
+This was built within the [open planner team](https://github.com/openplannerteam) by [ANYWAYS](https://www.anyways.eu/) to provide the awesome [routeable tiles](https://github.com/openplannerteam/routable-tiles) with live updates.
 
 # Usage
 
