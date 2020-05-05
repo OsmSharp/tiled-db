@@ -164,20 +164,28 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
+        private IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tiles)> GetLocal(
+            IEnumerable<uint> tiles, byte[] buffer)
+        {
+            var lowestTilePointer = this.TileIndex.LowestPointerFor(tiles);
+            if (lowestTilePointer == null) yield break;
+            
+            foreach (var (osmGeo, osmGeoTiles) in this.Data.GetForTiles(lowestTilePointer.Value, tiles,
+                buffer))
+            {
+                yield return (osmGeo, osmGeoTiles);
+            }
+        }
+
         /// <inheritdoc/>
         public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(
             IEnumerable<(uint x, uint y)> tiles, byte[]? buffer = null)
         {
             buffer ??= new byte[1024];
-
-            var data = this.Data;
-
-            var lowestTilePointer = this.TileIndex.LowestPointerFor(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)));
-            if (lowestTilePointer == null) yield break;
             
             // always assume data in both, merge the two.
             using var baseEnumerator = this.GetBaseDb().Get(tiles, buffer).GetEnumerator();
-            using var thisEnumerator = data.GetForTiles(lowestTilePointer.Value, tiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
+            using var thisEnumerator = this.GetLocal(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)),
                 buffer).GetEnumerator();
             var baseHasNext = baseEnumerator.MoveNext();
             var thisHasNext = thisEnumerator.MoveNext();
