@@ -1,53 +1,64 @@
-# tiled-osm-db
+# tiled-db
+
+[![Build status](https://build.anyways.eu/app/rest/builds/buildType:(id:Osmsharp_TiledDb)/statusIcon)](https://build.anyways.eu/viewType.html?buildTypeId=Osmsharp_OsmBinary)   [![Visit our website](https://img.shields.io/badge/website-osmsharp.com-020031.svg) ](http://www.osmsharp.com/) [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/OsmSharp/core/blob/develop/LICENSE.md)  
 
 A tiled OSM database that supports:
 
-- Access by ID: query nodes/ways/relations by their ID/version.
-- Access by changeset: query changesets by their ID.
-- Applying a changeset:
-  - A changeset from OSM, used for synchronization.
-  - A changeset from another source.
-- Query by geographical area.
+- Optimized (meaning fast!) access by ID: query nodes/ways/relations by their ID/version.
+- Optimized (meaning fast!) access by bbox/tile: query nodes/ways/relations by their location.
 
-On top of that this database supports:
+Next to that applying diffs from the OSM replication system is fast enough to catch up planet file. Minutely diffs can be applied within 1 second on a decent machine.
 
-- Easy _branching_, it should be easy to:
-  - Create a copy from a snapshot without actually copying anything.
-  - Apply changesets to a _branch_.
-  
-## Design
+# Usage
 
-The database is just a collection of files and folders. A database is a collection of _snapshots_ that contain consecutive versions of the OSM db.
+You can use the [replication console application](https://github.com/OsmSharp/tiled-db/tree/master/src/OsmSharp.Db.Tiled.Replication) to keep a local version up to date. 
 
-We define a few key principles:
+Adding the database as a package to an existing .NET project is also possible:
 
-- A _snapshot_: A snapshot contains all data at one specific point in time. There are three types of snapshots:
-  - A _diff_: A snapshot that contains only the changes on top of another snapshot. 
-  - A _full_: A snapshot that contains all data, the full tiles and indexes.
-  - A _snapshot_: A snapshot that contains the complete tiles and indexes but only those that changed.
+    PM> Install-Package OsmSharp.Db.Tiled
+    
+## Building a new database
 
-The folder structure on disk should look like this:
+The most common usecase is creating a new database from a stream of OSM objects. The following code will create a new database from an OSM PBF file: 
 
-- `initial`: A folder with the initial snapshot created a the time of creation of the db.
-- `{timestamp}-snapshot`: A snapshot at the given containing all data at the timestamp. This snapshot does not need a pointer to any previous instance.
-- `{timestamp}-diff`: A diff relative to the any previous snapshot. This references a previous stable snapshot and stores only the differences.
+```csharp
+var dbPath = @"path/to/db-folder/";
+var source = new PBFOsmStreamSource(@"path/to/file.osm.pbf");
 
-### Snapshot
+db = OsmTiledHistoryDb.Create(dbPath, source);
+```
 
-The structure of a snapshot consists of three different file types:
+## Updating a database
 
-- `{y}.{type}.idx`: Index files per tile indicating where objects are in the sub tiles. For example `/4/8/4.nodes.idx` contains data on what nodes is in what sub tile of tile `4/8/4`.
-- `{y}.{type}.osm.bin{.zip}`: An actual tile with data. For example `14/7936/5555.ways.osm.bin.zip` contains all ways in the tile `14/7936/5555`.
-- `{id}.{type}.osm.bin{.zip}`: A single object that doesn't belong in any tile. For example `/0/0/0/2323309.relation.osm.bin.zip` contains a single relation.
+Keeping a local OSM database up to date can be done by using the [replication package](https://github.com/OsmSharp/replication).  
 
-### Diff
+```csharp
+// get a diff enumerator, already positioned for the given timestamp.
+// null is returned when there is no diff available.
+var hourEnumerator = await ReplicationConfig.Hourly.GetDiffEnumerator(db.Latest.EndTimestamp);
+if (hourEnumerator != null)
+{
+    // move to the next diff.
+    if (await hourEnumerator.MoveNext())
+    {
+        // download the diff.
+        var diff = await hourEnumerator.Diff();
 
-The structure of a diff consists of three different file types, a bit different from snapshots because they need to be able to represents deletes.
+        // apply the diff.
+        db.ApplyDiff(diff);
+    }
+}
+```
 
-- `{y}.{type}.idx.delete`: Index files per tile indicating where objects are in the sub tiles but with an additional bit indicating deletions. An object not in the index or an index that doesn't exist means that nothing has changed.
-- `{y}.{type}.osm.bin{.zip}`: An actual tile with data. This is exactly the same format as in the snapshots but it contains only updated/new data.
-- `{id}.{type}.osm.bin{.zip}`: A single object that doesn't belong in any tile. This is exactly the same format as in the snapshots but it contains only updated/new data.
+# Design
 
-### Applying changes
+The database is designed around a stream of OSM objects prefixed with the tile(s) they are found in. For nodes this is always one tile, for ways and relations this be multiple. The stream is one big linked list per tile id. 
 
-Changesets can be applied to any _view_, resulting in a new _diff_. 
+The database consists of three data files:
+- data.db : the _tiled stream_ of OSM objects.
+- data.id.idx : pointers to the position of all OSM objects sorted by their id and type.
+- data.tile.idx : pointers to the OSM object with the lowest id in each tile sorted by tile id.
+
+Getting a tile is just a matter of looking up the pointer to the first object in the tile by using a binary search and then following the linked list. Getting multiple tiles at once can be done by getting all the start pointers and using a priority queue when following the linked list. 
+
+Getting a single object is a binary search for its pointer and then returning the data. It's also possible to get the tiles for an object in the same way as each object is prefaced by its tiles.
