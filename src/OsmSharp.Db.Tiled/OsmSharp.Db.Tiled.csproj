@@ -15,7 +15,7 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="Reminiscence" Version="1.4.0-pre003" />
-    <PackageReference Include="OsmSharp.IO.Binary" Version="0.2.5-alpha" />    
+    <PackageReference Include="OsmSharp.IO.Binary" Version="0.2.6-alpha" />    
   </ItemGroup>
 
   <ItemGroup>

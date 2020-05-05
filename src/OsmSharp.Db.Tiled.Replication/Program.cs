@@ -115,7 +115,7 @@ namespace OsmSharp.Db.Tiled.Replication
                 Log.Information("DB loaded successfully.");
 
                 // keep going for 5 diffs of max 10 mins.
-                var diffs = 10;
+                var diffs = 100;
                 while (diffs > 0)
                 {
                     diffs--;
@@ -123,7 +123,7 @@ namespace OsmSharp.Db.Tiled.Replication
                     ticks = DateTime.Now.Ticks;
                     // collect minutely diffs.
                     var diffEnumerator =
-                        await ReplicationConfig.Minutely.GetDiffEnumerator(
+                        await ReplicationConfig.Daily.GetDiffEnumerator(
                             db.Latest.EndTimestamp.AddSeconds(1));
                     if (diffEnumerator == null)
                     {
@@ -141,7 +141,7 @@ namespace OsmSharp.Db.Tiled.Replication
                             timestamp = diffEnumerator.State.EndTimestamp;
                         
                         if (timestamp.Day != db.Latest.EndTimestamp.Day) break;
-                        if (changeSets.Count >= 60) break;
+                        if (changeSets.Count >= 0) break;
                     }
 
                     var dayCrossed = false; //(timestamp.Day != db.Latest.EndTimestamp.Day);

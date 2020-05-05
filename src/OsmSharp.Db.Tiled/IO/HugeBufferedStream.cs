@@ -9,7 +9,7 @@ namespace OsmSharp.Db.Tiled.IO
         private readonly byte[] _buffer;
         private readonly int _blockSize;
 
-        public HugeBufferedStream(Stream stream, int bufferSize = 1024*1024*1024, int blockSize = 1024)
+        public HugeBufferedStream(Stream stream, int bufferSize = 1024*1024*1024, int blockSize = 1024*1024)
         {
             if (!stream.CanRead) throw new ArgumentException("Stream doesn't support reading.");
             if (!stream.CanSeek) throw new ArgumentException("Stream doesn't support seeking.");

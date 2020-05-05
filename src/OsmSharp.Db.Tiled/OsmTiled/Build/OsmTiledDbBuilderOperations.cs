@@ -18,8 +18,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             buffer ??= new byte[1024];
             if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
             
-            using var data = FileSystemFacade.FileSystem.Open(
+            using var dataBase = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToData(path), FileMode.Create);
+            var data = new HugeBufferedStream(dataBase);
             using var tileIndexStream = FileSystemFacade.FileSystem.Open(
                 OsmTiledDbOperations.PathToTileIndex(path), FileMode.Create);
             using var osmGeoIndexStream = FileSystemFacade.FileSystem.Open(
