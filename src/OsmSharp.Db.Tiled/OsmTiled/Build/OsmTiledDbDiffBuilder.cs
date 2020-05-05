@@ -16,11 +16,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="changeset">The changeset stream.</param>
         /// <param name="path">The path to store the db at.</param>
         /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
+        /// <param name="meta">The meta data to store along with the db.</param>
         /// <param name="buffer">The buffer.</param>
         /// <param name="settings">The settings.</param>
         /// <returns>Meta data on the new tiled db.</returns>
         public static OsmTiledDbMeta BuildDiff(this OsmTiledDbBase osmTiledDb, OsmChange changeset, string path,
-            OsmTiledDbBuildSettings? settings = null, DateTime? timeStamp = null, byte[]? buffer = null)
+            OsmTiledDbBuildSettings? settings = null, DateTime? timeStamp = null,
+                IEnumerable<(string key, string value)>? meta = null, byte[]? buffer = null)
         {
             settings ??= new OsmTiledDbBuildSettings();
             buffer ??= new byte[1024];
@@ -60,15 +62,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             if (id == osmTiledDb.Id) throw new Exception("Timestamp has not moved!");
 
             // save the meta-data.
-            var meta = new OsmTiledDbMeta
+            var osmTiledDbMeta = new OsmTiledDbMeta
             {
                 Id = id,
                 Base = osmTiledDb.Id,
                 Type = OsmTiledDbType.Diff,
                 Zoom = zoom,
             };
-            OsmTiledDbOperations.SaveDbMeta(path, meta);
-            return meta;
+            osmTiledDbMeta.SetMeta(meta);
+            OsmTiledDbOperations.SaveDbMeta(path, osmTiledDbMeta);
+            return osmTiledDbMeta;
         }
     }
 }

@@ -1,11 +1,12 @@
 using System;
+using System.Collections.Generic;
 
 namespace OsmSharp.Db.Tiled.OsmTiled
 {
     /// <summary>
     /// Represents meta data about a snapshot db.
     /// </summary>
-    public class OsmTiledDbMeta
+    internal class OsmTiledDbMeta
     {
         /// <summary>
         /// Gets or sets the id of this db.
@@ -21,6 +22,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// The base db id if any.
         /// </summary>
         public long? Base { get; set; }
+        
+        /// <summary>
+        /// The db meta data.
+        /// </summary>
+        public string[]? Meta { get; set; }
 
         /// <summary>
         /// The db type.
@@ -42,6 +48,33 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 if (this.Base == null) return null;
 
                 return this.Id - this.Base.Value;
+            }
+        }
+
+        internal IEnumerable<(string key, string value)> GetMeta()
+        {
+            if (this.Meta == null) yield break;
+            
+            for (var i = 0; i + 1 < this.Meta.Length; i += 2)
+            {
+                yield return (this.Meta[i], this.Meta[i + 1]);
+            }
+        }
+
+        internal void SetMeta(IEnumerable<(string key, string value)>? meta)
+        {
+            if (meta == null)
+            {
+                this.Meta = null;
+                return;
+            }
+
+            var metaList = new List<(string key, string value)>(meta);
+            this.Meta = new string[metaList.Count * 2];
+            for (var i = 0; i < metaList.Count; i++)
+            {
+                this.Meta[i * 2] = metaList[i].key;
+                this.Meta[i * 2 + 1] = metaList[i].value;
             }
         }
     }

@@ -19,8 +19,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
         /// <param name="zoom">The zoom.</param>
         /// <param name="settings">The settings.</param>
         /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
+        /// <param name="meta">The meta data to store along with the db.</param>
         public static OsmTiledDbMeta Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14,
-            OsmTiledDbBuildSettings? settings = null, DateTime? timeStamp = null)
+            OsmTiledDbBuildSettings? settings = null, DateTime? timeStamp = null,
+                IEnumerable<(string key, string value)>? meta = null)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
             if (path == null) throw new ArgumentNullException(nameof(path));
@@ -50,16 +52,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             timeStamp ??= dataLatestTimeStamp;
 
             // save the meta-data.
-            var meta = new OsmTiledDbMeta
+            var osmTiledDbMeta = new OsmTiledDbMeta
             {
                 Id = timeStamp.Value.ToUnixTime(),
                 Base = null, // this is a full db.
                 Type = OsmTiledDbType.Full,
                 Zoom = zoom
             };
-            OsmTiledDbOperations.SaveDbMeta(path, meta);
-            return meta;
+            osmTiledDbMeta.SetMeta(meta);
+            OsmTiledDbOperations.SaveDbMeta(path, osmTiledDbMeta);
+            return osmTiledDbMeta;
         }
-
     }
 }

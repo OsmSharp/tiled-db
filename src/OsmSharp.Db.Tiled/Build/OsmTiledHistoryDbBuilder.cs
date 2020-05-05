@@ -19,8 +19,11 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="source">The source data.</param>
         /// <param name="path">The path.</param>
         /// <param name="zoom">The zoom.</param>
+        /// <param name="timeStamp">The timestamp, overrides the timestamps in the data.</param>
+        /// <param name="meta">The meta data to store along with the db.</param>
         /// <returns>A tiled history db.</returns>
-        public static OsmTiledHistoryDb Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
+        public static OsmTiledHistoryDb Build(this IEnumerable<OsmGeo> source, string path, uint zoom = 14, DateTime? timeStamp = null, 
+            IEnumerable<(string key, string value)>? meta = null)
         {
             if (!FileSystemFacade.FileSystem.DirectoryExists(path))
                 throw new DirectoryNotFoundException(
@@ -31,7 +34,7 @@ namespace OsmSharp.Db.Tiled.Build
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
             // build the tiled db.
-            var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom);
+            var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom, timeStamp: timeStamp, meta: meta);
 
             // generate a proper path and move the data there.
             var dbPath = OsmTiledDbOperations.BuildDbPath(path, dbMeta.Id, null, OsmTiledDbType.Full);
@@ -47,9 +50,12 @@ namespace OsmSharp.Db.Tiled.Build
         /// <param name="source">The source data.</param>
         /// <param name="path">The path.</param>
         /// <param name="zoom">The zoom.</param>
+        /// <param name="timeStamp">The timestamp, overrides the timestamps in the data.</param>
+        /// <param name="meta">The meta data to store along with the db.</param>
         /// <returns>A new osm tiled db.</returns>
         /// <exception cref="DirectoryNotFoundException"></exception>
-        public static OsmTiledDb Update(this IEnumerable<OsmGeo> source, string path, uint zoom = 14)
+        public static OsmTiledDb Add(this IEnumerable<OsmGeo> source, string path, uint zoom = 14, DateTime? timeStamp = null, 
+            IEnumerable<(string key, string value)>? meta = null)
         {
             if (!FileSystemFacade.FileSystem.DirectoryExists(path))
                 throw new DirectoryNotFoundException(
@@ -60,7 +66,7 @@ namespace OsmSharp.Db.Tiled.Build
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
             // build the tiled db.
-            var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom);
+            var dbMeta = OsmTiled.Build.OsmTiledDbBuilder.Build(source, tempPath, zoom, timeStamp: timeStamp, meta: meta);
 
             // generate a proper path and move the data there.
             var dbPath = OsmTiledDbOperations.BuildDbPath(path, dbMeta.Id, null, OsmTiledDbType.Full);

@@ -41,7 +41,7 @@ namespace OsmSharp.Db.Tiled.Replication
                         break;
                 }
             };
-            OsmSharp.Db.Tiled.Logging.Log.LogAction = (type, message) =>
+            Logging.Log.LogAction = (type, message) =>
             {
                 switch (type)
                 {
@@ -114,42 +114,53 @@ namespace OsmSharp.Db.Tiled.Replication
                 if (db == null) throw new Exception("Db loading failed!");
                 Log.Information("DB loaded successfully.");
 
-                // keep going for 5 diffs of max 10 mins.
-                var diffs = 100;
-                while (diffs > 0)
+                while (true)
                 {
-                    diffs--;
-                    
                     ticks = DateTime.Now.Ticks;
-                    // collect minutely diffs.
-                    var diffEnumerator =
-                        await ReplicationConfig.Daily.GetDiffEnumerator(
-                            db.Latest.EndTimestamp.AddSeconds(1));
-                    if (diffEnumerator == null)
-                    {
-                        Log.Information("No new changes.");
-                        return;
-                    }
-
+                    // play catchup if the database is behind more than one hour.
+                    // try downloading the latest hour.
                     var changeSets = new List<OsmChange>();
-                    var timestamp = DateTime.MinValue;
-                    while (await diffEnumerator.MoveNext())
+                    ReplicationState? latestStatus = null;
+                    if ((DateTime.Now.ToUniversalTime() - db.Latest.EndTimestamp).TotalHours > 1)
                     {
-                        Log.Verbose($"Downloading diff: {diffEnumerator.State}");
-                        changeSets.Add(await diffEnumerator.Diff());
-                        if (timestamp < diffEnumerator.State.EndTimestamp)
-                            timestamp = diffEnumerator.State.EndTimestamp;
-                        
-                        if (timestamp.Day != db.Latest.EndTimestamp.Day) break;
-                        if (changeSets.Count >= 0) break;
+                        // the data is pretty old, update per hour.
+                        var hourEnumerator = await ReplicationConfig.Hourly.GetDiffEnumerator(db.Latest);
+                        if (hourEnumerator != null)
+                        {
+                            if (await hourEnumerator.MoveNext())
+                            {
+                                Log.Verbose($"Downloading diff: {hourEnumerator.State}");
+                                var diff = await hourEnumerator.Diff();
+                                if (diff != null)
+                                {
+                                    latestStatus = hourEnumerator.State;
+                                    changeSets.Add(diff);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // the data is pretty recent, start doing minutes, do as much as available.
+                        var minuteEnumerator = await ReplicationConfig.Minutely.GetDiffEnumerator(db.Latest);
+                        if (minuteEnumerator != null)
+                        {
+                            while (await minuteEnumerator.MoveNext())
+                            {
+                                Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
+                                var diff = await minuteEnumerator.Diff();
+                                if (diff == null) continue;
+
+                                latestStatus = minuteEnumerator.State;
+                                changeSets.Add(diff);
+                            }
+                        }
                     }
 
-                    var dayCrossed = false; //(timestamp.Day != db.Latest.EndTimestamp.Day);
-
-                    // apply changes.
-                    if (changeSets.Count == 0)
+                    // apply diffs.
+                    if (latestStatus == null)
                     {
-                        Log.Information("No new changes.");
+                        Log.Information("No more changes, db is up to date.");
                         return;
                     }
 
@@ -161,19 +172,17 @@ namespace OsmSharp.Db.Tiled.Replication
                         changeSet = changeSets.Squash();
                     }
 
+                    // build meta data.
+                    var metaData = new List<(string key, string value)>
+                    {
+                        ("period", latestStatus.Config.Period.ToString()),
+                        ("sequence_number", latestStatus.SequenceNumber.ToString())
+                    };
+
                     // apply diff.
                     Log.Information($"Applying changes...");
-                    db.ApplyDiff(changeSet, timestamp);
+                    db.ApplyDiff(changeSet, latestStatus.EndTimestamp, metaData);
                     Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
-                    
-                    // take snapshot at each hour crossing.
-                    if (dayCrossed)
-                    {
-                        ticks = DateTime.Now.Ticks;
-                        Log.Information($"Day crossing, taking snapshot...");
-                        db.TakeSnapshot(timeSpan: new TimeSpan(1, 0, 0));
-                        Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
-                    }
                 }
             }
             catch (Exception e)

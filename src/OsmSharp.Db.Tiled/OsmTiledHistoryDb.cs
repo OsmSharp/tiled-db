@@ -23,6 +23,11 @@ namespace OsmSharp.Db.Tiled
         private long _latestId;
 
         /// <summary>
+        /// The default zoom level.
+        /// </summary>
+        public const uint DefaultZoom = 14;
+
+        /// <summary>
         /// Creates a new OSM db.
         /// </summary>
         /// <param name="path">The path.</param>
@@ -55,7 +60,7 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Gets the location of this db.
         /// </summary>
-        public string Path => _path;
+        internal string Path => _path;
 
         /// <summary>
         /// Gets the latest snapshot db.
@@ -67,20 +72,26 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         /// <param name="path">The path.</param>
         /// <param name="data">The data.</param>
+        /// <param name="timeStamp">The timestamp, overrides the timestamps in the data.</param>
+        /// <param name="meta">The meta data to store along with the db.</param>
         /// <returns>The new db.</returns>
-        public static OsmTiledHistoryDb Create(string path, IEnumerable<OsmGeo> data)
+        public static OsmTiledHistoryDb Create(string path, IEnumerable<OsmGeo> data, DateTime? timeStamp = null, 
+            IEnumerable<(string key, string value)>? meta = null)
         {
-            return Build.OsmTiledHistoryDbBuilder.Build(data, path, 14);
+            return Build.OsmTiledHistoryDbBuilder.Build(data, path, DefaultZoom, timeStamp, meta);
         }
         
         /// <summary>
         /// Adds a new osm tiled db as latest using the given data.
         /// </summary>
         /// <param name="data">The data.</param>
-        public void Update(IEnumerable<OsmGeo> data)
+        /// <param name="timeStamp">The timestamp, overrides the timestamps in the data.</param>
+        /// <param name="meta">The meta data to store along with the db.</param>
+        public void Add(IEnumerable<OsmGeo> data, DateTime? timeStamp = null, 
+            IEnumerable<(string key, string value)>? meta = null)
         {
             // update.
-            var latest = Build.OsmTiledHistoryDbBuilder.Update(data, this._path);
+            var latest = Build.OsmTiledHistoryDbBuilder.Add(data, this._path, timeStamp: timeStamp, meta: meta);
             _latestId = latest.Id;
             
             lock (DiffSync)
@@ -95,7 +106,9 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         /// <param name="diff">The changeset.</param>
         /// <param name="timeStamp">The timestamp from the diff meta-data override the timestamps in the data.</param>
-        public void ApplyDiff(OsmChange diff, DateTime? timeStamp = null)
+        /// <param name="meta">The meta data to store along with the db.</param>
+        public void ApplyDiff(OsmChange diff, DateTime? timeStamp = null, 
+            IEnumerable<(string key, string value)>? meta = null)
         {
             // format new path.
             var tempPath = OsmTiledDbOperations.BuildTempDbPath(this._path);
@@ -103,7 +116,7 @@ namespace OsmSharp.Db.Tiled
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
 
             // build new db.
-            var dbMeta = this.Latest.BuildDiff(diff, tempPath, timeStamp: timeStamp);
+            var dbMeta = this.Latest.BuildDiff(diff, tempPath, timeStamp: timeStamp, meta: meta);
             if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
 
             // generate a proper path and move the data there.
@@ -119,43 +132,15 @@ namespace OsmSharp.Db.Tiled
                 _dbs[latest.Id] = latest;
             }
         }
-
-        /// <summary>
-        /// Gets the database for the given timestamp.
-        ///
-        /// The database that was created on or right before the given timestamp.
-        /// </summary>
-        /// <param name="timestamp">The timestamp.</param>
-        /// <returns>The database closest to the given timestamp.</returns>
-        public OsmTiledDbBase? GetOn(DateTime timestamp)
-        {
-            long id;
-            lock (DiffSync)
-            {
-                id = timestamp.ToUnixTime();
-                if (id > this.Latest.Id) return null;
-                
-                var index = _dbs.Keys.BinarySearch(id);
-
-                if (index < 0)
-                {
-                    index = -index;
-                    index -= 1;
-                    if (index > _dbs.Keys.Count) return null;
-                }
-
-                id = _dbs.Keys[index];
-            }
-
-            return GetDb(id);
-        }
         
         /// <summary>
         /// Groups the data on or right before the given timestamp and the data before in the given timespan.
         /// </summary>
         /// <param name="timeStamp">The timestamp, if none given uses latest.</param>
         /// <param name="timeSpan">The timespan, if none given uses one day.</param>
-        public OsmTiledDbBase? TakeSnapshot(DateTime? timeStamp = null, TimeSpan? timeSpan = null)
+        /// <param name="meta">The meta data to store along with the db.</param>
+        public OsmTiledDbBase? TakeSnapshot(DateTime? timeStamp = null, TimeSpan? timeSpan = null, 
+            IEnumerable<(string key, string value)>? meta = null)
         {
             timeSpan ??= new TimeSpan(TimeSpan.TicksPerDay);
             timeStamp ??= this.Latest.EndTimestamp;
@@ -194,7 +179,7 @@ namespace OsmSharp.Db.Tiled
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
                 
             // build new db.
-            var dbMeta = latestDb.BuildSnapshot(tiles.ToArray(), tempPath, latestDb.Id, osmTiledDb.Id);
+            var dbMeta = latestDb.BuildSnapshot(tiles.ToArray(), tempPath, latestDb.Id, osmTiledDb.Id, meta: meta);
             dbMeta.Base = osmTiledDb.Id;
             if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
                 
@@ -210,6 +195,36 @@ namespace OsmSharp.Db.Tiled
             }
 
             return snapshot;
+        }
+
+        /// <summary>
+        /// Gets the database for the given timestamp.
+        ///
+        /// The database that was created on or right before the given timestamp.
+        /// </summary>
+        /// <param name="timestamp">The timestamp.</param>
+        /// <returns>The database closest to the given timestamp.</returns>
+        public OsmTiledDbBase? GetOn(DateTime timestamp)
+        {
+            long id;
+            lock (DiffSync)
+            {
+                id = timestamp.ToUnixTime();
+                if (id > this.Latest.Id) return null;
+                
+                var index = _dbs.Keys.BinarySearch(id);
+
+                if (index < 0)
+                {
+                    index = -index;
+                    index -= 1;
+                    if (index > _dbs.Keys.Count) return null;
+                }
+
+                id = _dbs.Keys[index];
+            }
+
+            return GetDb(id);
         }
 
         /// <summary>
@@ -236,8 +251,8 @@ namespace OsmSharp.Db.Tiled
         /// <summary>
         /// Tries to reload the database.
         /// </summary>
-        /// <returns>True if the database was modified.</returns>
-        public bool TryReload()
+        /// <returns>True if there is a new latest database.</returns>
+        public bool TryReloadLatest()
         {
             try
             {

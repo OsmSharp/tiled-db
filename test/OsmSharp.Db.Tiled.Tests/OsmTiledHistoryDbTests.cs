@@ -65,7 +65,7 @@ namespace OsmSharp.Db.Tiled.Tests
             var db = OsmTiledHistoryDb.Create(@"/data", osmGeos);
             
             // reload db.
-            Assert.False(db.TryReload());
+            Assert.False(db.TryReloadLatest());
         }
         
         [Test]
@@ -105,10 +105,10 @@ namespace OsmSharp.Db.Tiled.Tests
                     TimeStamp = DateTime.Now,
                     Version = 2
                 }
-            }.Update("/data");
+            }.Add("/data");
             
             // reload db.
-            Assert.True(db.TryReload());
+            Assert.True(db.TryReloadLatest());
         }
         
         [Test]
@@ -134,7 +134,7 @@ namespace OsmSharp.Db.Tiled.Tests
             });
             
             // update db without using the db method (as if it was updated out of process).
-            db.Update(new OsmGeo[]
+            db.Add(new OsmGeo[]
             {
                 new Node()
                 {
@@ -151,7 +151,7 @@ namespace OsmSharp.Db.Tiled.Tests
             });
             
             // update db without using the db method (as if it was updated out of process).
-            db.Update(new OsmGeo[]
+            db.Add(new OsmGeo[]
             {
                 new Node()
                 {

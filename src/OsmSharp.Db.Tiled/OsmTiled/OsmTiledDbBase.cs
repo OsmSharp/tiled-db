@@ -17,7 +17,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
 
         }
 
-        protected OsmTiledDbBase(string path, OsmTiledDbMeta meta)
+        internal OsmTiledDbBase(string path, OsmTiledDbMeta meta)
         {
             Path = path;
             _meta = meta;
@@ -42,6 +42,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// Gets the timespan.
         /// </summary>
         internal long? Timespan => _meta.Timespan;
+
+        /// <summary>
+        /// Gets the meta data.
+        /// </summary>
+        public IEnumerable<(string key, string value)> Meta => _meta.GetMeta();
 
         /// <summary>
         /// Gets the start timestamp, if any.
