@@ -14,13 +14,25 @@ This was built within the [open planner team](https://github.com/openplannerteam
 
 # Usage
 
-You can use the [replication console application](https://github.com/OsmSharp/tiled-db/tree/master/src/OsmSharp.Db.Tiled.Replication) to keep a local version up to date. 
+## Replication application
+
+You can use the [replication console application](https://github.com/OsmSharp/tiled-db/tree/master/src/OsmSharp.Db.Tiled.Replication) to keep a local version up to date. Building a database can be done by running:
+
+     ./OsmSharp.Db.Tiled.Replication --build path/to/file.osm.pbf path/to/db-folder
+
+Updating the local data just by running:
+
+     ./OsmSharp.Db.Tiled.Replication --update path/to/db-folder
+ 
+ This will detect the timestamp from the data and start using hourly diffs if the data is too far behind (we assume you have downloaded a recent extract that's not more than a day behind). After the the hourly diffs are exhausted it will revert to minutes until the data is up to date.
+ 
+## Nuget Package
 
 Adding the database as a package to an existing .NET project is also possible:
 
     PM> Install-Package OsmSharp.Db.Tiled
     
-## Building a new database
+#### Building a new database
 
 The most common usecase is creating a new database from a stream of OSM objects. The following code will create a new database from an OSM PBF file: 
 
@@ -31,7 +43,7 @@ var source = new PBFOsmStreamSource(@"path/to/file.osm.pbf");
 db = OsmTiledHistoryDb.Create(dbPath, source);
 ```
 
-## Updating a database
+#### Updating a database
 
 Keeping a local OSM database up to date can be done by using the [replication package](https://github.com/OsmSharp/replication).  
 

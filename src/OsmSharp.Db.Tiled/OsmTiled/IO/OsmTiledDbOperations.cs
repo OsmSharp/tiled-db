@@ -23,7 +23,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
 
         public static string BuildTempDbPath(string path)
         {
-            return FileSystemFacade.FileSystem.Combine(path, "." + Guid.NewGuid().ToString());
+            return FileSystemFacade.FileSystem.Combine(path, "" + Guid.NewGuid().ToString());
         }
 
         public static string BuildDbPath(string path, long id, long? timespan, string type)
