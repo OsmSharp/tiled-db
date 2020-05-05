@@ -13,16 +13,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsmSharp.Db.Tiled.Tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsmSharp.Db.Tiled.Tests.Functional", "test\OsmSharp.Db.Tiled.Tests.Functional\OsmSharp.Db.Tiled.Tests.Functional.csproj", "{DA1428B4-2CBA-4119-B781-038DFECE633B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{F1DB8C17-64C9-45EF-A9A9-FA11A0EDCDB4}"
-ProjectSection(SolutionItems) = preProject
-	docs\DB.md = docs\DB.md
-	docs\IMG_20171104_0008.jpg = docs\IMG_20171104_0008.jpg
-	docs\IMG_20171104_0009.jpg = docs\IMG_20171104_0009.jpg
-	docs\IMG_20171104_0010.jpg = docs\IMG_20171104_0010.jpg
-	docs\IMG_20171104_0011.jpg = docs\IMG_20171104_0011.jpg
-	docs\IMG_20171104_0012.jpg = docs\IMG_20171104_0012.jpg
-EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{720FA021-26C3-444E-ACD5-C3BB26DF8901}"
 ProjectSection(SolutionItems) = preProject
 	README.md = README.md
