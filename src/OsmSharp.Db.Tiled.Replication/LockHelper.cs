@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using Newtonsoft.Json;
+using System.Text.Json;
 using Serilog;
 
 namespace OsmSharp.Db.Tiled.Replication
@@ -20,7 +20,7 @@ namespace OsmSharp.Db.Tiled.Replication
             
             try
             {
-                var lockData = JsonConvert.DeserializeObject<Lock>(File.ReadAllText(syncLockInfo.FullName));
+                var lockData = JsonSerializer.Deserialize<Lock>(File.ReadAllText(syncLockInfo.FullName));
                 var timeStamp = new DateTime(lockData.Time);
                 if ((DateTime.Now - timeStamp).TotalHours > 1)
                 {
@@ -62,7 +62,7 @@ namespace OsmSharp.Db.Tiled.Replication
                     Time = DateTime.Now.Ticks
                 };
                 File.WriteAllText(syncLockInfo.FullName, 
-                    JsonConvert.SerializeObject(l));
+                    JsonSerializer.Serialize(l));
             }
             catch(Exception ex)
             {

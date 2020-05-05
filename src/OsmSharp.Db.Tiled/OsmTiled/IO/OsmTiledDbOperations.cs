@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
-using Newtonsoft.Json;
-using OsmSharp.Db.Tiled.Logging;
+using System.Text.Json;
 using OsmSharp.Db.Tiled.OsmTiled.Data;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.IO
@@ -127,8 +126,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         {
             var dbMetaPath = PathToMeta(path);
             using var stream = FileSystemFacade.FileSystem.Open(dbMetaPath, FileMode.Create);
-            using var streamWriter = new StreamWriter(stream);
-            JsonSerializer.CreateDefault().Serialize(streamWriter, dbMeta);
+            using var streamWriter = new Utf8JsonWriter(stream);
+            JsonSerializer.Serialize(streamWriter, dbMeta);
         }
         
         public static OsmTiledDbBase LoadDb(string path, long id, Func<long, OsmTiledDbBase> getDb)
@@ -181,8 +180,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             var dbMetaPath = PathToMeta(path);
             using var stream = FileSystemFacade.FileSystem.OpenRead(dbMetaPath);
             using var streamReader = new StreamReader(stream);
-            using var jsonReader = new JsonTextReader(streamReader);
-            return JsonSerializer.CreateDefault().Deserialize<OsmTiledDbMeta>(jsonReader);
+            return JsonSerializer.Deserialize<OsmTiledDbMeta>(streamReader.ReadToEnd());
         }
         
         public static string PathToIdIndex(string path)
