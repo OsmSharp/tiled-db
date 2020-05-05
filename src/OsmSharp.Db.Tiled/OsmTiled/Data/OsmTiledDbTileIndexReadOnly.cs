@@ -38,11 +38,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
 
         public IEnumerable<uint> GetTiles()
         {
-            _data.Seek(_startPosition, SeekOrigin.Begin);
-            while (_data.Position < _endPosition)
+            var longNextPosition = _startPosition;
+            while (longNextPosition < _endPosition)
             {
+                _data.Seek(longNextPosition, SeekOrigin.Begin);
                 yield return _data.ReadUInt32();
-                _data.Seek(8, SeekOrigin.Begin);
+                longNextPosition += 12;
             }
         }
 
