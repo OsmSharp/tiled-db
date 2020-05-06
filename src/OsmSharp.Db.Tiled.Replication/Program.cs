@@ -83,10 +83,11 @@ namespace OsmSharp.Db.Tiled.Replication
             var planetFile = config["planet"];
             var dbPath = config["db"];
 
-            var hasArgs = false;
+            var build = false;
+            var update = false;
+            var catchup = false;
             if (args.Length > 0)
             {
-                hasArgs = true;
                 if (args.Length < 2)
                 {
                     Log.Fatal("Invalid number of arguments expected at least --update or --build with a path given.");
@@ -103,6 +104,9 @@ namespace OsmSharp.Db.Tiled.Replication
                     }
 
                     planetFile = null;
+
+                    update = true;
+                    catchup = true;
                 }
                 else if (args[0] == "--build")
                 {
@@ -118,13 +122,20 @@ namespace OsmSharp.Db.Tiled.Replication
                         Log.Fatal($"The given database path doesn't exist: {dbPath}");
                         return;
                     }
+
+                    build = true;
                 }
+            }
+            else
+            {
+                build = true;
+                update = true;
             }
 
             var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
             if (LockHelper.IsLocked(lockFile.FullName))
             {
-                if (hasArgs) Log.Information($"Lockfile found at {lockFile.FullName}, is there another update running?");
+                if (build || update) Log.Information($"Lockfile found at {lockFile.FullName}, is there another update running?");
                 return;
             }
 
@@ -132,111 +143,39 @@ namespace OsmSharp.Db.Tiled.Replication
             {
                 LockHelper.WriteLock(lockFile.FullName);
 
-                // try loading the db, if it doesn't exist build it.
-                var ticks = DateTime.Now.Ticks;
-                if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
+                if (!Directory.Exists(dbPath))
                 {
-                    Log.Information("The DB doesn't exist yet, building...");
-
-                    var source = new PBFOsmStreamSource(
-                        File.OpenRead(planetFile));
-                    var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-                    progress.RegisterSource(source);
-
-                    // splitting tiles and writing indexes.
-                    db = OsmTiledHistoryDb.Create(dbPath, progress);
-                    Log.Information("DB built successfully.");
-                    Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
-                    return;
-                }
-                else if (hasArgs && !string.IsNullOrWhiteSpace(planetFile))
-                {
-                    if (db == null) throw new Exception("Db loading failed!");
-                    Log.Warning($"Database already exists, adding new data from {planetFile}");
-
-                    var source = new PBFOsmStreamSource(
-                        File.OpenRead(planetFile));
-                    var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-                    progress.RegisterSource(source);
-                    
-                    db.Add(progress);
-                    Log.Information("DB built successfully.");
-                    Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                    Log.Fatal($"The given database path doesn't exist: {dbPath}");
                     return;
                 }
                 
-                if (db == null) throw new Exception("Db loading failed!");
-                Log.Information("DB loaded successfully.");
-
-                while (hasArgs)
+                if (build)
                 {
-                    ticks = DateTime.Now.Ticks;
-                    // play catchup if the database is behind more than one hour.
-                    // try downloading the latest hour.
-                    var changeSets = new List<OsmChange>();
-                    ReplicationState? latestStatus = null;
-                    if ((DateTime.Now.ToUniversalTime() - db.Latest.EndTimestamp).TotalHours > 1)
+                    if (string.IsNullOrWhiteSpace(planetFile))
                     {
-                        // the data is pretty old, update per hour.
-                        var hourEnumerator = await ReplicationConfig.Hourly.GetDiffEnumerator(db.Latest);
-                        if (hourEnumerator != null)
-                        {
-                            if (await hourEnumerator.MoveNext())
-                            {
-                                Log.Verbose($"Downloading diff: {hourEnumerator.State}");
-                                var diff = await hourEnumerator.Diff();
-                                if (diff != null)
-                                {
-                                    latestStatus = hourEnumerator.State;
-                                    changeSets.Add(diff);
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // the data is pretty recent, start doing minutes, do as much as available.
-                        var minuteEnumerator = await ReplicationConfig.Minutely.GetDiffEnumerator(db.Latest);
-                        if (minuteEnumerator != null)
-                        {
-                            while (await minuteEnumerator.MoveNext())
-                            {
-                                Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
-                                var diff = await minuteEnumerator.Diff();
-                                if (diff == null) continue;
-
-                                latestStatus = minuteEnumerator.State;
-                                changeSets.Add(diff);
-                            }
-                        }
-                    }
-
-                    // apply diffs.
-                    if (latestStatus == null)
-                    {
-                        Log.Information("No more changes, db is up to date.");
+                        Log.Fatal("No valid planet file given.");
                         return;
                     }
 
-                    // squash changes.
-                    var changeSet = changeSets[0];
-                    if (changeSets.Count > 1)
+                    if (!File.Exists(planetFile))
                     {
-                        Log.Verbose($"Squashing changes...");
-                        changeSet = changeSets.Squash();
+                        Log.Fatal($"Planet file {planetFile} not found!");
+                        return;
                     }
 
-                    // build meta data.
-                    var metaData = new List<(string key, string value)>
+                    // build the database, if updating is not requested we optionally add the given data, rebuilding the database.
+                    if (ReplicationHelper.BuildOrAdd(dbPath, planetFile, !update))
                     {
-                        ("period", latestStatus.Config.Period.ToString()),
-                        ("sequence_number", latestStatus.SequenceNumber.ToString())
-                    };
+                        // database was built or updated.
+                        // if catchup was not requested, stop here.
+                        if (!catchup) return;
+                    }
+                }
 
-                    // apply diff.
-                    Log.Information($"Applying changes...");
-                    db.ApplyDiff(changeSet, latestStatus.EndTimestamp, metaData);
-                    Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                if (update)
+                {
+                    // update the database.
+                    await ReplicationHelper.Update(dbPath, catchup);
                 }
             }
             catch (Exception e)
