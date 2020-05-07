@@ -85,6 +85,7 @@ namespace OsmSharp.Db.Tiled.Replication
 
             var build = false;
             var update = false;
+            var snapshot = string.Empty;
             var catchup = false;
             if (args.Length > 0)
             {
@@ -110,6 +111,11 @@ namespace OsmSharp.Db.Tiled.Replication
                 }
                 else if (args[0] == "--build")
                 {
+                    if (args.Length < 3)
+                    {
+                        Log.Fatal("Invalid number of arguments expected at least --build with a planet file and a dbpath given.");
+                        return;
+                    }
                     planetFile = args[1];
                     if (!File.Exists(planetFile))
                     {
@@ -125,11 +131,22 @@ namespace OsmSharp.Db.Tiled.Replication
 
                     build = true;
                 }
+                else if (args[0] == "--snapshot")
+                {
+                    snapshot = args[1];
+                    if (snapshot != "week" &&
+                        snapshot != "day")
+                    {
+                        Log.Fatal($"Cannot take snapshot for period: {snapshot}, 'week' or 'day' expected.");
+                        return;
+                    }
+                }
             }
             else
             {
                 build = true;
                 update = true;
+                snapshot = string.Empty;
             }
 
             var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
@@ -170,6 +187,12 @@ namespace OsmSharp.Db.Tiled.Replication
                         // if catchup was not requested, stop here.
                         if (!catchup) return;
                     }
+                }
+
+                if (!string.IsNullOrWhiteSpace(snapshot))
+                {
+                    // take a snapshot.
+                    ReplicationHelper.Snapshot(dbPath, snapshot);
                 }
 
                 if (update)

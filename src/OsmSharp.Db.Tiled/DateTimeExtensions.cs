@@ -14,7 +14,7 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         public static DateTime FromUnixTime(this long seconds)
         {
-            return new DateTime(EpochTicks + (seconds * 1000));
+            return new DateTime(EpochTicks + TimeSpan.FromSeconds(seconds).Ticks);
         }
 
         /// <summary>
@@ -22,7 +22,7 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         public static long ToUnixTime(this DateTime date)
         {
-            return (date.Ticks - EpochTicks) / 1000;
+            return (long)TimeSpan.FromTicks(date.Ticks - EpochTicks).TotalSeconds;
         }
     }
 }

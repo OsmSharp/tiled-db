@@ -100,7 +100,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                 // prepare source.
                 var source = new PBFOsmStreamSource(
                     File.OpenRead(args[0]));
-                var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
+                var progress = new Streams.Filters.OsmStreamFilterProgress();
                 progress.RegisterSource(source);
                 
                 var ticks = DateTime.Now.Ticks;
