@@ -30,9 +30,27 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         {
             var guid = Guid.NewGuid();
             if (timespan == null) return FileSystemFacade.FileSystem.Combine(path,
-                    $"{id:0000000000000000}_{type}");
+                    $"{IdToPath(id)}_{type}");
             return FileSystemFacade.FileSystem.Combine(path,
-                $"{id:0000000000000000}_{timespan:00000000000}_{type}");
+                $"{IdToPath(id)}_{timespan:00000000000}_{type}");
+        }
+
+        internal static string IdToPath(long id)
+        {
+            var date = id.FromUnixTime();
+            return $"{date.Year:0000}{date.Month:00}{date.Day:00}-{date.Hour:00}{date.Minute:00}{date.Second:00}";
+        }
+
+        internal static bool TryIdFromPath(string path, out long id)
+        {
+            if (!DateTime.TryParseExact(path, "yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal, out var utcDate))
+            {
+                id = long.MaxValue;
+                return true;
+            }
+            id = utcDate.ToUniversalTime().ToUnixTime();
+            return true;
         }
 
         public static bool TryParseDbPath(string path, out long id, out long? timespan, out string type)
@@ -51,8 +69,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             if (firstIndexOf  <= 0) return false;
             
             // parse timestamp.
-            if (!long.TryParse(dateTimeString.Substring(0, firstIndexOf ), NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
-                out var millisecondEpochs))
+            if (!TryIdFromPath(dateTimeString.Substring(0, firstIndexOf ), out var secondsFromEpoch))
             {
                 return false;
             }
@@ -78,14 +95,14 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             }
 
             type = typeParse;
-            id = millisecondEpochs;
+            id = secondsFromEpoch;
             return true;
         }
 
         public static string? LoadLongestSnapshotDb(string path, long id)
         {
             var potentialDbs = GetDbPaths(path,
-                $"{id:0000000000000000}");
+                $"{IdToPath(id)}");
             (string? path, long id, long? timespan, string type) best = (null, long.MinValue, null, string.Empty);
             foreach (var potentialDb in potentialDbs)
             {
@@ -105,7 +122,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         public static string? LoadLongestDiffDb(string path, long id)
         {
             var potentialDbs = GetDbPaths(path,
-                $"{id:0000000000000000}");
+                $"{IdToPath(id)}");
             (string? path, long id, long? timespan, string type) best = (null, long.MinValue, null, string.Empty);
             foreach (var potentialDb in potentialDbs)
             {
