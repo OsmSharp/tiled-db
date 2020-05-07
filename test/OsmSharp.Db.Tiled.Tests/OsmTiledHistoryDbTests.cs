@@ -102,7 +102,7 @@ namespace OsmSharp.Db.Tiled.Tests
                     UserId = 1,
                     UserName = "Ben",
                     Visible = true,
-                    TimeStamp = DateTime.Now,
+                    TimeStamp = DateTime.Now.AddDays(1),
                     Version = 2
                 }
             }.Add("/data");
