@@ -320,14 +320,17 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             }
         }
         
-        public IEnumerable<(OsmGeo osmGeo, List<uint> tile)> GetForTiles(long startPointer, IEnumerable<uint> tiles, byte[] buffer)
+        public IEnumerable<(OsmGeo osmGeo, List<uint> tile)> GetForTiles(IEnumerable<long> startPointers, IEnumerable<uint> tiles, byte[] buffer)
         {
             if (buffer?.Length < 1024) Array.Resize(ref buffer, 1024);
             var tilesToReturn = new List<uint>();
             
             var queue = new BinaryHeap();
             var tilesSet = new HashSet<uint>(tiles);
-            queue.Push(startPointer);
+            foreach (var pointer in startPointers)
+            {
+                queue.Push(pointer);
+            }
 
             var tileFlags = new bool[1024];
             var previousPointer = -1L;

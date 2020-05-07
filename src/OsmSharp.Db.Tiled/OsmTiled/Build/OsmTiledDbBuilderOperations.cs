@@ -12,7 +12,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 {
     internal static class OsmTiledDbBuilderOperations
     {
-        internal static void Write(this IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> dataStream,
+        internal static long Write(this IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> dataStream,
             string path, uint zoom, bool saveDeleted = false, IEnumerable<(uint x, uint y)>? tiles = null, byte[]? buffer = null)
         {
             buffer ??= new byte[1024];
@@ -31,12 +31,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             var tileIndex = new OsmTiledDbTileIndex();
 
             // append to the stream.
+            var count = 0L;
             var tilesList = new List<uint>();
             var lastDeleted = new OsmGeoKey(OsmGeoType.Relation,long.MaxValue);
             foreach (var (osmGeo, osmGeoTiles) in dataStream)
             {
                 if (!osmGeo.Id.HasValue) throw new InvalidDataException("Cannot store data without a valid id.");
-                
+
                 // build tile list.
                 tilesList.Clear();
                 tilesList.AddRange(osmGeoTiles.Select(x => Tile.ToLocalId(x, zoom)));
@@ -56,6 +57,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                     if (saveDeleted)
                     {
                         var location = tiledStream.Append(tilesList, osmGeo, buffer);
+                        count++;
                         tileIndex.SetTilesIfNotSet(tilesList, location);
                     }
                     
@@ -66,6 +68,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
                 {
                     // append data.
                     var location =  tiledStream.Append(tilesList, osmGeo, buffer);
+                    count++;
                     tileIndex.SetTilesIfNotSet(tilesList, location);
                     
                     // when not deleted, append.
@@ -96,6 +99,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             // reverse indexed data and save tile index.
             tiledStream.Flush();
             tileIndex.Serialize(tileIndexStream);
+
+            return count;
         }
     }
 }

@@ -11,29 +11,16 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             return pointer != tileIndex.Default;
         }
         
-        public static long? LowestPointerFor(this IOsmTiledDbTileIndexReadOnly tileIndex, IEnumerable<uint> tiles)
+        public static IEnumerable<long> LowestPointersFor(this IOsmTiledDbTileIndexReadOnly tileIndex, IEnumerable<uint> tiles)
         {
-            long? lowest = null;
-
             foreach (var tile in tiles)
             {
                 var pointer = tileIndex.Get(tile);
                 if (pointer == OsmTiledDbTileIndex.EmptyTile) continue;
                 if (pointer == tileIndex.Default) continue;
-                if (lowest == null)
-                {
-                    lowest = pointer;
-                    continue;
-                }
 
-                if (lowest.Value > pointer)
-                {
-                    lowest = pointer;
-                    continue;
-                }
+                yield return pointer;
             }
-
-            return lowest;
         }
     }
 }

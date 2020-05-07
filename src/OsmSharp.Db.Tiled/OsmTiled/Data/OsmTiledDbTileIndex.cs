@@ -54,6 +54,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
 
         public long Default => _default;
 
+        public long NonDefaultCount { get; private set; } = 0;
+
         private static int ExpOf2(int powerOf2)
         {
             // this can probably be faster but it needs to run once in the constructor,
@@ -68,7 +70,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
 
         public long Get(uint tile)
         {
-            if (this.Length < tile) return _default;
+            if (this.Length <= tile) return _default;
             
             return this[tile];
         }
@@ -141,6 +143,17 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
                 }
 
                 var localIdx = idx % _blockSize;
+                var existing = _blocks[blockId][localIdx];
+                if (value != _default &&
+                    existing == _default)
+                {
+                    this.NonDefaultCount++;
+                }
+                else if (value == _default &&
+                         existing != _default)
+                {
+                    this.NonDefaultCount--;
+                }
                 _blocks[blockId][localIdx] = value;
             }
         }

@@ -15,17 +15,19 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
 
         public OsmTiledDbTileIndexReadOnly(Stream stream)
         {
-            var nonDefaultCount = stream.ReadInt64();
+            this.NonDefaultCount = stream.ReadInt64();
             var size = stream.ReadVarInt64();
             var blockSize = stream.ReadVarInt32();
             Default = stream.ReadVarInt64();
 
             _startPosition = stream.Position;
-            _endPosition = stream.Position + (12 * nonDefaultCount);
+            _endPosition = stream.Position + (12 * this.NonDefaultCount);
             _data = stream;
         }
 
         public long Default { get; }
+
+        public long NonDefaultCount { get; }
 
         public long Get(uint tile)
         {

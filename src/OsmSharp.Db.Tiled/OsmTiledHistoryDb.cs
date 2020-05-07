@@ -137,40 +137,50 @@ namespace OsmSharp.Db.Tiled
         /// Groups the data on or right before the given timestamp and the data before in the given timespan.
         /// </summary>
         /// <param name="timeStamp">The timestamp, if none given uses latest.</param>
-        /// <param name="timeSpan">The timespan, if none given uses one day.</param>
+        /// <param name="timeSpan">The timespan, if none given snapshots all the diffs until it finds a non-diff db.</param>
         /// <param name="meta">The meta data to store along with the db.</param>
         public OsmTiledDbBase? TakeSnapshot(DateTime? timeStamp = null, TimeSpan? timeSpan = null, 
             IEnumerable<(string key, string value)>? meta = null)
         {
-            timeSpan ??= new TimeSpan(TimeSpan.TicksPerDay);
             timeStamp ??= this.Latest.EndTimestamp;
             
             var osmTiledDb = this.GetOn(timeStamp.Value);
             if (osmTiledDb == null) return null;
+            if (!(osmTiledDb is OsmTiledDbDiff))
+            {
+                Log.Default.Verbose("No need to snapshot, already there.");
+                return null;
+            }
+
+            // copy meta from latest db.
+            meta ??= osmTiledDb.Meta;
             
             // collect all tiles that have changed.
             var latestDb = osmTiledDb;
-            var earliest = timeStamp - timeSpan.Value;
+            DateTime? earliest = null;
+            if (timeSpan.HasValue) earliest = timeStamp - timeSpan.Value;
             
             var tiles = new HashSet<(uint x, uint y)>();
-            var snapshots = 0;
-            while (osmTiledDb is OsmTiledDbSnapshot nextSnapshot)
+            while (osmTiledDb is OsmTiledDbDiff nextDiff)
             {
-                tiles.UnionWith(nextSnapshot.GetTiles(true));
+                tiles.UnionWith(nextDiff.GetTiles(true));
 
-                if (osmTiledDb.Base == null) throw new InvalidDataException("Snapshot should have a valid base db.");
+                if (osmTiledDb.Base == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
                 osmTiledDb = this.GetDb(osmTiledDb.Base.Value);
-                if (osmTiledDb == null) throw new InvalidDataException("Snapshot should have a valid base db.");
-                
-                if (osmTiledDb.EndTimestamp <= earliest) break;
+                if (osmTiledDb == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
 
-                snapshots++;
+                // if earliest has value, a timespan was set.
+                // make sure to stop when reached.
+                if (earliest.HasValue)
+                {
+                    if (osmTiledDb.EndTimestamp <= earliest) break;
+                }
             }
 
-            if (snapshots <= 1)
+            if (tiles.Count == 0)
             {
-                Log.Default.Verbose("No need to snapshot, already there.");
-                return latestDb;
+                Log.Default.Verbose("No data found to snapshot.");
+                return null;
             }
             
             // format new path.
@@ -197,6 +207,43 @@ namespace OsmSharp.Db.Tiled
             return snapshot;
         }
 
+        private bool TryOn(DateTime timestamp, out long id)
+        {
+            lock (DiffSync)
+            {
+                id = timestamp.ToUnixTime();
+                if (id > this.Latest.Id) return false;
+                
+                var index = _dbs.Keys.BinarySearch(id);
+
+                if (index < 0)
+                {
+                    index = -index;
+                    index -= 1;
+                    if (index > _dbs.Keys.Count) return false;
+                }
+
+                id = _dbs.Keys[index];
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns true if there is a database that was created on or right before the given timestamp.
+        /// </summary>
+        /// <param name="timestamp">The timestamp.</param>
+        /// <returns>True if found.</returns>
+        public bool HasOn(DateTime timestamp)
+        {
+            if (TryOn(timestamp, out _))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Gets the database for the given timestamp.
         ///
@@ -206,25 +253,12 @@ namespace OsmSharp.Db.Tiled
         /// <returns>The database closest to the given timestamp.</returns>
         public OsmTiledDbBase? GetOn(DateTime timestamp)
         {
-            long id;
-            lock (DiffSync)
+            if (TryOn(timestamp, out var id))
             {
-                id = timestamp.ToUnixTime();
-                if (id > this.Latest.Id) return null;
-                
-                var index = _dbs.Keys.BinarySearch(id);
-
-                if (index < 0)
-                {
-                    index = -index;
-                    index -= 1;
-                    if (index > _dbs.Keys.Count) return null;
-                }
-
-                id = _dbs.Keys[index];
+                return GetDb(id);
             }
 
-            return GetDb(id);
+            return null;
         }
 
         /// <summary>

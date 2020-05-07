@@ -6,6 +6,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
     {
         long Default { get; }
         
+        long NonDefaultCount { get; }
+        
         long Get(uint tile);
 
         IEnumerable<uint> GetTiles();

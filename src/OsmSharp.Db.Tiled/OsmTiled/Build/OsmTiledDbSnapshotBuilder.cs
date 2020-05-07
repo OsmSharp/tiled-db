@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OsmSharp.Changesets;
+using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.OsmTiled.Changes;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
@@ -119,7 +120,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             });
 
             // write the data.
-            merged.Write(path, zoom, false, tiles, buffer);
+            var count = merged.Write(path, zoom, false, tiles, buffer);
+            Log.Default.Verbose($"Written {count} objects...");
 
             // save the meta-data.
             var osmTiledDbMeta = new OsmTiledDbMeta

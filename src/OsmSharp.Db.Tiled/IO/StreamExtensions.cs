@@ -9,7 +9,7 @@ namespace OsmSharp.Db.Tiled.IO
         {
             if (stream.Length >= maxLength) return stream;
             
-            Log.Default.Verbose($"Loading stream in memory, stream has {stream.Length} bytes, with a {maxLength} max set.");
+            //Log.Default.Debug($"Loading stream in memory, stream has {stream.Length} bytes, with a {maxLength} max set.");
             var memoryStream = new MemoryStream();
             stream.CopyTo(memoryStream);
             memoryStream.Seek(0, SeekOrigin.Begin);

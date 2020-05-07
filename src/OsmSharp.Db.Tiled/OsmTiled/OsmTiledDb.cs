@@ -88,20 +88,20 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             buffer ??= new byte[1024];
             
-            var lowestTilePointer = _tileIndex.LowestPointerFor(tiles.Select(x => Tile.ToLocalId(x, this.Zoom)));
-            if (lowestTilePointer == null) yield break;
+            var lowestTilePointers = _tileIndex.LowestPointersFor(tiles.Select(x => Tile.ToLocalId(x, this.Zoom))).ToList();
+            if (lowestTilePointers.Count == 0) yield break;
             
             if (tiles.HasOne(out var only))
             {
                 var tileId = Tile.ToLocalId(only, this.Zoom);
-                foreach (var osmGeo in _data.GetForTile(lowestTilePointer.Value, tileId, buffer))
+                foreach (var osmGeo in _data.GetForTile(lowestTilePointers[0], tileId, buffer))
                 {
                     yield return (osmGeo, tiles);
                 }
             }
             else
             {
-                foreach (var (osmGeo, osmGeoTiles) in _data.GetForTiles(lowestTilePointer.Value, tiles.Select(x => Tile.ToLocalId(x, this.Zoom)), 
+                foreach (var (osmGeo, osmGeoTiles) in _data.GetForTiles(lowestTilePointers, tiles.Select(x => Tile.ToLocalId(x, this.Zoom)), 
                     buffer))
                 {
                     yield return (osmGeo, osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());

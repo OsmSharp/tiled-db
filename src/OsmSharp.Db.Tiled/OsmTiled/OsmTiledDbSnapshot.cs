@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OsmSharp.Db.Tiled.Collections;
+using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.OsmTiled.Data;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
@@ -21,11 +22,15 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             _getBaseDb = getBaseDb;
         }
 
+        private bool _loaded = false;
+        
         private OsmTiledDbOsmGeoIndex? _osmGeoIndex;
         private OsmTiledDbOsmGeoIndex OsmGeoIndex
         {
             get
             {
+                if (!_loaded) Log.Default.Verbose($"Loading tiled db at {this.Path}.");
+                _loaded = true;
                 return _osmGeoIndex ??= OsmTiledDbOperations.LoadOsmGeoIndex(this.Path);
             }
         }
@@ -35,6 +40,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             get
             {
+                if (!_loaded) Log.Default.Verbose($"Loading tiled db at {this.Path}.");
+                _loaded = true;
                 return _tileIndex ??= OsmTiledDbOperations.LoadTileIndex(this.Path);
             }
         }
@@ -44,6 +51,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             get
             {
+                if (!_loaded) Log.Default.Verbose($"Loading tiled db at {this.Path}.");
+                _loaded = true;
                 return _data ??= OsmTiledDbOperations.LoadData(this.Path);
             }
         }
@@ -167,10 +176,10 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         private IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tiles)> GetLocal(
             IEnumerable<uint> tiles, byte[] buffer)
         {
-            var lowestTilePointer = this.TileIndex.LowestPointerFor(tiles);
-            if (lowestTilePointer == null) yield break;
+            var lowestTilePointers = this.TileIndex.LowestPointersFor(tiles).ToList();
+            if (lowestTilePointers.Count == 0) yield break;
             
-            foreach (var (osmGeo, osmGeoTiles) in this.Data.GetForTiles(lowestTilePointer.Value, tiles,
+            foreach (var (osmGeo, osmGeoTiles) in this.Data.GetForTiles(lowestTilePointers, tiles,
                 buffer))
             {
                 yield return (osmGeo, osmGeoTiles);

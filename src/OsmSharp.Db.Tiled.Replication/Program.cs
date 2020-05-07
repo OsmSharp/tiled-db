@@ -82,16 +82,18 @@ namespace OsmSharp.Db.Tiled.Replication
 
             var planetFile = config["planet"];
             var dbPath = config["db"];
+            var snapshot = config["snapshot"];
 
             var build = false;
             var update = false;
-            var snapshot = string.Empty;
             var catchup = false;
             if (args.Length > 0)
             {
+                snapshot = string.Empty;
+                
                 if (args.Length < 2)
                 {
-                    Log.Fatal("Invalid number of arguments expected at least --update or --build with a path given.");
+                    Log.Fatal("Invalid number of arguments expected at least two arguments (--update, --snapshot or --build) with a path given.");
                     return;
                 }
 
@@ -133,22 +135,31 @@ namespace OsmSharp.Db.Tiled.Replication
                 }
                 else if (args[0] == "--snapshot")
                 {
-                    snapshot = args[1];
-                    if (snapshot != "week" &&
-                        snapshot != "day")
+                    dbPath = args[1];
+                    if (!Directory.Exists(dbPath))
                     {
-                        Log.Fatal($"Cannot take snapshot for period: {snapshot}, 'week' or 'day' expected.");
+                        Log.Fatal($"The given database path doesn't exist: {dbPath}");
                         return;
                     }
+                    
+                    snapshot = args.Length < 3 ? "day" : args[2];
                 }
             }
             else
             {
                 build = true;
                 update = true;
-                snapshot = string.Empty;
             }
 
+            if (!string.IsNullOrWhiteSpace(snapshot))
+            {
+                // taking a snapshot is done seperately.
+                if (SnapshotHelper.Snapshot(dbPath, snapshot))
+                {
+                    return;
+                }
+            }
+            
             var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
             if (LockHelper.IsLocked(lockFile.FullName))
             {
@@ -189,12 +200,6 @@ namespace OsmSharp.Db.Tiled.Replication
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(snapshot))
-                {
-                    // take a snapshot.
-                    ReplicationHelper.Snapshot(dbPath, snapshot);
-                }
-
                 if (update)
                 {
                     // update the database.
@@ -209,6 +214,17 @@ namespace OsmSharp.Db.Tiled.Replication
             {
                 File.Delete(lockFile.FullName);
             }
+        }
+
+        private static bool TrySnapshot(string dbPath, string snapshot)
+        {
+            if (!string.IsNullOrWhiteSpace(snapshot))
+            {
+                // take a snapshot.
+                return SnapshotHelper.Snapshot(dbPath, snapshot);
+            }
+
+            return false;
         }
     }
 }

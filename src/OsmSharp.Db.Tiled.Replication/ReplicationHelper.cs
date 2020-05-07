@@ -133,57 +133,5 @@ namespace OsmSharp.Db.Tiled.Replication
                 Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
             } while (catchup);
         }
-
-        public static void Snapshot(string dbPath, string type)
-        {
-            if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
-            {
-                Log.Fatal($"Could not load db at {dbPath}.");
-                return;
-            }
-
-            if (db == null) throw new Exception("Db was reported as loaded but is null!");
-            Log.Information("DB loaded successfully.");
-            
-            // find latest day/week crossing.
-            if (type == "day")
-            {
-                var dayAgo = DateTime.Now.ToUniversalTime().Date;
-                var current = db.GetOn(dayAgo);
-                if (current == null)
-                {
-                    Log.Information("No data found that's over a day old, no need to snapshot.");
-                    return;
-                }
-
-                if (current is OsmTiledDbSnapshot)
-                {
-                    Log.Information("There is already a snapshot.");
-                    return;
-                }
-                
-                Log.Information("Building snapshot...");
-                db.TakeSnapshot(dayAgo, TimeSpan.FromDays(1), current.Meta);
-            }
-            else if (type == "week")
-            {
-                var weekAgo = DateTime.Now.ToUniversalTime().StartOfWeek(DayOfWeek.Monday);
-                var current = db.GetOn(weekAgo);
-                if (current == null)
-                {
-                    Log.Information("No data found that's a week old, no need to snapshot.");
-                    return;
-                }
-
-                if (current is OsmTiledDbSnapshot)
-                {
-                    Log.Information("There is already a snapshot.");
-                    return;
-                }
-                
-                Log.Information("Building snapshot...");
-                db.TakeSnapshot(weekAgo, TimeSpan.FromDays(7), current.Meta);
-            }
-        }
     }
 }
