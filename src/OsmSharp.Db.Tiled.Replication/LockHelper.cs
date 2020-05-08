@@ -10,7 +10,7 @@ namespace OsmSharp.Db.Tiled.Replication
         /// <summary>
         /// Returns true if the lock file exists and is still valid.
         /// </summary>
-        public static bool IsLocked(string lockFile)
+        public static bool IsLocked(string lockFile, TimeSpan? timeout)
         {
             var syncLockInfo = new FileInfo(lockFile);
             if (!syncLockInfo.Exists)
@@ -22,10 +22,9 @@ namespace OsmSharp.Db.Tiled.Replication
             {
                 var lockData = JsonSerializer.Deserialize<Lock>(File.ReadAllText(syncLockInfo.FullName));
                 var timeStamp = new DateTime(lockData.Time);
-                if ((DateTime.Now - timeStamp).TotalHours > 1)
+                if (timeout != null && (DateTime.Now - timeStamp) > timeout)
                 {
-                    Log.Information("Lock indicates a failed update, deleting lockfile and free things for retry: {0}.",
-                        lockFile);
+                    Log.Information($"Lock has timed out, deleting lockfile and free things for retry: {lockFile}.");
                     syncLockInfo.Delete();
 
                     return false;

@@ -106,8 +106,6 @@ namespace OsmSharp.Db.Tiled.Replication
                         return;
                     }
 
-                    planetFile = null;
-
                     update = true;
                     catchup = true;
                 }
@@ -125,11 +123,6 @@ namespace OsmSharp.Db.Tiled.Replication
                         return;
                     }
                     dbPath = args[2];
-                    if (!Directory.Exists(dbPath))
-                    {
-                        Log.Fatal($"The given database path doesn't exist: {dbPath}");
-                        return;
-                    }
 
                     build = true;
                 }
@@ -150,81 +143,82 @@ namespace OsmSharp.Db.Tiled.Replication
                 build = true;
                 update = true;
             }
-
-            if (!string.IsNullOrWhiteSpace(snapshot))
+            
+            Log.Verbose($"Running for {dbPath} given planet {planetFile} " +
+                        $"with build={build}, update={update}, catchup={catchup}, snapshot={snapshot}");
+            if (build && !OsmTiledHistoryDb.TryLoad(dbPath, out _))
             {
-                // taking a snapshot is done seperately.
-                if (SnapshotHelper.Snapshot(dbPath, snapshot))
+                if (string.IsNullOrWhiteSpace(dbPath))
                 {
+                    Log.Fatal($"No database path given.");
                     return;
                 }
+                if (!Directory.Exists(dbPath))
+                {
+                    Log.Fatal($"The given database path doesn't exist: {dbPath}");
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(planetFile))
+                {
+                    Log.Fatal($"No planet file given.");
+                    return;
+                }
+                if (!File.Exists(planetFile))
+                {
+                    Log.Fatal($"The given planet file doesn't exist: {planetFile}");
+                    return;
+                }
+                
+                // the database doesn't exist yet and it was requested to build.
+                // try to build it with a lock.
+                if (!BuildHelper.TryBuildWithLock(dbPath, planetFile))
+                {
+                    // could not build the database, it's probably already processing or something when wrong.
+                    return;
+                }
+
+                // if catchup was not requested, building the db is enough.
+                if (!catchup) return;
             }
             
-            var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
-            if (LockHelper.IsLocked(lockFile.FullName))
+            // the database was built or existed already at this point.
+            if (OsmTiledHistoryDb.TryLoad(dbPath, out _))
             {
-                if (build || update) Log.Information($"Lockfile found at {lockFile.FullName}, is there another update running?");
-                return;
-            }
-
-            try
-            {
-                LockHelper.WriteLock(lockFile.FullName);
-
+                if (string.IsNullOrWhiteSpace(dbPath))
+                {
+                    Log.Fatal($"No database path given.");
+                    return;
+                }
                 if (!Directory.Exists(dbPath))
                 {
                     Log.Fatal($"The given database path doesn't exist: {dbPath}");
                     return;
                 }
                 
-                if (build)
+                do
                 {
-                    if (string.IsNullOrWhiteSpace(planetFile))
+                    // take a snapshot if needed.
+                    if (!string.IsNullOrWhiteSpace(snapshot))
                     {
-                        Log.Fatal("No valid planet file given.");
-                        return;
+                        // try to take the snapshot.
+                        SnapshotHelper.TrySnapshotWithLock(dbPath, snapshot);
+                        
+                        // a snapshot was requested.
+                        // if update was not requested, stop here.
+                        if (!catchup && !update) return;
                     }
 
-                    if (!File.Exists(planetFile))
+                    if (update)
                     {
-                        Log.Fatal($"Planet file {planetFile} not found!");
-                        return;
+                        if (!await ReplicationHelper.TryUpdateWithLock(dbPath))
+                        {
+                            // update was not needed or failed, stop here.
+                            return;
+                        }
                     }
-
-                    // build the database, if updating is not requested we optionally add the given data, rebuilding the database.
-                    if (ReplicationHelper.BuildOrAdd(dbPath, planetFile, !update))
-                    {
-                        // database was built or updated.
-                        // if catchup was not requested, stop here.
-                        if (!catchup) return;
-                    }
-                }
-
-                if (update)
-                {
-                    // update the database.
-                    await ReplicationHelper.Update(dbPath, catchup);
-                }
+                } while (catchup);
             }
-            catch (Exception e)
-            {
-                Log.Fatal(e, "Unhandled exception during processing.");
-            }
-            finally
-            {
-                File.Delete(lockFile.FullName);
-            }
-        }
-
-        private static bool TrySnapshot(string dbPath, string snapshot)
-        {
-            if (!string.IsNullOrWhiteSpace(snapshot))
-            {
-                // take a snapshot.
-                return SnapshotHelper.Snapshot(dbPath, snapshot);
-            }
-
-            return false;
         }
     }
 }

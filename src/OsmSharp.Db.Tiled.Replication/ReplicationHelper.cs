@@ -3,135 +3,133 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using OsmSharp.Changesets;
-using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Replication;
-using OsmSharp.Streams;
 using Serilog;
 
 namespace OsmSharp.Db.Tiled.Replication
 {
     internal static class ReplicationHelper
     {
-        public static bool BuildOrAdd(string dbPath, string planetFile,
-            bool add = false)
+        /// <summary>
+        /// Updates the given database and writes a lock file to prevent concurrent updates.
+        ///
+        /// When the database is too far behind it first applies hourly diffs. When that is exhausted minutely diffs are applied.   
+        /// </summary>
+        /// <param name="dbPath">The database path.</param>
+        /// <returns>True if there was a diff applied, false if there was no new data or a lockfile preventing the update.</returns>
+        public static async Task<bool> TryUpdateWithLock(string dbPath)
         {
-            // try loading the db, if it doesn't exist build it.
-            var ticks = DateTime.Now.Ticks;
-            if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
+            var lockFile = new FileInfo(Path.Combine(dbPath, "replication.lock"));
+            if (LockHelper.IsLocked(lockFile.FullName, TimeSpan.FromHours(1)))
             {
-                Log.Information("The DB doesn't exist yet, building...");
-
-                var source = new PBFOsmStreamSource(
-                    File.OpenRead(planetFile));
-                var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-                progress.RegisterSource(source);
-
-                // splitting tiles and writing indexes.
-                db = OsmTiledHistoryDb.Create(dbPath, progress);
-                Log.Information("DB built successfully.");
-                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
-                return true;
+                Log.Information($"Lockfile found at {lockFile.FullName}, is there another update running?");
+                return false;
             }
-            else if (add && !string.IsNullOrWhiteSpace(planetFile))
+            
+            try
             {
-                if (db == null) throw new Exception("Db loading failed!");
-                Log.Warning($"Database already exists, adding new data from {planetFile}");
+                LockHelper.WriteLock(lockFile.FullName);
 
-                var source = new PBFOsmStreamSource(
-                    File.OpenRead(planetFile));
-                var progress = new OsmSharp.Streams.Filters.OsmStreamFilterProgress();
-                progress.RegisterSource(source);
-                    
-                db.Add(progress);
-                Log.Information("DB updated successfully.");
-                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
-                return true;
+                return await Update(dbPath);
+            }
+            catch (Exception e)
+            {
+                Log.Fatal(e, "Unhandled exception during processing.");
+            }
+            finally
+            {
+                File.Delete(lockFile.FullName);
             }
 
             return false;
         }
-
-        public static async Task Update(string dbPath, bool catchup = false)
+        
+        /// <summary>
+        /// Updates the given database.
+        ///
+        /// When the database is too far behind it first applies hourly diffs. When that is exhausted minutely diffs are applied.   
+        /// </summary>
+        /// <param name="dbPath">The database path.</param>
+        /// <returns>True if there was a diff applied, false if there was no new data.</returns>
+        private static async Task<bool> Update(string dbPath)
         {
             if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
             {
                 Log.Fatal($"Could not load db at {dbPath}.");
-                return;
+                return false;
             }
 
             if (db == null) throw new Exception("Db was reported as loaded but is null!");
             Log.Information("DB loaded successfully.");
 
-            do
+            var ticks = DateTime.Now.Ticks;
+            // play catchup if the database is behind more than one hour.
+            // try downloading the latest hour.
+            var changeSets = new List<OsmChange>();
+            ReplicationState? latestStatus = null;
+            if ((DateTime.Now.ToUniversalTime() - db.Latest.EndTimestamp).TotalHours > 1)
             {
-                var ticks = DateTime.Now.Ticks;
-                // play catchup if the database is behind more than one hour.
-                // try downloading the latest hour.
-                var changeSets = new List<OsmChange>();
-                ReplicationState? latestStatus = null;
-                if ((DateTime.Now.ToUniversalTime() - db.Latest.EndTimestamp).TotalHours > 1)
+                // the data is pretty old, update per hour.
+                var hourEnumerator = await ReplicationConfig.Hourly.GetDiffEnumerator(db.Latest);
+                if (hourEnumerator != null)
                 {
-                    // the data is pretty old, update per hour.
-                    var hourEnumerator = await ReplicationConfig.Hourly.GetDiffEnumerator(db.Latest);
-                    if (hourEnumerator != null)
+                    if (await hourEnumerator.MoveNext())
                     {
-                        if (await hourEnumerator.MoveNext())
+                        Log.Verbose($"Downloading diff: {hourEnumerator.State}");
+                        var diff = await hourEnumerator.Diff();
+                        if (diff != null)
                         {
-                            Log.Verbose($"Downloading diff: {hourEnumerator.State}");
-                            var diff = await hourEnumerator.Diff();
-                            if (diff != null)
-                            {
-                                latestStatus = hourEnumerator.State;
-                                changeSets.Add(diff);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    // the data is pretty recent, start doing minutes, do as much as available.
-                    var minuteEnumerator = await ReplicationConfig.Minutely.GetDiffEnumerator(db.Latest);
-                    if (minuteEnumerator != null)
-                    {
-                        while (await minuteEnumerator.MoveNext())
-                        {
-                            Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
-                            var diff = await minuteEnumerator.Diff();
-                            if (diff == null) continue;
-
-                            latestStatus = minuteEnumerator.State;
+                            latestStatus = hourEnumerator.State;
                             changeSets.Add(diff);
                         }
                     }
                 }
-
-                // apply diffs.
-                if (latestStatus == null)
+            }
+            else
+            {
+                // the data is pretty recent, start doing minutes, do as much as available.
+                var minuteEnumerator = await ReplicationConfig.Minutely.GetDiffEnumerator(db.Latest);
+                if (minuteEnumerator != null)
                 {
-                    Log.Information("No more changes, db is up to date.");
-                    return;
+                    while (await minuteEnumerator.MoveNext())
+                    {
+                        Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
+                        var diff = await minuteEnumerator.Diff();
+                        if (diff == null) continue;
+
+                        latestStatus = minuteEnumerator.State;
+                        changeSets.Add(diff);
+                    }
                 }
+            }
 
-                // squash changes.
-                var changeSet = changeSets[0];
-                if (changeSets.Count > 1)
-                {
-                    Log.Verbose($"Squashing changes...");
-                    changeSet = changeSets.Squash();
-                }
+            // apply diffs.
+            if (latestStatus == null)
+            {
+                Log.Information("No more changes, db is up to date.");
+                return false;
+            }
 
-                // build meta data.
-                var metaData = new List<(string key, string value)>
-                {
-                    ("period", latestStatus.Config.Period.ToString()),
-                    ("sequence_number", latestStatus.SequenceNumber.ToString())
-                };
+            // squash changes.
+            var changeSet = changeSets[0];
+            if (changeSets.Count > 1)
+            {
+                Log.Verbose($"Squashing changes...");
+                changeSet = changeSets.Squash();
+            }
 
-                // apply diff.
-                Log.Information($"Applying changes...");
-                db.ApplyDiff(changeSet, latestStatus.EndTimestamp, metaData);
-                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
-            } while (catchup);
+            // build meta data.
+            var metaData = new List<(string key, string value)>
+            {
+                ("period", latestStatus.Config.Period.ToString()),
+                ("sequence_number", latestStatus.SequenceNumber.ToString())
+            };
+
+            // apply diff.
+            Log.Information($"Applying changes...");
+            db.ApplyDiff(changeSet, latestStatus.EndTimestamp, metaData);
+            Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+            return true;
         }
     }
 }

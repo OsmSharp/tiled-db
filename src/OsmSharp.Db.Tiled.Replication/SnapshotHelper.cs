@@ -1,14 +1,54 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.OsmTiled;
 using Serilog;
 
 namespace OsmSharp.Db.Tiled.Replication
 {
-    public static class SnapshotHelper
+    internal static class SnapshotHelper
     {
-        public static bool Snapshot(string dbPath, string type)
+        /// <summary>
+        /// Takes a snapshot for the given period and writes a lock file to prevent concurrent snapshot taking.
+        /// </summary>
+        /// <param name="dbPath">The db path.</param>
+        /// <param name="period">The period, 'latest', 'day' or 'week'.</param>
+        /// <returns>True if a snapshot was taken, false otherwise.</returns>
+        public static bool TrySnapshotWithLock(string dbPath, string period)
+        {
+            var lockFile = new FileInfo(Path.Combine(dbPath, "snapshot.lock"));
+            if (LockHelper.IsLocked(lockFile.FullName, TimeSpan.FromDays(1)))
+            {
+                Log.Information($"Lockfile found at {lockFile.FullName}, is there another update running?");
+                return false;
+            }
+            
+            try
+            {
+                LockHelper.WriteLock(lockFile.FullName);
+
+                return Snapshot(dbPath, period);
+            }
+            catch (Exception e)
+            {
+                Log.Fatal(e, "Unhandled exception during processing.");
+            }
+            finally
+            {
+                File.Delete(lockFile.FullName);
+            }
+
+            return false;
+        }
+        
+        /// <summary>
+        /// Takes a snapshot for the given period.
+        /// </summary>
+        /// <param name="dbPath">The db path.</param>
+        /// <param name="period">The period, 'latest', 'day' or 'week'.</param>
+        /// <returns>True if a snapshot was taken, false otherwise.</returns>
+        private static bool Snapshot(string dbPath, string period)
         {
             if (!OsmTiledHistoryDb.TryLoad(dbPath, out var db))
             {
@@ -19,12 +59,13 @@ namespace OsmSharp.Db.Tiled.Replication
             Log.Information("DB loaded successfully.");
             
             // find latest day/week crossing.
-            if (type == "latest")
+            if (period == "latest")
             {
                 Log.Information("Taking snapshot of the latest...");
-                return DoSnapshot(db, dbPath);
+                var snapshot = db.TakeSnapshot();
+                return snapshot != null;
             }
-            else if (type == "day")
+            else if (period == "day")
             {
                 var oneDayAgo = db.Latest.EndTimestamp.Date;
                 var twoDaysAgo = oneDayAgo.AddDays(-1);
@@ -49,9 +90,10 @@ namespace OsmSharp.Db.Tiled.Replication
                 }
                 
                 Log.Information($"Building snapshot at {dayAgoDb.EndTimestamp}...");
-                return DoSnapshot(db, dbPath, timeStamp: oneDayAgo, meta: dayAgoDb.Meta);
+                var snapshot = db.TakeSnapshot(timeStamp: oneDayAgo, meta: dayAgoDb.Meta);
+                return snapshot != null;
             }
-            else if (type == "week")
+            else if (period == "week")
             {
                 var weekAgo = DateTime.Now.ToUniversalTime()
                     .StartOfWeek(DayOfWeek.Monday);
@@ -77,35 +119,8 @@ namespace OsmSharp.Db.Tiled.Replication
                 }
                 
                 Log.Information($"Building snapshot at {weekAgoDb.EndTimestamp}...");
-                return DoSnapshot(db, dbPath, timeStamp: weekAgo, meta: weekAgoDb.Meta);
-            }
-
-            return false;
-        }
-        
-        private static bool DoSnapshot(OsmTiledHistoryDb db, string dbPath, DateTime? timeStamp = null, TimeSpan? timeSpan = null,
-            IEnumerable<(string key, string value)>? meta = null)
-        {
-            var lockFile = new FileInfo(Path.Combine(dbPath, "snapshot-replication.lock"));
-            if (LockHelper.IsLocked(lockFile.FullName))
-            {
-                return false;
-            }
-
-            try
-            {
-                LockHelper.WriteLock(lockFile.FullName);
-
-                var snapshot = db.TakeSnapshot(meta: meta, timeSpan: timeSpan, timeStamp: timeStamp);
+                var snapshot = db.TakeSnapshot(timeStamp: weekAgo, meta: weekAgoDb.Meta);
                 return snapshot != null;
-            }
-            catch (Exception e)
-            {
-                Log.Fatal(e, "Unhandled exception during processing.");
-            }
-            finally
-            {
-                File.Delete(lockFile.FullName);
             }
 
             return false;
