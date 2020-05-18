@@ -81,6 +81,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             byte[]? buffer = null);
 
         /// <summary>
+        /// Gets all the data.
+        /// </summary>
+        /// <param name="buffer">The buffer.</param>
+        /// <returns>All objects.</returns>
+        public abstract IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(byte[]? buffer = null);
+
+        /// <summary>
         /// Gets all the data in the given tile(s).
         /// </summary>
         /// <param name="tiles">The tile(s).</param>

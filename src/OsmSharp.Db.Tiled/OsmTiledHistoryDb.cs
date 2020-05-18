@@ -134,11 +134,87 @@ namespace OsmSharp.Db.Tiled
         }
         
         /// <summary>
+        /// Groups together all the diff databases into one bigger diff database. Snapshots and full databases are not included.
+        /// </summary>
+        /// <param name="timeStamp">The timestamp, if none given uses latest.</param>
+        /// <param name="timeSpan">The timespan, if none given snapshots all the diffs until it finds a non-diff db.</param>
+        /// <param name="meta">The meta data to store along with the db.</param>
+        /// <returns>The new db.</returns>
+        public OsmTiledDbBase? TakeDiffSnapshot(DateTime? timeStamp = null, TimeSpan? timeSpan = null,
+            IEnumerable<(string key, string value)>? meta = null)
+        {
+            timeStamp ??= this.Latest.EndTimestamp;
+            
+            var osmTiledDb = this.GetOn(timeStamp.Value);
+            if (osmTiledDb == null) return null;
+            if (!(osmTiledDb is OsmTiledDbDiff))
+            {
+                Log.Default.Verbose("No need to snapshot, already there.");
+                return null;
+            }
+
+            // copy meta from latest db.
+            meta ??= osmTiledDb.Meta;
+            
+            // collect all tiles that have changed.
+            var latestDb = osmTiledDb;
+            DateTime? earliest = null;
+            if (timeSpan.HasValue) earliest = timeStamp - timeSpan.Value;
+            
+            var tiles = new HashSet<(uint x, uint y)>();
+            while (osmTiledDb is OsmTiledDbDiff nextDiff)
+            {
+                tiles.UnionWith(nextDiff.GetTiles(true));
+
+                if (osmTiledDb.Base == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
+                osmTiledDb = this.GetDb(osmTiledDb.Base.Value);
+                if (osmTiledDb == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
+
+                // if earliest has value, a timespan was set.
+                // make sure to stop when reached.
+                if (earliest.HasValue)
+                {
+                    if (osmTiledDb.EndTimestamp <= earliest) break;
+                }
+            }
+
+            if (tiles.Count == 0)
+            {
+                Log.Default.Verbose("No data found to snapshot.");
+                return null;
+            }
+            
+            // format new path.
+            var tempPath = OsmTiledDbOperations.BuildTempDbPath(this._path);
+            if (!FileSystemFacade.FileSystem.DirectoryExists(tempPath))
+                FileSystemFacade.FileSystem.CreateDirectory(tempPath);
+                
+            // build new db.
+            var dbMeta = latestDb.BuildSnapshot(tiles.ToArray(), tempPath, latestDb.Id, osmTiledDb.Id, meta: meta);
+            dbMeta.Base = osmTiledDb.Id;
+            if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
+                
+            // generate a proper path and move the data there.
+            var dbPath = OsmTiledDbOperations.BuildDbPath(this._path, dbMeta.Id, dbMeta.Timespan.Value, OsmTiledDbType.Snapshot);
+            FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
+                
+            // update data.
+            var snapshot = new OsmTiledDbSnapshot(dbPath, this.GetDb);
+            lock (DiffSync)
+            {
+                _dbs[snapshot.Id] = snapshot;
+            }
+
+            return snapshot;
+        }
+        
+        /// <summary>
         /// Groups the data on or right before the given timestamp and the data before in the given timespan.
         /// </summary>
         /// <param name="timeStamp">The timestamp, if none given uses latest.</param>
         /// <param name="timeSpan">The timespan, if none given snapshots all the diffs until it finds a non-diff db.</param>
         /// <param name="meta">The meta data to store along with the db.</param>
+        /// <returns>The new db.</returns>
         public OsmTiledDbBase? TakeSnapshot(DateTime? timeStamp = null, TimeSpan? timeSpan = null, 
             IEnumerable<(string key, string value)>? meta = null)
         {

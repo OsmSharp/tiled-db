@@ -73,5 +73,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             OsmTiledDbOperations.SaveDbMeta(path, osmTiledDbMeta);
             return osmTiledDbMeta;
         }
+        
+        public static OsmTiledDbMeta BuildDiff(this OsmTiledDbBase osmTiledDb,
+            IReadOnlyCollection<(uint x, uint y)> tiles, string path, long id, long baseId, 
+            OsmTiledDbBuildSettings? settings = null, IEnumerable<(string key, string value)>? meta = null,
+            byte[]? buffer = null)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

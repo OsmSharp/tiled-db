@@ -2,7 +2,8 @@ using System.Collections.Concurrent;
 
 namespace OsmSharp.Db.Tiled.Collections
 {
-   /// Generic LRU cache implementation.
+    /// <summary>
+    /// Generic LRU cache implementation.
     /// </summary>
     /// <typeparam name="TKey">The key type.</typeparam>
     /// <typeparam name="TValue">The value type.</typeparam>
@@ -35,7 +36,7 @@ namespace OsmSharp.Db.Tiled.Collections
         /// <summary>
         /// Called when an item is pushed out of the cache.
         /// </summary>
-        public OnRemoveDelegate OnRemove;
+        public OnRemoveDelegate? OnRemove;
 
         /// <summary>
         /// Capacity.

@@ -267,7 +267,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             return Tile.ToLocalId(tile, _zoom);
         }
 
-        public IEnumerable<(OsmGeo osmGeo, List<uint> tile)> Get(byte[] buffer)
+        public IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tile)> Get(byte[] buffer)
         {
             if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
             var tilesToReturn = new List<uint>();

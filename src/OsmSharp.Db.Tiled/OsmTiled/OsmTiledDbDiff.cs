@@ -174,6 +174,79 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         private IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tiles)> GetLocal(
+            byte[] buffer)
+        {
+            return this.Data.Get(buffer);
+        }
+        
+        /// <inheritdoc/>
+        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(
+            byte[]? buffer = null)
+        {
+            buffer ??= new byte[1024];
+            
+            // TODO: this code to merge the streams exists everywhere.
+            // always assume data in both, merge the two.
+            using var baseEnumerator = this.GetBaseDb().Get(buffer).GetEnumerator();
+            using var thisEnumerator = this.GetLocal(buffer).GetEnumerator();
+            var baseHasNext = baseEnumerator.MoveNext();
+            var thisHasNext = thisEnumerator.MoveNext();
+
+            while (baseHasNext || thisHasNext)
+            {
+                if (baseHasNext && thisHasNext)
+                {
+                    var baseKey = new OsmGeoKey(baseEnumerator.Current.osmGeo);
+                    var thisKey = new OsmGeoKey(thisEnumerator.Current.osmGeo);
+
+                    if (baseKey < thisKey)
+                    {
+                        yield return baseEnumerator.Current;
+                        baseHasNext = baseEnumerator.MoveNext();
+                    }
+                    else if (thisKey < baseKey)
+                    {
+                        var (osmGeo, osmGeoTiles) = thisEnumerator.Current;
+                        if (!osmGeo.IsDeleted())
+                        {
+                            yield return (osmGeo,
+                                osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
+                        }
+
+                        thisHasNext = thisEnumerator.MoveNext();
+                    }
+                    else
+                    {
+                        var (osmGeo, osmGeoTiles) = thisEnumerator.Current;
+                        if (!osmGeo.IsDeleted())
+                        {
+                            yield return (osmGeo,
+                                osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
+                        }
+
+                        baseHasNext = baseEnumerator.MoveNext();
+                        thisHasNext = thisEnumerator.MoveNext();
+                    }
+                }
+                else if (baseHasNext)
+                {
+                    yield return baseEnumerator.Current;
+                    baseHasNext = baseEnumerator.MoveNext();
+                }
+                else
+                {
+                    var (osmGeo, osmGeoTiles) = thisEnumerator.Current;
+                    if (!osmGeo.IsDeleted())
+                    {
+                        yield return (osmGeo, osmGeoTiles.Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
+                    }
+
+                    thisHasNext = thisEnumerator.MoveNext();
+                }
+            }
+        }
+
+        private IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tiles)> GetLocal(
             IEnumerable<uint> tiles, byte[] buffer)
         {
             var lowestTilePointers = this.TileIndex.LowestPointersFor(tiles).ToList();

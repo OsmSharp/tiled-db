@@ -84,6 +84,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
+        public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(
+            byte[]? buffer = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
         public override IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> Get(IEnumerable<(uint x, uint y)> tiles, byte[]? buffer = null)
         {
             buffer ??= new byte[1024];
