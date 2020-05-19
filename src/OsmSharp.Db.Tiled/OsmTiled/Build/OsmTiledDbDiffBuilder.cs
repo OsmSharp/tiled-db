@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.OsmTiled.Changes;
@@ -74,12 +75,36 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             return osmTiledDbMeta;
         }
         
-        public static OsmTiledDbMeta BuildDiff(this OsmTiledDbBase osmTiledDb,
-            IReadOnlyCollection<(uint x, uint y)> tiles, string path, long id, long baseId, 
+        public static OsmTiledDbMeta BuildDiffSnapshot(this OsmTiledDbBase osmTiledDb,
+            IEnumerable<OsmTiledDbDiff> diffDbs, string path, long id, long baseId, 
             OsmTiledDbBuildSettings? settings = null, IEnumerable<(string key, string value)>? meta = null,
             byte[]? buffer = null)
-        {
-            throw new NotImplementedException();
+        {           
+            settings ??= new OsmTiledDbBuildSettings();
+            buffer ??= new byte[1024];
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
+
+            var zoom = osmTiledDb.Zoom;
+            
+            // get the modifications.
+            var modifications = diffDbs.Select(x => x.GetLocal(buffer)).MergeTiledDiffStream();
+            
+            // write the data.
+            Log.Default.Verbose($"Reading/writing diff stream...");
+            var count = modifications.Write(path, saveDeleted: true, buffer: buffer);            
+            Log.Default.Verbose($"Written {count} objects...");
+
+            // save the meta-data.
+            var osmTiledDbMeta = new OsmTiledDbMeta
+            {
+                Id = id,
+                Base = baseId,
+                Type = OsmTiledDbType.Snapshot,
+                Zoom = zoom,
+            };
+            osmTiledDbMeta.SetMeta(meta);
+            OsmTiledDbOperations.SaveDbMeta(path, osmTiledDbMeta);
+            return osmTiledDbMeta;
         }
     }
 }

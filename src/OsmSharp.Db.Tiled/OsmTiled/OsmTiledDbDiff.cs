@@ -173,7 +173,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             }
         }
 
-        private IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tiles)> GetLocal(
+        internal IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tiles)> GetLocal(
             byte[] buffer)
         {
             return this.Data.Get(buffer);

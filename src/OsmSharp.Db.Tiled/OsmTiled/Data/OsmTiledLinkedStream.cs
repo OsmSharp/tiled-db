@@ -270,12 +270,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
         public IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tile)> Get(byte[] buffer)
         {
             if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
-            var tilesToReturn = new List<uint>();
+            var tilesToReturn = new HashSet<uint>();
 
             _data.Seek(0, SeekOrigin.Begin);
             _data.ReadUInt32();
-            var pointer = _data.Position;
-            while (pointer < _data.Length)
+            while (_data.Position < _data.Length)
             {
                 // read tile count.
                 var c = _data.ReadVarUInt32();
@@ -292,6 +291,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
                         tilesToReturn.Add(currentTile);
                     }
                 }
+                
+                // skip over pointers.
+                _data.Seek(8 * c, SeekOrigin.Current);
 
                 if (isNode)
                 {

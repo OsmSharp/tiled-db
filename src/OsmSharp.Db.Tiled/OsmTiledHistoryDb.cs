@@ -160,11 +160,11 @@ namespace OsmSharp.Db.Tiled
             var latestDb = osmTiledDb;
             DateTime? earliest = null;
             if (timeSpan.HasValue) earliest = timeStamp - timeSpan.Value;
-            
-            var tiles = new HashSet<(uint x, uint y)>();
+
+            var diffs = new List<OsmTiledDbDiff>();
             while (osmTiledDb is OsmTiledDbDiff nextDiff)
             {
-                tiles.UnionWith(nextDiff.GetTiles(true));
+                diffs.Add(nextDiff);
 
                 if (osmTiledDb.Base == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
                 osmTiledDb = this.GetDb(osmTiledDb.Base.Value);
@@ -177,10 +177,16 @@ namespace OsmSharp.Db.Tiled
                     if (osmTiledDb.EndTimestamp <= earliest) break;
                 }
             }
+            diffs.Reverse();
 
-            if (tiles.Count == 0)
+            if (diffs.Count == 0)
             {
-                Log.Default.Verbose("No data found to snapshot.");
+                Log.Default.Verbose("No diffs found to snapshot.");
+                return null;
+            }
+            if (diffs.Count == 1)
+            {
+                Log.Default.Verbose("Only one diff found, no need to snapshot.");
                 return null;
             }
             
@@ -190,22 +196,22 @@ namespace OsmSharp.Db.Tiled
                 FileSystemFacade.FileSystem.CreateDirectory(tempPath);
                 
             // build new db.
-            var dbMeta = latestDb.BuildSnapshot(tiles.ToArray(), tempPath, latestDb.Id, osmTiledDb.Id, meta: meta);
+            var dbMeta = latestDb.BuildDiffSnapshot(diffs, tempPath, latestDb.Id, osmTiledDb.Id, meta: meta);
             dbMeta.Base = osmTiledDb.Id;
             if (dbMeta.Timespan == null) throw new InvalidDataException("Snapshot should have a valid timespan.");
                 
             // generate a proper path and move the data there.
-            var dbPath = OsmTiledDbOperations.BuildDbPath(this._path, dbMeta.Id, dbMeta.Timespan.Value, OsmTiledDbType.Snapshot);
+            var dbPath = OsmTiledDbOperations.BuildDbPath(this._path, dbMeta.Id, dbMeta.Timespan.Value, OsmTiledDbType.Diff);
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
                 
             // update data.
-            var snapshot = new OsmTiledDbSnapshot(dbPath, this.GetDb);
+            var diffSnapshot = new OsmTiledDbDiff(dbPath, this.GetDb);
             lock (DiffSync)
             {
-                _dbs[snapshot.Id] = snapshot;
+                _dbs[diffSnapshot.Id] = diffSnapshot;
             }
 
-            return snapshot;
+            return diffSnapshot;
         }
         
         /// <summary>

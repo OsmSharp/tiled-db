@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using OsmSharp.Changesets;
 using OsmSharp.Logging;
-using OsmSharp.Replication;
-using OsmSharp.Streams;
 using Serilog;
 
 namespace OsmSharp.Db.Tiled.Replication

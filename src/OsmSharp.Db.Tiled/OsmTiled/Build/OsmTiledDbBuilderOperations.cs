@@ -13,7 +13,17 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
     internal static class OsmTiledDbBuilderOperations
     {
         internal static long Write(this IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)> tiles)> dataStream,
-            string path, uint zoom, bool saveDeleted = false, IEnumerable<(uint x, uint y)>? tiles = null, byte[]? buffer = null)
+            string path, uint zoom, bool saveDeleted = false, IEnumerable<(uint x, uint y)>? tiles = null,
+            byte[]? buffer = null)
+        {
+            // TODO: remove this one once we have unified uints.
+            return dataStream.Select(x => (x.osmGeo, x.tiles.Select(t => Tile.ToLocalId(t, zoom)))).Write(path,
+                saveDeleted, tiles?.Select(t => Tile.ToLocalId(t, zoom)));
+        }
+
+        internal static long Write(this IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tiles)> dataStream,
+            string path, bool saveDeleted = false, IEnumerable<uint>? tiles = null,
+            byte[]? buffer = null)
         {
             buffer ??= new byte[1024];
             if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
@@ -40,7 +50,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
 
                 // build tile list.
                 tilesList.Clear();
-                tilesList.AddRange(osmGeoTiles.Select(x => Tile.ToLocalId(x, zoom)));
+                tilesList.AddRange(osmGeoTiles);
                 
                 // write delete state if needed.
                 if (lastDeleted.Id != long.MaxValue &&
@@ -86,9 +96,8 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             if (tiles != null)
             {
                 // make sure to mark tiles as empty when they have not been written to.
-                foreach (var tile in tiles)
+                foreach (var localId in tiles)
                 {
-                    var localId = Tile.ToLocalId(tile, zoom);
                     if (!tileIndex.HasTile(localId))
                     {
                         tileIndex.SetAsEmpty(localId);

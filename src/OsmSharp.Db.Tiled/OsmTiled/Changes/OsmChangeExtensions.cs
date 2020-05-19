@@ -346,5 +346,84 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Changes
                 }
             }
         }
+
+        internal static IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)>? tiles)> MergeTiledDiffStream(
+            this IEnumerable<IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)>? tiles)>> diffs)
+        {
+            IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)>? tiles)> first = 
+                Enumerable.Empty<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)>? tiles)>();
+            foreach (var diff in diffs)
+            {
+                first = first.MergeTiledDiffStream(diff);
+            }
+
+            return first;
+        }
+
+        internal static IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)>? tiles)> MergeTiledDiffStream(
+            this IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)>? tiles)> diff1,
+            IEnumerable<(OsmGeo osmGeo, IEnumerable<(uint x, uint y)>? tiles)> diff2)
+        {
+            throw new NotImplementedException();
+        }
+        
+        internal static IEnumerable<(OsmGeo osmGeo, IEnumerable<uint>? tiles)> MergeTiledDiffStream(
+            this IEnumerable<IEnumerable<(OsmGeo osmGeo, IEnumerable<uint>? tiles)>> diffs)
+        {
+            IEnumerable<(OsmGeo osmGeo, IEnumerable<uint>? tiles)> first = 
+                Enumerable.Empty<(OsmGeo osmGeo, IEnumerable<uint>? tiles)>();
+            foreach (var diff in diffs)
+            {
+                first = first.MergeTiledDiffStream(diff);
+            }
+
+            return first;
+        }
+
+        internal static IEnumerable<(OsmGeo osmGeo, IEnumerable<uint>? tiles)> MergeTiledDiffStream(
+            this IEnumerable<(OsmGeo osmGeo, IEnumerable<uint>? tiles)> diff1,
+            IEnumerable<(OsmGeo osmGeo, IEnumerable<uint>? tiles)> diff2)
+        {
+            using var baseEnumerator = diff1.GetEnumerator();
+            using var thisEnumerator = diff2.GetEnumerator();
+            var baseHasNext = baseEnumerator.MoveNext();
+            var thisHasNext = thisEnumerator.MoveNext();
+
+            while (baseHasNext || thisHasNext)
+            {
+                if (baseHasNext && thisHasNext)
+                {
+                    var baseKey = new OsmGeoKey(baseEnumerator.Current.osmGeo);
+                    var thisKey = new OsmGeoKey(thisEnumerator.Current.osmGeo);
+
+                    if (baseKey < thisKey)
+                    {
+                        yield return baseEnumerator.Current;
+                        baseHasNext = baseEnumerator.MoveNext();
+                    }
+                    else if (thisKey < baseKey)
+                    {
+                        yield return thisEnumerator.Current;
+                        thisHasNext = thisEnumerator.MoveNext();
+                    }
+                    else
+                    {
+                        yield return thisEnumerator.Current;
+                        baseHasNext = baseEnumerator.MoveNext();
+                        thisHasNext = thisEnumerator.MoveNext();
+                    }
+                }
+                else if (baseHasNext)
+                {
+                    yield return baseEnumerator.Current;
+                    baseHasNext = baseEnumerator.MoveNext();
+                }
+                else
+                {
+                    yield return thisEnumerator.Current;
+                    thisHasNext = thisEnumerator.MoveNext();
+                }
+            }
+        }
     }
 }

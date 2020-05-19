@@ -12,6 +12,7 @@ using OsmSharp.Db.Tiled.OsmTiled.Build;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Logging;
+using OsmSharp.Replication;
 using OsmSharp.Streams;
 
 namespace OsmSharp.Db.Tiled.Tests.Functional
@@ -25,7 +26,7 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
             {
                 args = new string[]
                 {
-                    @"/data/work/data/OSM/lille-latest.osm.pbf",
+                    @"/data/work/data/OSM/belgium-latest.osm.pbf",
                     @"/media/xivk/2T-SSD-EXT/replication-tests",
                     @"14"
                 };
@@ -56,6 +57,30 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                         break; 
                     default:
                         Log.Debug(formattedMessage);
+                        break;
+                }
+            };
+            Logging.Log.LogAction = (type, message) =>
+            {
+                switch (type)
+                {
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Critical:
+                        Log.Fatal(message);
+                        break;
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Error:
+                        Log.Error(message);
+                        break;
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Warning:
+                        Log.Warning(message);
+                        break;
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Verbose:
+                        Log.Verbose(message);
+                        break;
+                    case OsmSharp.Db.Tiled.Logging.TraceEventType.Information:
+                        Log.Information(message);
+                        break;
+                    default:
+                        Log.Debug(message);
                         break;
                 }
             };
@@ -113,12 +138,97 @@ namespace OsmSharp.Db.Tiled.Tests.Functional
                     db = OsmTiledHistoryDb.Create(args[1], progress);
                 }
                 
-                // write all tiles.
-                Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
-                var latest = db.Latest;
-                foreach (var tile in latest.GetTiles())
+                
+                if ((DateTime.Now.ToUniversalTime() - db.Latest.EndTimestamp).TotalHours > 1)
                 {
-                    Log.Information($" {latest.Get(tile, completeWays: false).Count()} objects in {tile}");
+                    // the data is pretty old, update per hour.
+                    var hourEnumerator = await ReplicationConfig.Hourly.GetDiffEnumerator(db.Latest);
+                    if (hourEnumerator != null)
+                    {
+                        while (await hourEnumerator.MoveNext())
+                        {
+                            ticks = DateTime.Now.Ticks;
+                            var previousLatest = db.Latest.EndTimestamp;
+                            Log.Verbose($"Downloading diff: {hourEnumerator.State}");
+                            var diff = await hourEnumerator.Diff();
+                            if (diff == null) continue;
+                     
+                            var latestStatus = hourEnumerator.State;
+
+                            // squash changes.
+                            Log.Verbose($"Squashing changes...");
+                            var changeSet = new [] { diff }.Squash();
+
+                            // build meta data.
+                            var metaData = new List<(string key, string value)>
+                            {
+                                ("period", latestStatus.Config.Period.ToString()),
+                                ("sequence_number", latestStatus.SequenceNumber.ToString())
+                            };
+
+                            // apply diff.
+                            Log.Information($"Applying changes...");
+                            db.ApplyDiff(changeSet, latestStatus.EndTimestamp, metaData);
+                            Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+
+                            if (previousLatest.Day != db.Latest.EndTimestamp.Day)
+                            {
+                                // an data was skipped, take a snapshot.
+                                ticks = DateTime.Now.Ticks;
+                                Log.Information($"Taking snapshot...");
+                                db.TakeDiffSnapshot(null, TimeSpan.FromDays(1), metaData);
+                                Log.Information($"Snapshot took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                            }
+                        }
+                    }
+                }
+                
+                // the data is pretty recent, start doing minutes, do as much as available.
+                var minuteEnumerator = await ReplicationConfig.Minutely.GetDiffEnumerator(db.Latest);
+                if (minuteEnumerator != null)
+                {
+                    while (await minuteEnumerator.MoveNext())
+                    {
+                        ticks = DateTime.Now.Ticks;
+                        var previousLatest = db.Latest.EndTimestamp;
+                        Log.Verbose($"Downloading diff: {minuteEnumerator.State}");
+                        var diff = await minuteEnumerator.Diff();
+                        if (diff == null) continue;
+                        var latestStatus = minuteEnumerator.State;
+
+                        // squash changes.
+                        Log.Verbose($"Squashing changes...");
+                        var changeSet = new [] { diff }.Squash();
+
+                        // build meta data.
+                        var metaData = new List<(string key, string value)>
+                        {
+                            ("period", latestStatus.Config.Period.ToString()),
+                            ("sequence_number", latestStatus.SequenceNumber.ToString())
+                        };
+
+                        // apply diff.
+                        Log.Information($"Applying changes...");
+                        db.ApplyDiff(changeSet, latestStatus.EndTimestamp, metaData);
+                        Log.Information($"Took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+
+                        if (previousLatest.Day != db.Latest.EndTimestamp.Day)
+                        {
+                            // an data was skipped, take a snapshot.
+                            ticks = DateTime.Now.Ticks;
+                            Log.Information($"Taking snapshot...");
+                            db.TakeDiffSnapshot(null, TimeSpan.FromDays(1), metaData);
+                            Log.Information($"Snapshot took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                        }
+                        else if (previousLatest.Hour != db.Latest.EndTimestamp.Hour)
+                        {
+                            // an hour was skipped, take a snapshot.
+                            ticks = DateTime.Now.Ticks;
+                            Log.Information($"Taking snapshot...");
+                            db.TakeDiffSnapshot(null, TimeSpan.FromHours(1), metaData);
+                            Log.Information($"Snapshot took {new TimeSpan(DateTime.Now.Ticks - ticks).TotalSeconds}s");
+                        }
+                    }
                 }
             }
             catch (Exception e)

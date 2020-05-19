@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using OsmSharp.Db.Tiled.OsmTiled;
 using Serilog;
 
@@ -90,7 +88,7 @@ namespace OsmSharp.Db.Tiled.Replication
                 }
                 
                 Log.Information($"Building snapshot at {dayAgoDb.EndTimestamp}...");
-                var snapshot = db.TakeSnapshot(timeStamp: oneDayAgo, meta: dayAgoDb.Meta);
+                var snapshot = db.TakeDiffSnapshot(timeStamp: oneDayAgo, meta: dayAgoDb.Meta);
                 return snapshot != null;
             }
             else if (period == "week")
@@ -119,7 +117,7 @@ namespace OsmSharp.Db.Tiled.Replication
                 }
                 
                 Log.Information($"Building snapshot at {weekAgoDb.EndTimestamp}...");
-                var snapshot = db.TakeSnapshot(timeStamp: weekAgo, meta: weekAgoDb.Meta);
+                var snapshot = db.TakeDiffSnapshot(timeStamp: weekAgo, meta: weekAgoDb.Meta);
                 return snapshot != null;
             }
 
