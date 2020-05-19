@@ -59,13 +59,11 @@ namespace OsmSharp.Db.Tiled.OsmTiled
             else
             {
                 using var osmGeoIndex = this.GetOsmGeoIndex();
-                foreach (var osmGeoKey in osmGeoKeys)
+                var pointers = osmGeoIndex.GetAll(osmGeoKeys).Select(x => x.pointer);
+                foreach (var osmGeoAndTiles in data.Get(pointers, buffer))
                 {
-                    var pointer = osmGeoIndex.Get(osmGeoKey);
-                    if (pointer == null) continue;
-            
-                    yield return (data.Get(pointer.Value, buffer), 
-                        data.GetTilesFor(pointer.Value).Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
+                    yield return (osmGeoAndTiles.osmGeo,
+                        osmGeoAndTiles.tiles.Select(x => Tile.FromLocalId(this.Zoom, x)));
                 }
             }
         }

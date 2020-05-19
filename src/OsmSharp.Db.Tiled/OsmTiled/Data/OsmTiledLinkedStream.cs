@@ -66,7 +66,49 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             _nextDelayedPointer = 0;
         }
 
-        public OsmGeo Get(long pointer, byte[] buffer)
+        public (OsmGeo osmGeo, IEnumerable<uint> tiles) Get(long pointer, byte[] buffer)
+        {
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
+            
+            _data.Seek(pointer, SeekOrigin.Begin);
+
+            // find tile.
+            var c = _data.ReadVarUInt32();
+            IEnumerable<uint> tiles;
+            if (c == 1)
+            {
+                // pointers, read node, determine tile.
+                _data.Seek(c * 8, SeekOrigin.Current);
+
+                // TODO: find a way to only read lat/lon.
+                if (!(_data.ReadOsmGeo() is Node node)) throw new InvalidDataException("Expected node.");
+
+                var tileId = ToTile(node);
+                if (!tileId.HasValue) throw new InvalidDataException("Expected node with a valid location and tile.");
+                tiles = new[] {tileId.Value};
+            }
+            else if (c == 0)
+            {
+                tiles = Enumerable.Empty<uint>();
+            }
+            else
+            {
+                c--;
+                var tilesArray = new uint[c];
+                for (var i = 0; i < c; i++)
+                {
+                    tilesArray[i] = _data.ReadVarUInt32();
+                }
+                tiles = tilesArray;
+            }
+
+            // skip pointers.
+            _data.Seek(c * 8, SeekOrigin.Current);
+
+            return (_data.ReadOsmGeo(buffer), tiles);
+        }
+
+        public OsmGeo GetOsmGeo(long pointer, byte[] buffer)
         {
             if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
             
@@ -116,6 +158,57 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             }
         }
 
+        public IEnumerable<(OsmGeo osmGeo, IEnumerable<uint> tiles)> Get(IEnumerable<long> pointers, byte[] buffer)
+        {
+            if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);
+            
+            var queue = new BinaryHeap();
+            foreach (var pointer in pointers)
+            {
+                queue.Push(pointer);
+            }
+
+            while (queue.Count > 0)
+            {
+                var pointer = queue.Pop();
+                _data.Seek(pointer, SeekOrigin.Begin);
+
+                // find tile.
+                var c = _data.ReadVarUInt32();
+                if (c == 1)
+                {
+                    // skip pointers.
+                    _data.Seek(c * 8, SeekOrigin.Current);
+                    
+                    if (!(_data.ReadOsmGeo() is Node node)) throw new InvalidDataException("Expected node.");
+
+                    var tileId = ToTile(node);
+                    if (tileId == null) throw new InvalidDataException("Expected node with a valid location and tile.");
+                    var tiles = new[] {tileId.Value};
+                    
+                    yield return (node, tiles);
+                }
+                else if (c == 0)
+                {
+                    yield return (_data.ReadOsmGeo(buffer), Enumerable.Empty<uint>());
+                }
+                else
+                {
+                    c--;
+                    var tilesArray = new uint[c];
+                    for (var i = 0; i < c; i++)
+                    {
+                        tilesArray[i] = _data.ReadVarUInt32();
+                    }
+                    
+                    // skip pointers.
+                    _data.Seek(c * 8, SeekOrigin.Current);
+                    
+                    yield return (_data.ReadOsmGeo(buffer), tilesArray);
+                }
+            }
+        }
+        
         public long Append(uint tile, OsmGeo osmGeo, byte[] buffer)
         {
             if (buffer.Length < 1024) Array.Resize(ref buffer, 1024);

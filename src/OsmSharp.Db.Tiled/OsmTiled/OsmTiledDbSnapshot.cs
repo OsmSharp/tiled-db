@@ -82,22 +82,28 @@ namespace OsmSharp.Db.Tiled.OsmTiled
                 yield break;
             }
             
-            foreach (var osmGeoKey in osmGeoKeys)
-            {            
-                var pointer = index.Get(osmGeoKey);
-                if (pointer < 0) continue;
+            // return all data found here first.
+            var keysSet = new HashSet<OsmGeoKey>(osmGeoKeys);
+            using var osmGeoIndex = this.GetOsmGeoIndex();
+            var pointers = osmGeoIndex.GetAll(osmGeoKeys).Where(x =>
+            {
+                if (x.pointer >= 0) return true;
+                
+                keysSet.Remove(x.key);
+                return false;
+            }).Select(x => x.pointer);
+            foreach (var osmGeoAndTiles in data.Get(pointers, buffer))
+            {
+                keysSet.Remove(new OsmGeoKey(osmGeoAndTiles.osmGeo));
+                yield return (osmGeoAndTiles.osmGeo,
+                    osmGeoAndTiles.tiles.Select(x => Tile.FromLocalId(this.Zoom, x)));
+            }
 
-                if (pointer == null)
-                {
-                    var baseData = this.GetBaseDb().Get(osmGeoKey, buffer);
-                    if (baseData == null) continue;
-                    yield return baseData.Value;
-                }
-                else
-                {
-                    yield return (data.Get(pointer.Value, buffer), 
-                        data.GetTilesFor(pointer.Value).Select(x => Tile.FromLocalId(this.Zoom, x)).ToArray());
-                }
+            // returns base data if there are keys left.
+            if (keysSet.Count == 0) yield break;
+            foreach (var osmGeoAndTiles in this.GetBaseDb().Get(keysSet, buffer))
+            {
+                yield return osmGeoAndTiles;
             }
         }
 

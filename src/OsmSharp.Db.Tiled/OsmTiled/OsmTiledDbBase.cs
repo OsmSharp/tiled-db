@@ -70,6 +70,21 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         /// Gets the base.
         /// </summary>
         internal long? Base => _meta.Base;
+
+        /// <summary>
+        /// Gets the data for the given keys.
+        /// </summary>
+        /// <param name="osmGeoKeys">The keys, gets all data when null.</param>
+        /// <param name="buffer">The buffer.</param>
+        /// <returns>The object(s) if present.</returns>
+        public virtual IEnumerable<OsmGeo> GetOsmGeo(IEnumerable<OsmGeoKey>? osmGeoKeys,
+            byte[]? buffer = null)
+        {
+            foreach (var (osmGeo, _) in this.Get(osmGeoKeys))
+            {
+                yield return osmGeo;
+            }
+        }
         
         /// <summary>
         /// Gets the data for the given keys.
