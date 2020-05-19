@@ -4,6 +4,7 @@ using NUnit.Framework;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.Build;
+using OsmSharp.Db.Tiled.Tests.Mocks;
 using OsmSharp.Streams;
 
 namespace OsmSharp.Db.Tiled.Tests.OsmTiled
@@ -14,7 +15,9 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
         [Test]
         public void OsmTiledDb_Get_ShouldGetObjects()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
 
             // build the database.
             var osmGeos = new OsmGeo[]
@@ -92,10 +95,10 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
                 }
             };
             
-            FileSystemFacade.FileSystem.CreateDirectory(@"/OsmTiledDbTests");
-            osmGeos.Build(@"/OsmTiledDbTests");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/OsmTiledDbTests");
+            osmGeos.Build($"{root}/OsmTiledDbTests");
             
-            var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");
+            var osmTiledDb = new OsmTiledDb($"{root}/OsmTiledDbTests");
             var node1 = osmTiledDb.Get(OsmGeoType.Node, 456414);
             Assert.NotNull(node1);
             var node2 = osmTiledDb.Get(OsmGeoType.Node, 456415);
@@ -116,7 +119,9 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
         [Test]
         public void OsmTiledDb_GetTile_ShouldGetAllObjectsInTile()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
 
             // build the database.
             var osmGeos = new OsmGeo[]
@@ -194,11 +199,11 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled
                 }
             };
             
-            FileSystemFacade.FileSystem.CreateDirectory(@"/OsmTiledDbTests");
-            osmGeos.Build(@"/OsmTiledDbTests", 14);
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/OsmTiledDbTests");
+            osmGeos.Build($"{root}/OsmTiledDbTests", 14);
             
             // 14/8374/5556.osm.tile
-            var osmTiledDb = new OsmTiledDb("/OsmTiledDbTests");
+            var osmTiledDb = new OsmTiledDb($"{root}/OsmTiledDbTests");
 
             var tile = osmTiledDb.Get(new (uint x, uint y) [] { (8374, 5556) });
             Assert.NotNull(tile);

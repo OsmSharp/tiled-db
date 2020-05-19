@@ -16,6 +16,8 @@ namespace OsmSharp.Db.Tiled.Tests
         [Test]
         public void OsmTiledHistoryDb_Create_ShouldCreateNew()
         {
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
             var osmGeos = new OsmGeo[]
             {
                 new Node()
@@ -32,10 +34,10 @@ namespace OsmSharp.Db.Tiled.Tests
                 }
             };
             
-            FileSystemFacade.FileSystem = new MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/data");
 
-            var newDb = OsmTiledHistoryDb.Create(@"/data", osmGeos);
+            var newDb = OsmTiledHistoryDb.Create($"{root}/data", osmGeos);
             
             Assert.NotNull(newDb.Latest);
         }
@@ -43,6 +45,8 @@ namespace OsmSharp.Db.Tiled.Tests
         [Test]
         public void OsmTiledHistoryDb_TryReload_NoNewData_ShouldDoNothingAndReturnFalse()
         {
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
             var osmGeos = new OsmGeo[]
             {
                 new Node()
@@ -59,10 +63,10 @@ namespace OsmSharp.Db.Tiled.Tests
                 }
             };
             
-            FileSystemFacade.FileSystem = new MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/data");
 
-            var db = OsmTiledHistoryDb.Create(@"/data", osmGeos);
+            var db = OsmTiledHistoryDb.Create($"{root}/data", osmGeos);
             
             // reload db.
             Assert.False(db.TryReloadLatest());
@@ -71,10 +75,12 @@ namespace OsmSharp.Db.Tiled.Tests
         [Test]
         public void OsmTiledHistoryDb_TryReload_NewData_ShouldLoadNewDbAndReturnTrue()
         {
-            FileSystemFacade.FileSystem = new MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/data");
 
-            var db = OsmTiledHistoryDb.Create(@"/data", new OsmGeo[]
+            var db = OsmTiledHistoryDb.Create($"{root}/data", new OsmGeo[]
             {
                 new Node()
                 {
@@ -105,7 +111,7 @@ namespace OsmSharp.Db.Tiled.Tests
                     TimeStamp = DateTime.Now.AddDays(1),
                     Version = 2
                 }
-            }.Add("/data");
+            }.Add($"{root}/data");
             
             // reload db.
             Assert.True(db.TryReloadLatest());
@@ -114,10 +120,12 @@ namespace OsmSharp.Db.Tiled.Tests
         [Test]
         public void OsmTiledHistoryDb_GetOn_ShouldGetDbValidForTimeStamp()
         {
-            FileSystemFacade.FileSystem = new MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/data");
 
-            var db = OsmTiledHistoryDb.Create(@"/data", new OsmGeo[]
+            var db = OsmTiledHistoryDb.Create($"{root}/data", new OsmGeo[]
             {
                 new Node()
                 {
@@ -193,10 +201,12 @@ namespace OsmSharp.Db.Tiled.Tests
         [Test]
         public void OsmTiledHistoryDb_TakeSnapshot_ShouldCreateSnapshot()
         {
-            FileSystemFacade.FileSystem = new MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/data");
 
-            var db = OsmTiledHistoryDb.Create(@"/data", new OsmGeo[]
+            var db = OsmTiledHistoryDb.Create($"{root}/data", new OsmGeo[]
             {
                 new Node()
                 {

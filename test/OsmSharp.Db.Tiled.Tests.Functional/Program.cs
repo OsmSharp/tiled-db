@@ -1,16 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
-using System.Linq;
 using Serilog;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 using OsmSharp.Changesets;
-using OsmSharp.Db.Tiled.OsmTiled;
-using OsmSharp.Db.Tiled.OsmTiled.Build;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
-using OsmSharp.Db.Tiled.Tiles;
 using OsmSharp.Logging;
 using OsmSharp.Replication;
 using OsmSharp.Streams;

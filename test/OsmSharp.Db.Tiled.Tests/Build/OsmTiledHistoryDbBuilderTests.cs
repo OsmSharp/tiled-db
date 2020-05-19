@@ -5,6 +5,7 @@ using NUnit.Framework;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
+using OsmSharp.Db.Tiled.Tests.Mocks;
 using OsmSharp.Streams;
 
 namespace OsmSharp.Db.Tiled.Tests.Build
@@ -21,8 +22,10 @@ namespace OsmSharp.Db.Tiled.Tests.Build
         [Test]
         public void OsmDbBuilder_BuildDb_ShouldBuildInitial()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/data");
 
             // build the database.
             var osmGeos = new OsmGeo[]
@@ -68,11 +71,11 @@ namespace OsmSharp.Db.Tiled.Tests.Build
                 }
             };
             var db = OsmSharp.Db.Tiled.Build.OsmTiledHistoryDbBuilder.Build(
-               osmGeos, @"/data");
+               osmGeos, $"{root}/data");
 
-            Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));
+            Assert.True(FileSystemFacade.FileSystem.DirectoryExists($"{root}/data"));
 
-            var initialPath = OsmTiledDbOperations.BuildDbPath("/data", db.Latest.Id, null, OsmTiledDbType.Full);
+            var initialPath = OsmTiledDbOperations.BuildDbPath($"{root}/data", db.Latest.Id, null, OsmTiledDbType.Full);
             
             // check if initial dir exists.
             Assert.True(FileSystemFacade.FileSystem.Exists(

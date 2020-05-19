@@ -79,5 +79,29 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
 
             return _startPosition + middle * Size;
         }
+
+
+
+        private bool _disposed;
+        private bool _inCache;
+
+        public void Dispose()
+        {
+            _disposed = true;
+
+            if (_disposed && !_inCache) _data.Dispose();
+        }
+
+        public void Touched()
+        {
+            _inCache = true;
+        }
+
+        public void RemovedFromCache()
+        {
+            _inCache = false;
+
+            if (_disposed && !_inCache) _data.Dispose();
+        }
     }
 }

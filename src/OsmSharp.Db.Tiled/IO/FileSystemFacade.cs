@@ -10,8 +10,13 @@ namespace OsmSharp.Db.Tiled.IO
     internal static class FileSystemFacade
     {
         /// <summary>
-        /// The default file system.
+        /// Gets the file system handler.
         /// </summary>
-        public static IFileSystem FileSystem = new DefaultFileSystem();
+        public static IFileSystem FileSystem => GetFileSystem();
+
+        /// <summary>
+        /// Gets a function to get the file system handler.
+        /// </summary>
+        public static Func<IFileSystem> GetFileSystem = () => new DefaultFileSystem();
     }
 }

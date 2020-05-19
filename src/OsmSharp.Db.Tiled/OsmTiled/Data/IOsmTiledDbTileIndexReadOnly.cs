@@ -1,8 +1,9 @@
 using System.Collections.Generic;
+using OsmSharp.Db.Tiled.Collections;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Data
 {
-    internal interface IOsmTiledDbTileIndexReadOnly
+    internal interface IOsmTiledDbTileIndexReadOnly : ILRUDisposable
     {
         long Default { get; }
         

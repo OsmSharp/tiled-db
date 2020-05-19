@@ -5,6 +5,7 @@ using NUnit.Framework;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.Build;
+using OsmSharp.Db.Tiled.Tests.Mocks;
 using OsmSharp.Db.Tiled.Tiles;
 
 namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
@@ -18,8 +19,10 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbBuilder_OneNode_Build_ShouldCreateOneNodeTile()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/data");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/data");
 
             // build the database.
             var osmGeos = new OsmGeo[]
@@ -32,23 +35,25 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            osmGeos.Build(@"/data", 14);
+            osmGeos.Build($"{root}/data", 14);
 
             // check files and paths.
-            Assert.True(FileSystemFacade.FileSystem.DirectoryExists(@"/data"));
+            Assert.True(FileSystemFacade.FileSystem.DirectoryExists($"{root}/data"));
             
             // indexes should exist.
-            Assert.True(FileSystemFacade.FileSystem.Exists("/data/data.db"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/data/data.id.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/data/data.tile.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/data/data.db"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/data/data.id.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/data/data.tile.idx"));
         }
         
         [Test]
         public void OsmTiledDbBuilder_OneNode_DbShouldContainNode()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] { 
@@ -60,8 +65,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            osmGeos.Build(@"/original");
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original");
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
             
             var osmGeo = osmTiledDb.Get(OsmGeoType.Node, 4561327);
             Assert.NotNull(osmGeo);
@@ -71,9 +76,11 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbBuilder_OneNode_DbShouldContainNodeInTile()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] { 
@@ -85,8 +92,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            osmGeos.Build(@"/original");
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original");
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
 
             var tileOsmGeos = osmTiledDb.Get(new (uint x, uint y)[]
             {
@@ -101,9 +108,11 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbBuilder_OneNode_DbShouldContainNodeInTiles()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] { 
@@ -115,8 +124,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     Longitude = 4
                 }
             };
-            osmGeos.Build(@"/original");
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original");
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
 
             var tileOsmGeos = osmTiledDb.Get(new (uint x, uint y)[]
             {

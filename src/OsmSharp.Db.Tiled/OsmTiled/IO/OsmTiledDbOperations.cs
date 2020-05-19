@@ -4,12 +4,24 @@ using System.Globalization;
 using OsmSharp.Db.Tiled.IO;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
+using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.OsmTiled.Data;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.IO
 {
     internal static class OsmTiledDbOperations
     {
+        private const int TiledIndexCacheSize = 64;
+        private static readonly ThreadLocal<LRUDisposableCache<string, IOsmTiledDbTileIndexReadOnly>> TileIndexes = new ThreadLocal<LRUDisposableCache<string, IOsmTiledDbTileIndexReadOnly>>(
+            () => new LRUDisposableCache<string, IOsmTiledDbTileIndexReadOnly>(TiledIndexCacheSize));
+        private const int OsmGeoIndexCacheSize = 64;
+        private static readonly ThreadLocal<LRUDisposableCache<string, OsmTiledDbOsmGeoIndex>> OsmGeoIndexes = new ThreadLocal<LRUDisposableCache<string, OsmTiledDbOsmGeoIndex>>(
+            () => new LRUDisposableCache<string, OsmTiledDbOsmGeoIndex>(OsmGeoIndexCacheSize));
+        private const int LinkedStreamCacheSize = 64;
+        private static readonly ThreadLocal<LRUDisposableCache<string, OsmTiledLinkedStream>> LinkedStreams = new ThreadLocal<LRUDisposableCache<string, OsmTiledLinkedStream>>(
+            () => new LRUDisposableCache<string, OsmTiledLinkedStream>(LinkedStreamCacheSize));
+        
         public static IEnumerable<(string path, long id, long? timespan, string type)> GetDbPaths(string path, string? startsWith = null)
         {
             var directories = FileSystemFacade.FileSystem.EnumerateDirectories(path, startsWith);
@@ -204,13 +216,21 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             return FileSystemFacade.FileSystem.Combine(path, "data.id.idx");
         }
 
-        private const long MaxInMemorySize = 1024 * 1024 * 20;
+        private const long MaxInMemorySize = 1024 * 1024 * 50;
 
         public static OsmTiledDbOsmGeoIndex LoadOsmGeoIndex(string path)
         {
+            var file = PathToIdIndex(path);
+            var indexCache = OsmGeoIndexes.Value;
+
+            if (indexCache.TryGet(file, out var index)) return index;
+            
             var stream = FileSystemFacade.FileSystem.OpenRead(
-                PathToIdIndex(path)).ToMemoryStreamSmall(MaxInMemorySize);
-            return new OsmTiledDbOsmGeoIndex(stream);
+                file).ToMemoryStreamSmall(MaxInMemorySize);
+            index = new OsmTiledDbOsmGeoIndex(stream);
+            indexCache.Add(file, index);
+
+            return index;
         }
         
         public static string PathToData(string path)
@@ -225,18 +245,32 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
         
         public static OsmTiledLinkedStream LoadData(string path)
         {
-            var stream = FileSystemFacade.FileSystem.OpenRead(
-                PathToData(path)).ToMemoryStreamSmall(MaxInMemorySize);;
+            var file = PathToData(path);
+            var indexCache = LinkedStreams.Value;
+
+            if (indexCache.TryGet(file, out var index)) return index;
             
-            return OsmTiledLinkedStream.Deserialize(stream);
+            var stream = FileSystemFacade.FileSystem.OpenRead(file)
+                .ToMemoryStreamSmall(MaxInMemorySize);
+            index = OsmTiledLinkedStream.Deserialize(stream);
+            indexCache.Add(file, index);
+
+            return index;
         }
         
         public static IOsmTiledDbTileIndexReadOnly LoadTileIndex(string path)
         {
-            var stream = FileSystemFacade.FileSystem.OpenRead(
-                PathToTileIndex(path)).ToMemoryStreamSmall(MaxInMemorySize);
+            var file = PathToTileIndex(path);
+            var indexCache = TileIndexes.Value;
+
+            if (indexCache.TryGet(file, out var index)) return index;
             
-            return OsmTiledDbTileIndex.DeserializeReadonly(stream);
+            var stream = FileSystemFacade.FileSystem.OpenRead(file)
+                .ToMemoryStreamSmall(MaxInMemorySize);
+            index = OsmTiledDbTileIndex.DeserializeReadonly(stream);
+            indexCache.Add(file, index);
+
+            return index;
         }
         
         public static string PathToMeta(string path)

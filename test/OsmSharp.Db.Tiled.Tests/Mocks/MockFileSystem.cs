@@ -4,16 +4,31 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace OsmSharp.Db.Tiled.Tests.Mocks
 {
-    public class MockFileSystem : IFileSystem
+    internal class MockFileSystem : IFileSystem
     {
+        private static readonly ThreadLocal<MockFileSystem> LocalFileSystem = new ThreadLocal<MockFileSystem>(() => new MockFileSystem());
+
+        public static Func<IFileSystem> GetMockFileSystem => () =>
+        {
+            var mockSystem  = LocalFileSystem.Value;
+            return mockSystem;
+        };
+        
         private readonly Dir _root;
 
-        public MockFileSystem(string root)
+        public MockFileSystem(string root = "/")
         {
             _root = new Dir(root);
+        }
+
+        internal void Clear()
+        {
+            _root.Files.Clear();
+            _root.SubDirs.Clear();
         }
 
         private string[] Get(string path)

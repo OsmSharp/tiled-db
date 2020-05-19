@@ -444,6 +444,21 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
 
             throw new InvalidDataException("Invalid version, cannot read index.");
         }
+
+        public void Dispose()
+        {
+            
+        }
+
+        public void Touched()
+        {
+            
+        }
+
+        public void RemovedFromCache()
+        {
+            
+        }
     }
 
     internal static class SparseArrayExtensions

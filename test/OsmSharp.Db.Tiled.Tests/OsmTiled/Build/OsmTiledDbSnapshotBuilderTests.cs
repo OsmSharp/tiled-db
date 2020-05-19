@@ -6,6 +6,7 @@ using OsmSharp.Changesets;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled;
 using OsmSharp.Db.Tiled.OsmTiled.Build;
+using OsmSharp.Db.Tiled.Tests.Mocks;
 using OsmSharp.Db.Tiled.Tiles;
 
 namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
@@ -16,14 +17,16 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbSnapshotBuilder_CreateOneNode_ShouldCreateOneNodeTile()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] { };
-            osmGeos.Build(@"/original", 14);
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original", 14);
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
             
             // apply diff.
             var diff = new OsmChange()
@@ -40,15 +43,15 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            osmTiledDb.BuildSnapshot(diff, @"/diff");
+            osmTiledDb.BuildSnapshot(diff, $"{root}/diff");
             
             // indexes should exist.
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.db"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.id.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.tile.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.db"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.id.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.tile.idx"));
             
             // load diff and query.
-            var diffDb = new OsmTiledDbSnapshot(@"/diff", _ => osmTiledDb);
+            var diffDb = new OsmTiledDbSnapshot($"{root}/diff", _ => osmTiledDb);
             var node = diffDb.Get(OsmGeoType.Node, 4561327);
             Assert.NotNull(node);
         }
@@ -56,9 +59,11 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbSnapshotBuilder_DeleteNode_ShouldDeleteNode()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] { 
@@ -71,8 +76,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     TimeStamp = DateTime.Now
                 }
             };
-            osmGeos.Build(@"/original", 14);
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original", 14);
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
             
             // apply diff.
             var diff = new OsmChange()
@@ -89,15 +94,15 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            osmTiledDb.BuildSnapshot(diff, @"/diff");
+            osmTiledDb.BuildSnapshot(diff, $"{root}/diff");
             
             // indexes should exist.
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.db"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.id.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.tile.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.db"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.id.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.tile.idx"));
             
             // load diff and query.
-            var diffDb = new OsmTiledDbSnapshot(@"/diff", _ => osmTiledDb);
+            var diffDb = new OsmTiledDbSnapshot($"{root}/diff", _ => osmTiledDb);
             var node = diffDb.Get(OsmGeoType.Node, 4561327);
             Assert.Null(node);
         }
@@ -105,9 +110,11 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbSnapshotBuilder_ModifyNode_ShouldUpdateNode()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] { 
@@ -120,8 +127,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     TimeStamp = DateTime.Now
                 }
             };
-            osmGeos.Build(@"/original");
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original");
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
             
             // apply diff.
             var diff = new OsmChange()
@@ -138,15 +145,15 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            osmTiledDb.BuildSnapshot(diff, @"/diff");
+            osmTiledDb.BuildSnapshot(diff, $"{root}/diff");
             
             // indexes should exist.
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.db"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.id.idx"));
-            Assert.True(FileSystemFacade.FileSystem.Exists("/diff/data.tile.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.db"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.id.idx"));
+            Assert.True(FileSystemFacade.FileSystem.Exists($"{root}/diff/data.tile.idx"));
             
             // load diff and query.
-            var diffDb = new OsmTiledDbSnapshot(@"/diff", _ => osmTiledDb);
+            var diffDb = new OsmTiledDbSnapshot($"{root}/diff", _ => osmTiledDb);
             var osmGeo = diffDb.Get(OsmGeoType.Node, 4561327);
             Assert.NotNull(osmGeo);
             if (osmGeo is Node node)
@@ -167,9 +174,11 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbSnapshotBuilder_CreateOneWay_NodesExist_ShouldCreateOneWayTile()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] { 
@@ -190,8 +199,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     TimeStamp = DateTime.Now
                 }
             };
-            osmGeos.Build(@"/original");
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original");
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
             
             // apply diff.
             var diff = new OsmChange()
@@ -207,10 +216,10 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            osmTiledDb.BuildSnapshot(diff, @"/diff");
+            osmTiledDb.BuildSnapshot(diff, $"{root}/diff");
             
             // load diff and query.
-            var diffDb = new OsmTiledDbSnapshot(@"/diff", _ => osmTiledDb);
+            var diffDb = new OsmTiledDbSnapshot($"{root}/diff", _ => osmTiledDb);
             var way = diffDb.Get(OsmGeoType.Way, 45327);
             Assert.NotNull(way);
         }
@@ -218,14 +227,16 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbSnapshotBuilder_CreateOneWay_NodesNew_ShouldCreateOneWayTile()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] { };
-            osmGeos.Build(@"/original");
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original");
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
             
             // apply diff.
             var diff = new OsmChange()
@@ -257,10 +268,10 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            osmTiledDb.BuildSnapshot(diff, @"/diff");
+            osmTiledDb.BuildSnapshot(diff, $"{root}/diff");
             
             // load diff and query.
-            var diffDb = new OsmTiledDbSnapshot(@"/diff", _ => osmTiledDb);
+            var diffDb = new OsmTiledDbSnapshot($"{root}/diff", _ => osmTiledDb);
             var way = diffDb.Get(OsmGeoType.Way, 45327);
             Assert.NotNull(way);
         }
@@ -268,9 +279,11 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
         [Test]
         public void OsmTiledDbSnapshotBuilder_MoveNodesNewTile_ShouldMoveWayToNewTile()
         {
-            FileSystemFacade.FileSystem = new Mocks.MockFileSystem(@"/");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/original");
-            FileSystemFacade.FileSystem.CreateDirectory(@"/diff");
+            var root = $"/{Guid.NewGuid().ToString()}";
+            
+            FileSystemFacade.GetFileSystem = MockFileSystem.GetMockFileSystem;
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/original");
+            FileSystemFacade.FileSystem.CreateDirectory($"{root}/diff");
 
             // build the database.
             var osmGeos = new OsmGeo[] 
@@ -299,8 +312,8 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     TimeStamp = DateTime.Now
                 }
             };
-            osmGeos.Build(@"/original");
-            var osmTiledDb = new OsmTiledDb(@"/original");
+            osmGeos.Build($"{root}/original");
+            var osmTiledDb = new OsmTiledDb($"{root}/original");
             
             // apply diff.
             var diff = new OsmChange()
@@ -325,10 +338,10 @@ namespace OsmSharp.Db.Tiled.Tests.OsmTiled.Build
                     }
                 }
             };
-            osmTiledDb.BuildSnapshot(diff, @"/diff");
+            osmTiledDb.BuildSnapshot(diff, $"{root}/diff");
             
             // load diff and query.
-            var diffDb = new OsmTiledDbSnapshot(@"/diff", _ => osmTiledDb);
+            var diffDb = new OsmTiledDbSnapshot($"{root}/diff", _ => osmTiledDb);
             var way = diffDb.Get(OsmGeoType.Way, 45327);
             Assert.NotNull(way);
             

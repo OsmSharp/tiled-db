@@ -1,10 +1,12 @@
+using System;
 using System.IO;
+using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.IO;
 using OsmSharp.Db.Tiled.OsmTiled.IO;
 
 namespace OsmSharp.Db.Tiled.OsmTiled.Data
 {
-    internal class OsmTiledDbOsmGeoIndex
+    internal class OsmTiledDbOsmGeoIndex : ILRUDisposable
     {
         private readonly Stream _data;
 
@@ -32,9 +34,9 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
         private long? Find(long encoded)
         {
             long start = 0;
-            long end = _data.Length / 16;
+            var end = _data.Length / 16;
 
-            long middle = (end + start) / 2;
+            var middle = (end + start) / 2;
             _data.Seek(middle * 16, SeekOrigin.Begin);
             var middleId = _data.ReadInt64();
             while (middleId != encoded)
@@ -56,6 +58,28 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Data
             }
 
             return middle * 16;
+        }
+
+        private bool _disposed;
+        private bool _inCache;
+
+        public void Dispose()
+        {
+            _disposed = true;
+
+            if (_disposed && !_inCache) _data.Dispose();
+        }
+
+        public void Touched()
+        {
+            _inCache = true;
+        }
+
+        public void RemovedFromCache()
+        {
+            _inCache = false;
+
+            if (_disposed && !_inCache) _data.Dispose();
         }
     }
 }
