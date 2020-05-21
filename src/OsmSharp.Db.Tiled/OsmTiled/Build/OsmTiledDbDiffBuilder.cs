@@ -99,7 +99,7 @@ namespace OsmSharp.Db.Tiled.OsmTiled.Build
             {
                 Id = id,
                 Base = baseId,
-                Type = OsmTiledDbType.Snapshot,
+                Type = OsmTiledDbType.Diff,
                 Zoom = zoom,
             };
             osmTiledDbMeta.SetMeta(meta);
