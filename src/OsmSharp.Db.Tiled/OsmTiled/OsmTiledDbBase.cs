@@ -72,6 +72,13 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         internal long? Base => _meta.Base;
 
         /// <summary>
+        /// Gets the db containing the latest version of the data for the given tile.
+        /// </summary>
+        /// <param name="tile">The tile.</param>
+        /// <returns>The database containing the latest version of the given tile.</returns>
+        public abstract OsmTiledDbBase? GetDbForTile((uint x, uint y) tile);
+
+        /// <summary>
         /// Gets the data for the given keys.
         /// </summary>
         /// <param name="osmGeoKeys">The keys, gets all data when null.</param>
