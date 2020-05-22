@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using OsmSharp.Db.Tiled.Collections;
 using OsmSharp.Db.Tiled.Logging;
 using OsmSharp.Db.Tiled.OsmTiled.Changes;
@@ -39,6 +40,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         {
             if (this.Base == null) throw new Exception($"A {nameof(OsmTiledDbSnapshot)} always needs a base db.");
             return _baseDb ??= _getBaseDb(this.Base.Value);
+        }
+
+        /// <inheritdoc/>
+        public override OsmTiledDbBase? GetPrevious()
+        {
+            return GetBaseDb();
         }
 
         /// <inheritdoc/>

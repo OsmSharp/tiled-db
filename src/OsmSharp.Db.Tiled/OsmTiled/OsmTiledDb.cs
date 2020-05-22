@@ -33,6 +33,12 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         private OsmTiledLinkedStream GetData() => OsmTiledDbOperations.LoadData(this.Path);
 
         /// <inheritdoc/>
+        public override OsmTiledDbBase? GetPrevious()
+        {
+            return null;
+        }
+
+        /// <inheritdoc/>
         public override OsmTiledDbBase? GetDbForTile((uint x, uint y) tile)
         {
             return this;
