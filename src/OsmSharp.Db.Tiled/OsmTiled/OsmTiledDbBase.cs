@@ -72,12 +72,6 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         internal long? Base => _meta.Base;
 
         /// <summary>
-        /// Gets the database right before this one.
-        /// </summary>
-        /// <returns>The db before this one.</returns>
-        public abstract OsmTiledDbBase? GetPrevious();
-
-        /// <summary>
         /// Gets the db containing the latest version of the data for the given tile.
         /// </summary>
         /// <param name="tile">The tile.</param>

@@ -39,12 +39,6 @@ namespace OsmSharp.Db.Tiled.OsmTiled
         }
 
         /// <inheritdoc/>
-        public override OsmTiledDbBase? GetPrevious()
-        {
-            return GetBaseDb();
-        }
-
-        /// <inheritdoc/>
         public override OsmTiledDbBase? GetDbForTile((uint x, uint y) tile)
         {         
             using var tileIndex = this.GetTileIndex();

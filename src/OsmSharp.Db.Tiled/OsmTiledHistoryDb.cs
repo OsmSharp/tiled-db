@@ -18,7 +18,7 @@ namespace OsmSharp.Db.Tiled
     public class OsmTiledHistoryDb
     {
         private readonly string _path;
-        private readonly SortedList<long, OsmTiledDbBase?> _dbs;
+        private readonly SortedList<long, OsmTiledDbsList?> _dbs;
         private readonly object DiffSync = new object();
         private long _latestId;
 
@@ -35,7 +35,7 @@ namespace OsmSharp.Db.Tiled
         {
             _path = path;
 
-            _dbs = new SortedList<long, OsmTiledDbBase?>();
+            _dbs = new SortedList<long, OsmTiledDbsList?>();
             foreach (var (_, id, _, _) in OsmTiledDbOperations.GetDbPaths(_path))
             {
                 _dbs[id] = null;
@@ -44,13 +44,13 @@ namespace OsmSharp.Db.Tiled
             _latestId = _dbs.Keys[_dbs.Count - 1];
         }
 
-        private OsmTiledDbBase GetDb(long id)
+        private OsmTiledDbsList GetDb(long id)
         {
             lock (DiffSync)
             {
                 if (_dbs.TryGetValue(id, out var osmTiledDbBase) && osmTiledDbBase != null) return osmTiledDbBase;
 
-                osmTiledDbBase = OsmTiledDbOperations.LoadDb(this._path, id, this.GetDb);
+                osmTiledDbBase = OsmTiledDbOperations.LoadDbs(this._path, id, i => this.GetDb(i).Db);
                 _dbs[id] = osmTiledDbBase;
 
                 return osmTiledDbBase;
@@ -62,10 +62,41 @@ namespace OsmSharp.Db.Tiled
         /// </summary>
         internal string Path => _path;
 
+        internal long? Previous(long id)
+        {
+            lock (DiffSync)
+            {
+                var i = _dbs.IndexOfKey(id);
+                if (i < 0) throw new ArgumentException($"Db with id {id} not found.", nameof(id));
+
+                if (i == 0) return null;
+
+                return _dbs.Keys[i - 1];
+            }
+        }
+
+        internal long? Next(long id)
+        {
+            lock (DiffSync)
+            {
+                var i = _dbs.IndexOfKey(id);
+                if (i < 0) throw new ArgumentException($"Db with id {id} not found.", nameof(id));
+
+                if (i == _dbs.Count - 1) return null;
+
+                return _dbs.Keys[i + 1];
+            }
+        }
+
+        internal OsmTiledDbBase GetSmallest(long id)
+        {
+            return this.GetDb(id).Smallest();
+        }
+
         /// <summary>
         /// Gets the latest snapshot db.
         /// </summary>
-        public OsmTiledDbBase Latest => this.GetDb(_latestId);
+        public OsmTiledDbBase Latest => this.GetDb(_latestId).Db;
 
         /// <summary>
         /// Creates a new db.
@@ -97,7 +128,17 @@ namespace OsmSharp.Db.Tiled
             lock (DiffSync)
             {
                 // update data.
-                _dbs[latest.Id] = latest;
+                if (!_dbs.TryGetValue(latest.Id, out var existingDbList))
+                {
+                    existingDbList = new OsmTiledDbsList(latest, null);
+                }
+                else
+                {
+                    existingDbList ??= GetDb(latest.Id);
+                    existingDbList = existingDbList.Add(latest);
+                }
+                
+                _dbs[latest.Id] = existingDbList;
             }
         }
 
@@ -125,11 +166,22 @@ namespace OsmSharp.Db.Tiled
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
 
             // update data.
-            var latest = new OsmTiledDbDiff(dbPath, this.GetDb);
+            var latest = new OsmTiledDbDiff(dbPath, (id) => this.GetDb(id).Db);
             _latestId = latest.Id;
             lock (DiffSync)
             {
-                _dbs[latest.Id] = latest;
+                // update data.
+                if (!_dbs.TryGetValue(latest.Id, out var existingDbList))
+                {
+                    existingDbList = new OsmTiledDbsList(latest, null);
+                }
+                else
+                {
+                    existingDbList ??= GetDb(latest.Id);
+                    existingDbList = existingDbList.Add(latest);
+                }
+                
+                _dbs[latest.Id] = existingDbList;
             }
         }
         
@@ -145,7 +197,7 @@ namespace OsmSharp.Db.Tiled
         {
             timeStamp ??= this.Latest.EndTimestamp;
             
-            var osmTiledDb = this.GetOn(timeStamp.Value);
+            var osmTiledDb = this.GetListOn(timeStamp.Value)?.Db;
             if (osmTiledDb == null) return null;
             if (!(osmTiledDb is OsmTiledDbDiff))
             {
@@ -167,7 +219,7 @@ namespace OsmSharp.Db.Tiled
                 diffs.Add(nextDiff);
 
                 if (osmTiledDb.Base == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
-                osmTiledDb = this.GetDb(osmTiledDb.Base.Value);
+                osmTiledDb = this.GetDb(osmTiledDb.Base.Value).Db;
                 if (osmTiledDb == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
 
                 // if earliest has value, a timespan was set.
@@ -205,10 +257,21 @@ namespace OsmSharp.Db.Tiled
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
                 
             // update data.
-            var diffSnapshot = new OsmTiledDbDiff(dbPath, this.GetDb);
+            var diffSnapshot = new OsmTiledDbDiff(dbPath, i => this.GetDb(i).Db);
             lock (DiffSync)
             {
-                _dbs[diffSnapshot.Id] = diffSnapshot;
+                // update data.
+                if (!_dbs.TryGetValue(diffSnapshot.Id, out var existingDbList))
+                {
+                    existingDbList = new OsmTiledDbsList(diffSnapshot, null);
+                }
+                else
+                {
+                    existingDbList ??= GetDb(diffSnapshot.Id);
+                    existingDbList = existingDbList.Add(diffSnapshot);
+                }
+                
+                _dbs[diffSnapshot.Id] = existingDbList;
             }
 
             return diffSnapshot;
@@ -226,7 +289,7 @@ namespace OsmSharp.Db.Tiled
         {
             timeStamp ??= this.Latest.EndTimestamp;
             
-            var osmTiledDb = this.GetOn(timeStamp.Value);
+            var osmTiledDb = this.GetListOn(timeStamp.Value)?.Db;
             if (osmTiledDb == null) return null;
             if (!(osmTiledDb is OsmTiledDbDiff))
             {
@@ -248,7 +311,7 @@ namespace OsmSharp.Db.Tiled
                 tiles.UnionWith(nextDiff.GetTiles(true));
 
                 if (osmTiledDb.Base == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
-                osmTiledDb = this.GetDb(osmTiledDb.Base.Value);
+                osmTiledDb = this.GetDb(osmTiledDb.Base.Value).Db;
                 if (osmTiledDb == null) throw new InvalidDataException($"{nameof(OsmTiledDbDiff)} should have a valid base db.");
 
                 // if earliest has value, a timespan was set.
@@ -280,10 +343,21 @@ namespace OsmSharp.Db.Tiled
             FileSystemFacade.FileSystem.MoveDirectory(tempPath, dbPath);
                 
             // update data.
-            var snapshot = new OsmTiledDbSnapshot(dbPath, this.GetDb);
+            var snapshot = new OsmTiledDbSnapshot(dbPath, (id) => this.GetDb(id).Db);
             lock (DiffSync)
             {
-                _dbs[snapshot.Id] = snapshot;
+                // update data.
+                if (!_dbs.TryGetValue(snapshot.Id, out var existingDbList))
+                {
+                    existingDbList = new OsmTiledDbsList(snapshot, null);
+                }
+                else
+                {
+                    existingDbList ??= GetDb(snapshot.Id);
+                    existingDbList = existingDbList.Add(snapshot);
+                }
+                
+                _dbs[snapshot.Id] = existingDbList;
             }
 
             return snapshot;
@@ -326,14 +400,7 @@ namespace OsmSharp.Db.Tiled
             return false;
         }
 
-        /// <summary>
-        /// Gets the database for the given timestamp.
-        ///
-        /// The database that was created on or right before the given timestamp.
-        /// </summary>
-        /// <param name="timestamp">The timestamp.</param>
-        /// <returns>The database closest to the given timestamp.</returns>
-        public OsmTiledDbBase? GetOn(DateTime timestamp)
+        internal OsmTiledDbsList? GetListOn(DateTime timestamp)
         {
             if (TryOn(timestamp, out var id))
             {

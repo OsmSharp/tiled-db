@@ -110,44 +110,40 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             return true;
         }
 
-        public static string? LoadLongestSnapshotDb(string path, long id)
+        public static  List<(string path, long timeSpan)> LoadSnapshotDbs(string path, long id)
         {
             var potentialDbs = GetDbPaths(path,
                 $"{IdToPath(id)}");
-            (string? path, long id, long? timespan, string type) best = (null, long.MinValue, null, string.Empty);
+            var dbs = new List<(string path, long timeSpan)>();
             foreach (var potentialDb in potentialDbs)
             {
                 if (potentialDb.type != OsmTiledDbType.Snapshot) continue;
+                if (potentialDb.timespan == null) continue;
                 
-                if (best.timespan == null || 
-                    (potentialDb.timespan != null &&
-                    best.timespan.Value < potentialDb.timespan.Value))
-                {
-                    best = potentialDb;
-                }
+                dbs.Add((potentialDb.path, potentialDb.timespan.Value));
             }
 
-            return best.path;
+            dbs.Sort((x, y) => x.timeSpan.CompareTo(y.timeSpan));
+
+            return dbs;
         }
 
-        public static string? LoadLongestDiffDb(string path, long id)
+        private static List<(string path, long timeSpan)> LoadsDiffDbs(string path, long id)
         {
             var potentialDbs = GetDbPaths(path,
                 $"{IdToPath(id)}");
-            (string? path, long id, long? timespan, string type) best = (null, long.MinValue, null, string.Empty);
+            var dbs = new List<(string path, long timeSpan)>();
             foreach (var potentialDb in potentialDbs)
             {
                 if (potentialDb.type != OsmTiledDbType.Diff) continue;
+                if (potentialDb.timespan == null) continue;
                 
-                if (best.timespan == null || 
-                    (potentialDb.timespan != null &&
-                     best.timespan.Value < potentialDb.timespan.Value))
-                {
-                    best = potentialDb;
-                }
+                dbs.Add((potentialDb.path, potentialDb.timespan.Value));
             }
 
-            return best.path;
+            dbs.Sort((x, y) => x.timeSpan.CompareTo(y.timeSpan));
+
+            return dbs;
         }
         
         public static void SaveDbMeta(string path, OsmTiledDbMeta dbMeta)
@@ -158,37 +154,40 @@ namespace OsmSharp.Db.Tiled.OsmTiled.IO
             JsonSerializer.Serialize(streamWriter, dbMeta);
         }
         
-        public static OsmTiledDbBase LoadDb(string path, long id, Func<long, OsmTiledDbBase> getDb)
+        public static OsmTiledDbsList LoadDbs(string path, long id, Func<long, OsmTiledDbBase> getDb)
         {
-            string? dbPath = BuildDbPath(path, id, null, OsmTiledDbType.Full);
-            OsmTiledDbMeta? meta = null;
+            OsmTiledDbsList? dbs = null;
+            
+            // see if there is a full db first.
+            var dbPath = BuildDbPath(path, id, null, OsmTiledDbType.Full);
             if (FileSystemFacade.FileSystem.DirectoryExists(dbPath))
             {
-                // a full db exists, use that one!
-                meta = LoadDbMeta(dbPath);
-            }
-            else
-            {
-                // check for a snapshot.
-                dbPath = LoadLongestSnapshotDb(path, id);
-                if (dbPath != null &&
-                    FileSystemFacade.FileSystem.DirectoryExists(dbPath))
-                {
-                    meta = OsmTiledDbOperations.LoadDbMeta(dbPath);
-                }
-                else
-                {
-                    // check for a diff.
-                    dbPath = LoadLongestDiffDb(path, id);
-                    if (dbPath != null &&
-                        FileSystemFacade.FileSystem.DirectoryExists(dbPath))
-                    {
-                        meta = OsmTiledDbOperations.LoadDbMeta(dbPath);
-                    }
-                }
+                dbs = new OsmTiledDbsList(LoadDb(dbPath, getDb, LoadDbMeta(dbPath)), null);
             }
             
-            if (dbPath == null || meta == null) throw new Exception($"Database {id} requested but not found!");
+            // check for snapshots.
+            var snapshotDbs = LoadSnapshotDbs(path, id);
+            foreach (var snapshotDb in snapshotDbs)
+            {
+                var db = LoadDb(snapshotDb.path, getDb, LoadDbMeta(snapshotDb.path));
+                dbs = dbs == null ? new OsmTiledDbsList(db, null) : dbs.Add(db);
+            }
+            
+            // check for diffs.
+            var diffDbs = LoadsDiffDbs(path, id);
+            foreach (var diffDb in diffDbs)
+            {
+                var db = LoadDb(diffDb.path, getDb, LoadDbMeta(diffDb.path));
+                dbs = dbs == null ? new OsmTiledDbsList(db, null) : dbs.Add(db);
+            }
+            
+            if (dbs == null) throw new Exception("Could not determine db type from meta.");
+            return dbs;
+        }
+
+        internal static OsmTiledDbBase LoadDb(string dbPath, Func<long, OsmTiledDbBase> getDb, OsmTiledDbMeta meta)
+        {
+            if (dbPath == null || meta == null) throw new Exception($"Database {dbPath} requested but not found!");
              
             switch (meta.Type)
             {
